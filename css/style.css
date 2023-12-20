@@ -1,99 +1,164 @@
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
+    "Lucida Sans Unicode", Geneva, Verdana, sans-serif, Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 header {
-    background-color: #c41e1e;
-    color: rgb(116, 15, 15);
-    text-align: center;
-    padding: 1em 0;
+  background-color: #ffffff;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5em 3.5em 3.5em; /* Adjust padding as needed */
+}
+
+header img {
+  width: 300px; /* Adjust the size of the logo */
+  height: auto;
+}
+
+nav#navbar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-grow: 1; /* Allows the nav to take up the remaining space */
 }
 
 nav#navbar a {
-    color: white;
-    margin: 0 10px;
-    text-decoration: none;
-    transition: color 0.3s;
+  color: rgb(0, 4, 61);
+  margin: 0 15px; /* Adjust spacing between links */
+  text-decoration: none;
+  transition: all 0.3s ease;
+  padding: 10px 15px; /* Adds padding around the links */
+  border-radius: 25px; /* Rounded corners for a modern look */
 }
 
+/* Hover Effect */
 nav#navbar a:hover {
-    color: #000e78;
+  color: #268896; /* Change color on hover */
+  background-color: #f6deae; /* Slight background on hover */
+  transform: scale(1.2); /* Slightly enlarges the link on hover */
+}
+
+/* Focus Effect */
+nav#navbar a:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px #f26b33; /* Adds a glow effect on focus */
 }
 
 section {
-    padding: 20px;
-    margin: 20px 0;
+  padding: 20px;
+  margin: 20px 0;
 }
 
 footer {
-    background-color: #333;
-    color: white;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 1em 0;
+  display: flex;
+  justify-content: center; /* Centers the content */
+  flex-wrap: wrap; /* Allows items to wrap */
+}
+
+footer a {
+  color: white;
+  text-decoration: none;
+  padding: 5px 10px; /* Adds padding around the links */
+  margin: 5px;
+  transition: all 0.3s ease;
+  border-radius: 25px; /* Slight rounded corners */
+  background-color: rgba(255, 255, 255, 0.1); /* Subtle background color */
+}
+
+/* Hover Effect */
+footer a:hover {
+  background-color: #268896; /* Change background color on hover */
+  color: #f6deae; /* Change text color on hover */
+  transform: translateY(-3px); /* Slightly raises the link */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Adds shadow for depth */
+}
+
+/* Focus Effect */
+footer a:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px #f26b33; /* Adds a focus glow effect */
+}
+
+/* Responsive Adjustments for smaller screens */
+@media only screen and (max-width: 600px) {
+  footer a {
+    margin: 10px;
+    flex-grow: 1; /* Makes links take equal space */
     text-align: center;
-    padding: 1em 0;
+  }
 }
 
 /* Modal CSS */
 .modal-trigger {
-    border-radius: 5px;
-    cursor: pointer;
-    transition: 0.3s;
-  }
-  
-  .modal-trigger:hover {opacity: 0.7;}
-  
-  .modal {
-    display: none;
-    position: fixed;
-    z-index: 1;
-    padding-top: 100px;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0,0,0,0.9);
-  }
-  
+  border-radius: 25px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.modal-trigger:hover {
+  opacity: 0.7;
+}
+
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1;
+  padding-top: 100px;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.modal-content {
+  margin: auto;
+  display: block;
+  width: 80%;
+  max-width: 700px;
+  border-radius: 25px;
+
+}
+
+#caption {
+  margin: auto;
+  display: block;
+  width: 80%;
+  max-width: 700px;
+  text-align: center;
+  color: #ccc;
+  padding: 10px 0;
+  height: 150px;
+}
+
+.close {
+  position: absolute;
+  top: 15px;
+  right: 100px;
+  color: #e21111;
+  font-size: 100px;
+  font-weight: bold;
+  transition: 0.3s;
+}
+
+.close:hover,
+.close:focus {
+  color: #f40f0f;
+  cursor: pointer;
+}
+
+@media only screen and (max-width: 700px) {
   .modal-content {
-    margin: auto;
-    display: block;
-    width: 80%;
-    max-width: 700px;
+    width: 100%;
   }
-  
-  #caption {
-    margin: auto;
-    display: block;
-    width: 80%;
-    max-width: 700px;
-    text-align: center;
-    color: #ccc;
-    padding: 10px 0;
-    height: 150px;
-  }
-  
-  .close {
-    position: absolute;
-    top: 15px;
-    right: 100px;
-    color: #e21111;
-    font-size: 100px;
-    font-weight: bold;
-    transition: 0.3s;
-  }
-  
-  .close:hover,
-  .close:focus {
-    color: #f40f0f;
-    cursor: pointer;
-  }
-  
-  @media only screen and (max-width: 700px){
-    .modal-content {
-      width: 100%;
-    }
-  }
-  
+}
