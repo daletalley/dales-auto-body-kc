@@ -1,28 +1,19 @@
-/* Custom CSS for fixed height and border-radius */
-#slideshowGallery .carousel-inner {
-    height: 800px; /* Fixed height for the carousel */
-    border-radius: 25px; /* Rounded corners */
-    overflow: hidden; /* Ensures the border-radius effect */
-}
-
-#slideshowGallery .carousel-inner img {
-    object-fit: cover; /* Ensures images cover the slide area */
-    object-position: center; /* Center the image within the element */
-}
-
 .thumbnail-slider {
+    border-radius: 15px;
     overflow-x: auto;
     white-space: nowrap;
+    scroll-snap-type: x mandatory;
 }
 
 .thumbnail-slider img {
-    width: 100px; /* Adjust as needed */
+    width: 100px;
     height: auto;
     cursor: pointer;
     display: inline-block;
     margin-right: 8px;
     border: 2px solid transparent;
     border-radius: 10px;
+    scroll-snap-align: center;
 }
 
 .thumbnail-slider img:hover,
@@ -30,14 +21,32 @@
     border-color: #007bff;
 }
 
-/* Dark Blue Text Color */
-.text-dark-blue {
-    color: #003366; /* Example dark blue color */
+#slideshowGallery .carousel-inner {
+    height: 600px;
+    border-radius: 15px;
+    overflow: hidden;
 }
 
-/* Ensure logo scales nicely on smaller screens */
+#slideshowGallery .carousel-inner img {
+    object-fit: contain; /* Changed from 'cover' to 'contain' */
+    height: 100%; /* Ensures the image takes the full height */
+    object-position: center; /* Keeps the center of the image in view */
+}
+
+.text-dark-blue {
+    color: #003366;
+}
+
+.map-container {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.6);
+    margin-top: 20px;
+    margin-bottom: 40px;
+}
+
 @media (max-width: 767px) {
     .navbar-brand img {
-        height: 60px; /* Smaller height for mobile view */
+        height: 60px;
     }
 }

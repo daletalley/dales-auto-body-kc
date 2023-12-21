@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dale's Auto Body KC</title>
-    <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Your Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -33,7 +31,6 @@
         </nav>
     </header>
 
-    <!-- Bootstrap Carousel -->
     <div class="container my-4">
         <div id="slideshowGallery" class="carousel slide" data-ride="carousel" data-pause="hover" data-interval="5000">
             <div class="carousel-inner" id="carouselInner">
@@ -48,22 +45,22 @@
                 <span class="sr-only">Next</span>
             </a>
         </div>
-    
-        <!-- Thumbnail Slider -->
         <div class="thumbnail-slider mt-3">
             <!-- Thumbnails will be populated by JavaScript -->
         </div>
     </div>
 
-    <!-- Main content -->
     <main class="container mt-4">
         <section id="about" class="mb-4">
             <h2>About Us</h2>
             <!-- About us content -->
         </section>
 
-        <section id="contact" class="mb-4">
-            <h2>Contact Us</h2>
+        <div class="row">
+
+                <!-- Contact Form Column -->
+                <section id="contact" class="col-md-6 mb-4">
+                    <h2>Contact Us</h2>
             <form class="mt-3">
                 <div class="form-group">
                     <label for="fullName">Full Name</label>
@@ -80,16 +77,29 @@
                 <button type="submit" class="btn btn-danger">Submit</button>
             </form>
         </section>
-    </main>
+<!-- Google Maps Column -->
+<div class="col-md-6">
+    <div class="map-container">
+        <iframe 
+            src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d12382.175769374486!2d-94.643612!3d39.116852!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x87c0f1625faf77b9%3A0x8ad183ab79ce889b!2sDale&#39;s%20Upholstery%20%26%20Auto%20Care!5e0!3m2!1sen!2sus!4v1703190338240!5m2!1sen!2sus" 
+            width="100%" 
+            height="450" 
+            style="border:0;" 
+            allowfullscreen="" 
+            loading="lazy" 
+            referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+    </div>
+</div>
 
-    <!-- Bootstrap Footer -->
+</main> 
+
     <footer class="footer bg-dark text-white text-center py-3">
         <div class="container">
             <span>© Dale's Auto Body KC</span>
         </div>
     </footer>
 
-    <!-- Bootstrap and Custom JavaScript -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
