@@ -1,0 +1,43 @@
+/* Custom CSS for fixed height and border-radius */
+#slideshowGallery .carousel-inner {
+    height: 400px; /* Fixed height for the carousel */
+    border-radius: 15px; /* Rounded corners */
+    overflow: hidden; /* Ensures the border-radius effect */
+}
+
+#slideshowGallery .carousel-inner img {
+    object-fit: cover; /* Ensures images cover the slide area */
+    object-position: center; /* Center the image within the element */
+}
+
+.thumbnail-slider {
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.thumbnail-slider img {
+    width: 100px; /* Adjust as needed */
+    height: auto;
+    cursor: pointer;
+    display: inline-block;
+    margin-right: 8px;
+    border: 2px solid transparent;
+    border-radius: 5px;
+}
+
+.thumbnail-slider img:hover,
+.thumbnail-slider img.active {
+    border-color: #007bff;
+}
+
+/* Dark Blue Text Color */
+.text-dark-blue {
+    color: #003366; /* Example dark blue color */
+}
+
+/* Ensure logo scales nicely on smaller screens */
+@media (max-width: 767px) {
+    .navbar-brand img {
+        height: 60px; /* Smaller height for mobile view */
+    }
+}

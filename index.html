@@ -10,30 +10,32 @@
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header>
-        <!-- Bootstrap Navigation Bar -->
+    <header class="container">
         <nav class="navbar navbar-expand-lg navbar-light bg-light">
-            <a class="navbar-brand" href="#">
-                <img src="images/red dales auto body main logo.svg" alt="Dale's Auto Body KC Logo" style="height: 40px;">
-            </a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ml-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#about">About Us</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#contact">Contact</a>
-                    </li>
-                </ul>
+            <div class="container">
+                <a class="navbar-brand mx-auto" href="#">
+                    <img src="images/red dales auto body main logo.svg" alt="Logo" style="height: 80px;">
+                </a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                    <ul class="navbar-nav ml-auto text-dark-blue">
+                        <li class="nav-item active">
+                            <a class="nav-link" href="#about">About Us</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#contact">Contact</a>
+                        </li>
+                    </ul>
+                </div>
             </div>
         </nav>
     </header>
 
+    <!-- Bootstrap Carousel -->
     <div class="container my-4">
-        <div id="slideshowGallery" class="carousel slide" data-ride="carousel" data-pause="hover">
+        <div id="slideshowGallery" class="carousel slide" data-ride="carousel" data-pause="hover" data-interval="5000">
             <div class="carousel-inner" id="carouselInner">
                 <!-- Slides will be populated by JavaScript -->
             </div>
@@ -46,13 +48,14 @@
                 <span class="sr-only">Next</span>
             </a>
         </div>
-    </div>
     
+        <!-- Thumbnail Slider -->
+        <div class="thumbnail-slider mt-3">
+            <!-- Thumbnails will be populated by JavaScript -->
+        </div>
+    </div>
 
-    <main class="container mt-4">
-        <section id="about" class="mb-4">
-
-    <!-- Main content using Bootstrap's container for responsiveness -->
+    <!-- Main content -->
     <main class="container mt-4">
         <section id="about" class="mb-4">
             <h2>About Us</h2>
@@ -74,11 +77,9 @@
                     <label for="message">Message</label>
                     <textarea class="form-control" id="message" rows="3" placeholder="Your message"></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary">Submit</button>
+                <button type="submit" class="btn btn-danger">Submit</button>
             </form>
         </section>
-
-        <!-- Add other sections as needed -->
     </main>
 
     <!-- Bootstrap Footer -->
@@ -88,11 +89,10 @@
         </div>
     </footer>
 
-    <!-- Bootstrap JavaScript, including jQuery and Popper.js -->
+    <!-- Bootstrap and Custom JavaScript -->
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <!-- Your Custom JS -->
     <script src="js/script.js"></script>
 </body>
 </html>
