@@ -1,7 +1,7 @@
 /* Custom CSS for fixed height and border-radius */
 #slideshowGallery .carousel-inner {
-    height: 400px; /* Fixed height for the carousel */
-    border-radius: 15px; /* Rounded corners */
+    height: 800px; /* Fixed height for the carousel */
+    border-radius: 25px; /* Rounded corners */
     overflow: hidden; /* Ensures the border-radius effect */
 }
 
@@ -22,7 +22,7 @@
     display: inline-block;
     margin-right: 8px;
     border: 2px solid transparent;
-    border-radius: 5px;
+    border-radius: 10px;
 }
 
 .thumbnail-slider img:hover,
