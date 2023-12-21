@@ -2,57 +2,97 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dale's Auto Body KC</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Your Custom CSS -->
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <header>
-        <img src="images/multi-color-logo.svg" alt="Dale's Auto Body KC Logo">
-        <nav id="navbar">
-            <a href="#contact">Contact</a>
-            <a href="#gallery">Gallery</a>
+        <!-- Bootstrap Navigation Bar -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <a class="navbar-brand" href="#">
+                <img src="images/red dales auto body main logo.svg" alt="Dale's Auto Body KC Logo" style="height: 40px;">
+            </a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About Us</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contact</a>
+                    </li>
+                </ul>
+            </div>
         </nav>
     </header>
 
-    <main>
-        <section id="about">
+    <div class="container my-4">
+        <div id="slideshowGallery" class="carousel slide" data-ride="carousel" data-pause="hover">
+            <div class="carousel-inner" id="carouselInner">
+                <!-- Slides will be populated by JavaScript -->
+            </div>
+            <a class="carousel-control-prev" href="#slideshowGallery" role="button" data-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="sr-only">Previous</span>
+            </a>
+            <a class="carousel-control-next" href="#slideshowGallery" role="button" data-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="sr-only">Next</span>
+            </a>
+        </div>
+    </div>
+    
+
+    <main class="container mt-4">
+        <section id="about" class="mb-4">
+
+    <!-- Main content using Bootstrap's container for responsiveness -->
+    <main class="container mt-4">
+        <section id="about" class="mb-4">
             <h2>About Us</h2>
             <!-- About us content -->
         </section>
 
-        <section id="contact">
-            <h2>Contact</h2>
-            <form action="https://formspree.io/f/myyrgdpk" method="POST">
-                <input type="text" name="First Name:" placeholder="First Name" required>
-                <input type="text" name="Last Name:" placeholder="Last Name" required>
-                <input type="email" name="Email Address:" placeholder="Email" required>
-                <input type="text" name="Subject:" placeholder="Subject" required>
-                <textarea name="Message:" placeholder="Your Message" required></textarea>
-                <button type="submit">Send</button>
+        <section id="contact" class="mb-4">
+            <h2>Contact Us</h2>
+            <form class="mt-3">
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" class="form-control" id="fullName" placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label for="emailAddress">Email Address</label>
+                    <input type="email" class="form-control" id="emailAddress" placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea class="form-control" id="message" rows="3" placeholder="Your message"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
             </form>
         </section>
 
-        <section id="gallery">
-            <h2>Gallery</h2>
-            <!-- Gallery will be populated by JavaScript -->
-        </section>
+        <!-- Add other sections as needed -->
     </main>
 
-    <!-- The Modal -->
-    <div id="myModal" class="modal">
-        <span class="close">&times;</span>
-        <img class="modal-content" id="img01">
-        <div id="caption"></div>
-    </div>
-
-    <footer>
-        <a href="#about">About Us</a>
-        <a href="#services">Services</a>
-        <a href="#contact">Contact</a>
-        <a href="#gallery">Gallery</a>
-        <button onclick="window.scrollTo({top: 0, behavior: 'smooth'});" class="back-to-top">Back to Top</button>
+    <!-- Bootstrap Footer -->
+    <footer class="footer bg-dark text-white text-center py-3">
+        <div class="container">
+            <span>© Dale's Auto Body KC</span>
+        </div>
     </footer>
 
+    <!-- Bootstrap JavaScript, including jQuery and Popper.js -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Your Custom JS -->
     <script src="js/script.js"></script>
 </body>
 </html>
