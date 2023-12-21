@@ -97,11 +97,68 @@ footer a:focus {
   }
 }
 
+/* Back to Top Button */
+.back-to-top {
+  background-color: #268896; /* Background color */
+  color: white; /* Text color */
+  border: none; /* Remove border */
+  padding: 10px 20px; /* Padding around the text */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer; /* Cursor on hover */
+  transition: background-color 0.3s, transform 0.3s; /* Smooth transition for hover */
+}
+
+.back-to-top:hover {
+  background-color: #f26b33; /* Change background color on hover */
+  transform: translateY(-2px); /* Slightly raise the button */
+}
+
+/* Responsive Design Adjustments */
+@media only screen and (max-width: 768px) {
+  /* Adjustments for smaller screens */
+  /* ... */
+}
+
+@media only screen and (max-width: 480px) {
+  /* Adjustments for very small screens */
+  /* ... */
+}
+
+/* Contact Form Styling */
+form {
+  display: flex;
+  flex-direction: column;
+  max-width: 400px;
+  margin: auto;
+}
+
+form input,
+form textarea {
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+}
+
+form button {
+  padding: 10px 20px;
+  background-color: #268896;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+form button:hover {
+  background-color: #f26b33;
+}
 /* Modal CSS */
 .modal-trigger {
   border-radius: 25px;
   cursor: pointer;
   transition: 0.3s;
+  border: 10px solid #f6deae; /* Thin dark blue outline for gallery images */
 }
 
 .modal-trigger:hover {
@@ -127,7 +184,7 @@ footer a:focus {
   width: 80%;
   max-width: 700px;
   border-radius: 25px;
-
+  border: 5px solid darkblue; /* Thin dark blue outline for gallery images */
 }
 
 #caption {

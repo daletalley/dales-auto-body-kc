@@ -7,10 +7,8 @@
 </head>
 <body>
     <header>
-        <img src="images/multi-color-logo.svg" id="backToTop" alt="Dale's Auto Body KC Logo">
+        <img src="images/multi-color-logo.svg" alt="Dale's Auto Body KC Logo">
         <nav id="navbar">
-            <a href="#about">About Us</a>
-            <a href="#services">Services</a>
             <a href="#contact">Contact</a>
             <a href="#gallery">Gallery</a>
         </nav>
@@ -22,14 +20,16 @@
             <!-- About us content -->
         </section>
 
-        <section id="services">
-            <h2>Services</h2>
-            <!-- Services content -->
-        </section>
-
         <section id="contact">
             <h2>Contact Us</h2>
-            <!-- Contact form -->
+            <form action="mailto:dtalley32@icloud.com" method="post" enctype="text/plain">
+                <input type="text" name="first_name" placeholder="First Name" required>
+                <input type="text" name="last_name" placeholder="Last Name" required>
+                <input type="email" name="email" placeholder="Email" required>
+                <input type="text" name="subject" placeholder="Subject" required>
+                <textarea name="comment" placeholder="Your Message" required></textarea>
+                <button type="submit">Send</button>
+            </form>
         </section>
 
         <section id="gallery">
@@ -46,8 +46,11 @@
     </div>
 
     <footer>
-        <p>© Dale's Auto Body KC</p>
-        <a href="#backToTop">Back to Top</a>
+        <a href="#about">About Us</a>
+        <a href="#services">Services</a>
+        <a href="#contact">Contact</a>
+        <a href="#gallery">Gallery</a>
+        <button onclick="window.scrollTo({top: 0, behavior: 'smooth'});" class="back-to-top">Back to Top</button>
     </footer>
 
     <script src="js/script.js"></script>
