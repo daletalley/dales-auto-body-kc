@@ -1,3 +1,49 @@
+body {
+    font-family: 'Roboto', sans-serif;
+    color: #333; /* A dark grey for main text, easy on the eyes */
+    font-size: 16px; /* Standard base font size */
+    line-height: 1.6; /* For better readability */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Roboto', sans-serif;
+    color: #003366; /* Using your dark blue color for headers */
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+h1 {
+    font-size: 36px;
+    font-weight: 700; /* bolder for main headings */
+}
+
+h2 {
+    font-size: 30px;
+    font-weight: 700;
+}
+
+h3 {
+    font-size: 24px;
+    font-weight: 500;
+}
+
+h4 {
+    font-size: 20px;
+    font-weight: 500;
+}
+
+p, li, a, nav, span, div {
+    font-size: 16px; /* Consistent font size across text elements */
+    font-weight: 400; /* Regular weight for body text */
+    color: #333; /* Consistent text color */
+}
+
+a:hover, a:focus {
+    color: #007bff; /* A brighter blue for hover and focus states */
+}
+
+/* Ensure to add other CSS styles as needed */
+
 .thumbnail-slider {
     border-radius: 15px;
     overflow-x: auto;
