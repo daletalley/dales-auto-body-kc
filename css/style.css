@@ -107,6 +107,50 @@ section { padding: 5rem 0; }
     box-shadow: 0 6px 24px rgba(212, 95, 52, 0.35);
 }
 
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    border: 1px solid var(--line);
+    color: var(--cream);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.status-pill::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--muted);
+    box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.08);
+}
+
+.status-pill.open {
+    background: rgba(60, 186, 126, 0.15);
+    color: var(--cream);
+    border-color: rgba(60, 186, 126, 0.35);
+}
+
+.status-pill.open::before {
+    background: #3cba7e;
+    box-shadow: 0 0 0 4px rgba(60, 186, 126, 0.2);
+}
+
+.status-pill.closed {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--stone);
+    border-color: var(--line);
+}
+
+.status-pill.closed::before {
+    background: #d45f34;
+    box-shadow: 0 0 0 4px rgba(212, 95, 52, 0.2);
+}
+
 .hero {
     position: relative;
     overflow: hidden;

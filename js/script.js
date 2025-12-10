@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     initHeroSlider();
+    updateOpenStatus();
+    setInterval(updateOpenStatus, 60 * 1000);
 });
 
 // Single source of truth for hero gallery imagery
@@ -38,4 +40,19 @@ function initHeroSlider() {
     document.querySelector('[data-hero-next]')?.addEventListener('click', () => showImage(index + 1));
 
     showImage(index);
+}
+
+function updateOpenStatus() {
+    const statusEl = document.getElementById('navStatus');
+    if (!statusEl) return;
+
+    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+    const isOpen = hour >= 10 && (hour < 18 || (hour === 18 && minute === 0));
+
+    statusEl.textContent = isOpen ? 'Open now • 10a–6p CST' : 'Closed • 10a–6p CST';
+    statusEl.classList.toggle('open', isOpen);
+    statusEl.classList.toggle('closed', !isOpen);
+    statusEl.setAttribute('aria-label', statusEl.textContent);
 }
