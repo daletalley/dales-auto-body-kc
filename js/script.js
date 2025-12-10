@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Single source of truth for hero gallery imagery
 const galleryImages = [
+    'Screenshot 2025-12-09 at 10.21.36\u202fPM.png',
     'daleskc.com - 00020.JPG',
     'daleskc.com - 00010.JPG',
     'daleskc.com - 00005.jpg',
