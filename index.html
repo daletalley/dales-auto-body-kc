@@ -3,116 +3,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dale's Auto Body KC</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <title>Dale's Auto Body KC | Since 1968</title>
+    <meta name="description" content="Family-owned auto body and upholstery shop in Kansas City, KS. Old-school craftsmanship from Dale since 1968.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <header class="container">
-        <nav class="navbar navbar-expand-lg navbar-light">
-            <div class="container">
-                <a class="navbar-brand mx-auto" href="#">
-                    <img src="images/red dales auto body main logo.svg" alt="Logo" style="height: 80px;">
-                </a>
-                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarNavDropdown">
-                    <ul class="navbar-nav ml-auto text-dark-blue">
-                        <li class="nav-item">
-                            <a class="nav-link" href="#about">About Us</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#contact">Contact</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link disabled" href="#login">Login</a>
-                        </li>
-                    </ul>
+    <header class="top-nav">
+        <div class="container nav-inner">
+            <div class="brand">
+                <img src="images/red dales auto body main logo.svg" alt="Dale's Auto Body KC logo" class="brand-logo">
+                <div class="brand-text">
+                    <p class="eyebrow">Family owned since 1968</p>
+                    <p class="brand-name">Dale's Auto Body KC</p>
                 </div>
             </div>
-        </nav>
+            <nav class="nav-links" aria-label="Main navigation">
+                <a href="#about">About</a>
+                <a href="#services">Services</a>
+                <a href="#visit">Visit</a>
+                <a class="pill" href="tel:913-371-6654">Call (913) 371-6654</a>
+            </nav>
+        </div>
     </header>
 
-    <div class="container my-4">
-        <div id="slideshowGallery" class="carousel slide" data-ride="carousel" data-pause="hover" data-interval="5000">
-            <div class="carousel-inner" id="carouselInner">
-                <!-- Slides will be populated by JavaScript -->
+    <main>
+        <section class="hero" id="about">
+            <div class="container hero-grid">
+                <div class="hero-copy">
+                    <p class="eyebrow">Kansas City, Kansas • Est. 1968</p>
+                    <h1>Honest auto body care since 1968.</h1>
+                    <p class="lede">Dale straightens metal, lays down clean paint, and keeps KC cars moving.</p>
+                    <div class="cta-row">
+                        <a class="btn solid" href="tel:913-371-6654">Call (913) 371-6654</a>
+                        <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
+                        <a class="btn ghost" href="#visit">Visit</a>
+                    </div>
+                    <div class="hero-tags">
+                        <span>Collision + frame</span>
+                        <span>Paint + polish</span>
+                        <span>Upholstery + interiors</span>
+                    </div>
+                </div>
+                <div class="hero-showcase hero-slider">
+                    <button class="hero-arrow" data-hero-prev aria-label="Previous photo">‹</button>
+                    <div class="hero-photo">
+                        <img src="images/daleskc.com - 00020.JPG" alt="Freshly finished car in the State Avenue bay" data-hero-img>
+                    </div>
+                    <button class="hero-arrow" data-hero-next aria-label="Next photo">›</button>
+                </div>
             </div>
-            <a class="carousel-control-prev" href="#slideshowGallery" role="button" data-slide="prev">
-                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-                <span class="sr-only">Previous</span>
-            </a>
-            <a class="carousel-control-next" href="#slideshowGallery" role="button" data-slide="next">
-                <span class="carousel-control-next-icon" aria-hidden="true"></span>
-                <span class="sr-only">Next</span>
-            </a>
-        </div>
-        <div class="thumbnail-slider mt-3">
-            <!-- Thumbnails will be populated by JavaScript -->
-        </div>
-    </div>
-
-    <main class="container mt-4">
-        <section id="about" class="mb-4">
-            <h2>About Us</h2>
-            <p>Welcome to Dale's Auto Body KC, a family-run, black-owned business in Kansas City. For over 35 years, we've dedicated ourselves to providing exceptional auto body services. Our journey, spanning over five decades, is built on hard work and a commitment to unmatched service.</p>
-            <p>Our skilled team, with years of combined experience, brings a unique blend of expertise and personal touch to every repair and custom job. At Dale's Auto Body KC, you're not just a customer, but a part of our extended family. We're grateful for your trust and look forward to many more years of serving the community with passion and excellence.</p>
         </section>
 
-        <div class="row">
+        <section class="services" id="services">
+            <div class="container">
+                <div class="section-header">
+                    <p class="eyebrow">What we fix</p>
+                    <h2>Collision, paint, and upholstery done right.</h2>
+                    <p class="lede">Small shop focus with the tools to handle frame work, booth paint, and interior repair.</p>
+                </div>
+                <div class="service-grid">
+                    <article class="card">
+                        <h3>Collision & frame</h3>
+                        <p>Structural straightening, panel alignment, weld repair, and rust remediation that keeps you safe.</p>
+                    </article>
+                    <article class="card">
+                        <h3>Paint & finish</h3>
+                        <p>Prep, primer, and booth work with careful color matching and clean tapelines.</p>
+                    </article>
+                    <article class="card">
+                        <h3>Upholstery & trim</h3>
+                        <p>Seat rebuilds, headliners, carpet kits, and dash refreshes stitched clean and tight.</p>
+                    </article>
+                    <article class="card">
+                        <h3>Insurance-friendly</h3>
+                        <p>Estimates that speak insurance language without the dealership runaround.</p>
+                    </article>
+                </div>
+                <div class="trust-grid">
+                    <article class="card">
+                        <p class="eyebrow">Trusted locally</p>
+                        <h3>Owner on site</h3>
+                        <p>Dale answers the phone, looks at the car, and signs off every job.</p>
+                    </article>
+                    <article class="card">
+                        <p class="eyebrow">Quality first</p>
+                        <h3>Checked under bright light</h3>
+                        <p>Panels are inspected for straight lines and even clear before they leave.</p>
+                    </article>
+                    <article class="card">
+                        <p class="eyebrow">Straight talk</p>
+                        <h3>Clear estimates</h3>
+                        <p>Plain language on parts, paint, and timeframes.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
 
-                <!-- Contact Form Column -->
-                <section id="contact" class="col-md-6 mb-4">
-                    <h2>Contact Us</h2>
-                    <form class="mt-3" action="https://formspree.io/f/myyrgdpk" method="post">
-                        <div class="form-group">
-                            <label for="fullName">Full Name</label>
-                            <input type="text" class="form-control" id="fullName" name="fullName" placeholder="Enter your full name">
-                        </div>
-                        <div class="form-group">
-                            <label for="emailAddress">Email Address</label>
-                            <input type="email" class="form-control" id="emailAddress" name="emailAddress" placeholder="Enter your email">
-                        </div>
-                        <div class="form-group">
-                            <label for="upload">Your File:</label>
-                            <input type="file" class="form-control-file" id="upload" name="upload">
-                        </div>
-                        <div class="form-group">
-                            <label for="message">Message</label>
-                            <textarea class="form-control" id="message" name="message" rows="3" placeholder="Your message"></textarea>
-                        </div>
-                        <button type="submit" class="btn btn-danger">Submit</button>
-                    </form>
-                </section>
+        <section class="visit" id="visit">
+            <div class="container visit-grid">
+                <div class="visit-card card">
+                    <p class="eyebrow">Come by</p>
+                    <h2>1310 State Avenue, Kansas City, KS</h2>
+                    <p>Pull into the lot off State Avenue and step into the bay. Call ahead if you're towing.</p>
+                    <div class="contact-list">
+                        <a href="tel:913-371-6654">Call (913) 371-6654</a>
+                        <a href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
+                        <span>Weekdays 8a – 5p • Weekends by appointment</span>
+                    </div>
+                </div>
+                <div class="map">
+                    <iframe 
+                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&output=embed" 
+                        width="100%" 
+                        height="100%" 
+                        style="border:0;" 
+                        allowfullscreen="" 
+                        loading="lazy" 
+                        referrerpolicy="no-referrer-when-downgrade">
+                    </iframe>
+                </div>
+            </div>
+        </section>
+    </main>
 
-<!-- Google Maps Column -->
-<div class="col-md-6">
-    <div class="map-container">
-        <iframe 
-            src="https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d12382.175769374486!2d-94.643612!3d39.116852!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x87c0f1625faf77b9%3A0x8ad183ab79ce889b!2sDale&#39;s%20Upholstery%20%26%20Auto%20Care!5e0!3m2!1sen!2sus!4v1703190338240!5m2!1sen!2sus" 
-            width="100%" 
-            height="450" 
-            style="border:0;" 
-            allowfullscreen="" 
-            loading="lazy" 
-            referrerpolicy="no-referrer-when-downgrade">
-        </iframe>
-    </div>
-</div>
-
-</main> 
-
-    <footer class="footer text-white text-center py-3">
-        <div class="container">
-            <span>© Dale's Auto Body KC</span>
+    <footer class="footer">
+        <div class="container footer-inner">
+            <div>
+                <p class="eyebrow">Thank you, Kansas City</p>
+                <p>Independent since 1968—serving neighbors who keep us busy.</p>
+            </div>
+            <div class="footer-cta">
+                <a class="btn solid" href="tel:913-371-6654">Call (913) 371-6654</a>
+                <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
+            </div>
         </div>
     </footer>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <script src="js/script.js"></script>
 </body>
 </html>
