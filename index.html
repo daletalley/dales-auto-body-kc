@@ -2,145 +2,496 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dale's Auto Body KC | Since 1975</title>
-    <meta name="description" content="Family-owned auto body and upholstery shop in Kansas City, KS. Old-school craftsmanship from Dale since 1968.">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Dale's Auto Body · Custom Paint & Collision Repair · Kansas City, KS</title>
+    <meta name="description" content="Family-owned auto body shop on State Avenue in Kansas City, KS since 1975. Collision and frame repair, custom candy and flake paint, hand pinstriping, and upholstery for cars and motorcycles.">
+    <meta name="theme-color" content="#0b0a0c">
+    <link rel="canonical" href="https://daleskc.com/">
+
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://daleskc.com/">
+    <meta property="og:title" content="Dale's Auto Body · Kansas City, KS · Since 1975">
+    <meta property="og:description" content="Collision repair, custom paint, pinstripe and upholstery from a family shop on State Avenue.">
+    <meta property="og:image" content="https://daleskc.com/images/og.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <script>document.documentElement.classList.add('js')</script>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Fraunces:ital,opsz,wght@0,9..144,300..800;1,9..144,300..800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "AutoBodyShop",
+        "name": "Dale's Auto Body",
+        "url": "https://daleskc.com/",
+        "image": "https://daleskc.com/images/og.jpg",
+        "telephone": "+1-913-371-6654",
+        "email": "dalesautobody@gmail.com",
+        "foundingDate": "1975",
+        "priceRange": "$$",
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "1310 State Avenue",
+            "addressLocality": "Kansas City",
+            "addressRegion": "KS",
+            "postalCode": "66102",
+            "addressCountry": "US"
+        },
+        "openingHoursSpecification": [{
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+            "opens": "10:00",
+            "closes": "18:00"
+        }],
+        "areaServed": "Kansas City metro",
+        "makesOffer": [
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Collision & frame repair" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Custom paint, candy & metal flake" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Hand pinstriping & graphics" } },
+            { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Upholstery & interiors" } }
+        ]
+    }
+    </script>
 </head>
 <body>
-    <header class="top-nav">
-        <div class="container nav-inner">
-            <div class="brand">
-                <div class="brand-text">
-                    <p class="eyebrow">Family owned since 1975</p>
-                    <p class="brand-name">DALE'S AUTO BODY</p>
-                    <p class="brand-sub">Kansas City, KS</p>
-                </div>
-            </div>
-            <nav class="nav-links" aria-label="Main navigation">
-                <a href="#about">About</a>
-                <a href="#services">Services</a>
-                <a href="#visit">Visit</a>
-                <span class="status-pill" id="navStatus" aria-live="polite">Checking hours…</span>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <!-- Reusable pinstripe flourish, drawn on scroll -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+        <defs>
+            <symbol id="flourish" viewBox="0 0 240 40">
+                <path d="M120 20c-14-16-38-16-46-4-6 9 4 18 13 12 7-5 2-14-6-10M120 20c14-16 38-16 46-4 6 9-4 18-13 12-7-5-2-14 6-10M120 20c-30 10-64 12-118 2M120 20c30 10 64 12 118 2M120 20c-6 6-6 12 0 16 6-4 6-10 0-16"/>
+            </symbol>
+        </defs>
+    </svg>
+
+    <header class="site-header" data-header>
+        <div class="wrap header-inner">
+            <a class="wordmark" href="#top" aria-label="Dale's Auto Body, back to top">
+                <span class="wordmark-dales">Dale’s</span>
+                <span class="wordmark-sub">Auto Body</span>
+            </a>
+            <nav class="nav" aria-label="Main">
+                <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="nav-menu" data-nav-toggle>
+                    <span class="sr-only">Menu</span><span class="nav-toggle-bars" aria-hidden="true"></span>
+                </button>
+                <ul id="nav-menu" class="nav-menu" data-nav-menu>
+                    <li><a href="#work">The Work</a></li>
+                    <li><a href="#craft">The Craft</a></li>
+                    <li><a href="#services">Services</a></li>
+                    <li><a href="#legacy">Our Story</a></li>
+                    <li><a href="#visit">Visit</a></li>
+                    <li class="nav-cta"><a class="btn btn-sm btn-paint" href="#estimate">Free estimate</a></li>
+                </ul>
             </nav>
         </div>
     </header>
 
-    <main>
-        <section class="hero" id="about">
-            <div class="container hero-grid">
-                <div class="hero-copy">
-                    <p class="eyebrow">1310 State Avenue, Kansas City, KS • Est. 1975</p>
-                    <h1>Honest auto body care since 1975.</h1>
-                    <p class="lede">Dale straightens metal, lays down clean paint, and keeps KC cars moving.</p>
-                    <div class="cta-row">
-                        <a class="btn solid" href="tel:913-371-6654">Call (913) 371-6654</a>
-                        <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
-                    </div>
-                    <div class="hero-tags">
-                        <span>Collision + frame</span>
-                        <span>Paint + polish</span>
-                        <span>Upholstery + interiors</span>
+    <main id="main">
+        <!-- ============ HERO: live candy-paint shader ============ -->
+        <section class="hero" id="top" aria-labelledby="hero-title">
+            <canvas class="hero-canvas" data-paint aria-hidden="true"></canvas>
+            <div class="hero-grain" aria-hidden="true"></div>
+            <div class="wrap hero-inner">
+                <p class="kicker reveal">
+                    <span class="status" data-status aria-live="polite"><span class="status-dot"></span><span data-status-text>Kansas City, KS</span></span>
+                    <span class="kicker-sep" aria-hidden="true">/</span>
+                    1310 State Ave · Est. 1975
+                </p>
+                <h1 class="hero-title" id="hero-title">
+                    <span class="line"><span>Straight metal.</span></span>
+                    <span class="line"><em>Painted like art.</em></span>
+                </h1>
+                <p class="hero-lede reveal">
+                    Collision repair, custom candy &amp; flake, hand pinstripe and upholstery — from a family shop
+                    that has been turning dents into show finishes for <strong data-years>50+</strong> years.
+                </p>
+                <div class="hero-actions reveal">
+                    <a class="btn btn-paint" href="tel:+19133716654" data-magnetic>
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
+                        (913) 371-6654
+                    </a>
+                    <a class="btn btn-ghost" href="#work">See the work <span aria-hidden="true">→</span></a>
+                </div>
+
+                <fieldset class="swatches reveal" aria-describedby="swatch-hint">
+                    <legend id="swatch-hint">Pick a paint · <span data-swatch-name>Candy Tangerine</span></legend>
+                    <button type="button" class="swatch" style="--c:#ff5a1f" data-swatch="tangerine" aria-pressed="true" aria-label="Candy Tangerine"></button>
+                    <button type="button" class="swatch" style="--c:#c8102e" data-swatch="apple" aria-pressed="false" aria-label="Candy Apple Red"></button>
+                    <button type="button" class="swatch" style="--c:#0fa3a3" data-swatch="teal" aria-pressed="false" aria-label="Candy Teal"></button>
+                    <button type="button" class="swatch" style="--c:#7a3b1d" data-swatch="rootbeer" aria-pressed="false" aria-label="Root Beer"></button>
+                    <button type="button" class="swatch" style="--c:#4b2a8a" data-swatch="purple" aria-pressed="false" aria-label="Midnight Purple"></button>
+                    <button type="button" class="swatch" style="--c:#1f4fd1" data-swatch="cobalt" aria-pressed="false" aria-label="Cobalt Blue"></button>
+                </fieldset>
+            </div>
+            <p class="hero-hint" aria-hidden="true">Move your cursor — that’s the light hitting the clear.</p>
+            <a class="scroll-cue" href="#work" aria-label="Scroll to the work"><span></span></a>
+        </section>
+
+        <!-- ============ MARQUEE ============ -->
+        <div class="marquee" aria-hidden="true">
+            <div class="marquee-track">
+                <span>Collision</span><i>✦</i><span>Frame</span><i>✦</i><span><em>Candy</em></span><i>✦</i><span>Metal Flake</span><i>✦</i><span><em>Pinstripe</em></span><i>✦</i><span>Custom Baggers</span><i>✦</i><span>Upholstery</span><i>✦</i><span><em>Color Match</em></span><i>✦</i>
+                <span>Collision</span><i>✦</i><span>Frame</span><i>✦</i><span><em>Candy</em></span><i>✦</i><span>Metal Flake</span><i>✦</i><span><em>Pinstripe</em></span><i>✦</i><span>Custom Baggers</span><i>✦</i><span>Upholstery</span><i>✦</i><span><em>Color Match</em></span><i>✦</i>
+            </div>
+        </div>
+
+        <!-- ============ SHOWROOM ============ -->
+        <section class="showroom" id="work" aria-labelledby="work-title">
+            <div class="wrap section-head">
+                <p class="eyebrow">The Showroom</p>
+                <h2 id="work-title">Every panel is a <em>canvas.</em></h2>
+                <p class="section-lede">A few favorites rolled out of the bay on State Avenue. Drag, swipe, or use the arrows — and tap any piece to see it up close.</p>
+                <div class="show-controls">
+                    <button type="button" class="round-btn" data-show-prev aria-label="Previous piece">←</button>
+                    <button type="button" class="round-btn" data-show-next aria-label="Next piece">→</button>
+                </div>
+            </div>
+            <ol class="show-track" data-show-track tabindex="0" aria-label="Featured work">
+                <!-- showroom:start -->
+                    <li class="show-card" style="--ph:#7a7556"><a class="show-media" href="images/work/68-640.webp" data-lightbox data-caption="Orange and black bagger with outlined flame graphics and a polished spinner front wheel, parked by Heathwood Park" data-label="Full Builds"><img src="images/work/68-640.webp" srcset="images/work/68-480.webp 480w, images/work/68-640.webp 640w" sizes="(min-width: 900px) 40vw, 85vw" width="640" height="480" alt="Orange and black bagger with outlined flame graphics and a polished spinner front wheel, parked by Heathwood Park" loading="lazy" decoding="async"></a><div class="show-meta"><span class="show-no">No. 01</span><h3>Orange &amp; black flame bagger</h3><span class="show-cat">Full Builds</span></div></li>
+                    <li class="show-card" style="--ph:#725853"><a class="show-media" href="images/work/14-640.webp" data-lightbox data-caption="Peach custom bagger with stretched saddlebags and maroon seat, glowing red underneath inside the paint shop" data-label="Full Builds"><img src="images/work/14-640.webp" srcset="images/work/14-480.webp 480w, images/work/14-640.webp 640w" sizes="(min-width: 900px) 40vw, 85vw" width="640" height="480" alt="Peach custom bagger with stretched saddlebags and maroon seat, glowing red underneath inside the paint shop" loading="lazy" decoding="async"></a><div class="show-meta"><span class="show-no">No. 02</span><h3>Peach custom with red underglow</h3><span class="show-cat">Full Builds</span></div></li>
+                    <li class="show-card" style="--ph:#3e2f29"><a class="show-media" href="images/work/64-640.webp" data-lightbox data-caption="Fuel tank in candy red and black metal flake with silver pinstripe accents" data-label="Paint & Graphics"><img src="images/work/64-640.webp" srcset="images/work/64-480.webp 480w, images/work/64-640.webp 640w" sizes="(min-width: 900px) 40vw, 85vw" width="640" height="480" alt="Fuel tank in candy red and black metal flake with silver pinstripe accents" loading="lazy" decoding="async"></a><div class="show-meta"><span class="show-no">No. 03</span><h3>Candy red over black flake</h3><span class="show-cat">Paint & Graphics</span></div></li>
+                    <li class="show-card" style="--ph:#6b7374"><a class="show-media" href="images/work/72-640.webp" data-lightbox data-caption="Motorcycle tank freshly sprayed in deep candy teal, reflecting the shop lights" data-label="Paint & Graphics"><img src="images/work/72-640.webp" srcset="images/work/72-480.webp 480w, images/work/72-640.webp 640w" sizes="(min-width: 900px) 40vw, 85vw" width="640" height="480" alt="Motorcycle tank freshly sprayed in deep candy teal, reflecting the shop lights" loading="lazy" decoding="async"></a><div class="show-meta"><span class="show-no">No. 04</span><h3>Candy teal tank</h3><span class="show-cat">Paint & Graphics</span></div></li>
+                    <li class="show-card" style="--ph:#757475"><a class="show-media" href="images/work/23-640.webp" data-lightbox data-caption="Root beer and gold road glide with sweeping graphics, whitewall tires and spoke wheels" data-label="Full Builds"><img src="images/work/23-640.webp" srcset="images/work/23-480.webp 480w, images/work/23-640.webp 640w" sizes="(min-width: 900px) 40vw, 85vw" width="640" height="480" alt="Root beer and gold road glide with sweeping graphics, whitewall tires and spoke wheels" loading="lazy" decoding="async"></a><div class="show-meta"><span class="show-no">No. 05</span><h3>Root beer &amp; gold road glide</h3><span class="show-cat">Full Builds</span></div></li>
+                    <li class="show-card" style="--ph:#431f1f"><a class="show-media" href="images/work/53-640.webp" data-lightbox data-caption="Candy apple red bagger on a lift glowing with red accent lighting in the dark shop" data-label="Full Builds"><img src="images/work/53-640.webp" srcset="images/work/53-480.webp 480w, images/work/53-640.webp 640w" sizes="(min-width: 900px) 40vw, 85vw" width="640" height="480" alt="Candy apple red bagger on a lift glowing with red accent lighting in the dark shop" loading="lazy" decoding="async"></a><div class="show-meta"><span class="show-no">No. 06</span><h3>Candy apple show bike</h3><span class="show-cat">Full Builds</span></div></li>
+                <!-- showroom:end -->
+            </ol>
+        </section>
+
+        <!-- ============ THE CRAFT: scroll-built paint stack ============ -->
+        <section class="craft" id="craft" aria-labelledby="craft-title">
+            <div class="wrap section-head">
+                <p class="eyebrow">The Craft</p>
+                <h2 id="craft-title">Seven coats of <em>patience.</em></h2>
+                <p class="section-lede">A finish that looks a foot deep is built one thin layer at a time. Scroll to build it.</p>
+            </div>
+            <div class="wrap craft-grid">
+                <div class="craft-visual" aria-hidden="true">
+                    <div class="stack" data-stack>
+                        <div class="stack-panel">
+                            <div class="layer l-metal"><span>Bare steel</span></div>
+                            <div class="layer l-filler"><span>Body filler</span></div>
+                            <div class="layer l-primer"><span>Epoxy primer</span></div>
+                            <div class="layer l-base"><span>Basecoat</span></div>
+                            <div class="layer l-candy"><span>Candy + flake</span></div>
+                            <div class="layer l-stripe"><span>Pinstripe</span></div>
+                            <div class="layer l-clear"><span>Clear · cut · buff</span></div>
+                        </div>
+                        <div class="stack-readout"><span data-stack-step>01</span> / 07<span data-stack-name>Bare steel</span></div>
                     </div>
                 </div>
-                <div class="hero-showcase hero-slider">
-                    <button class="hero-arrow" data-hero-prev aria-label="Previous photo">‹</button>
-                    <div class="hero-photo">
-                        <img src="images/Screenshot 2025-12-09 at 10.21.36 PM.png" alt="Auto body work at Dale's shop" data-hero-img>
-                    </div>
-                    <button class="hero-arrow" data-hero-next aria-label="Next photo">›</button>
+                <ol class="steps">
+                    <li class="step" data-step="1">
+                        <span class="step-no">01</span>
+                        <h3>Tear down &amp; read the metal</h3>
+                        <p>Trim off, panels out, everything under bright light. You can’t fix what you haven’t found — so we find all of it before a single number goes on the estimate.</p>
+                    </li>
+                    <li class="step" data-step="2">
+                        <span class="step-no">02</span>
+                        <h3>Straighten, don’t hide</h3>
+                        <p>Frame and panels get pulled and hammered back to true. Filler is a skim, not a sculpture — the shape comes from the steel.</p>
+                    </li>
+                    <li class="step" data-step="3">
+                        <span class="step-no">03</span>
+                        <h3>Prime &amp; block</h3>
+                        <p>Epoxy seals the metal, then high-build primer gets block-sanded by hand until the reflections run straight as a level.</p>
+                    </li>
+                    <li class="step" data-step="4">
+                        <span class="step-no">04</span>
+                        <h3>Lay the color</h3>
+                        <p>Factory matches are tinted and sprayed out on test cards first. Custom colors get mixed until they look right in sunlight and shop light.</p>
+                    </li>
+                    <li class="step" data-step="5">
+                        <span class="step-no">05</span>
+                        <h3>Candy &amp; flake</h3>
+                        <p>Translucent candy goes on in even passes over a metallic base — every coat deeper than the last. Miss one pass and it shows, so nobody misses.</p>
+                    </li>
+                    <li class="step" data-step="6">
+                        <span class="step-no">06</span>
+                        <h3>Stripe by hand</h3>
+                        <p>Graphics are taped and laid out on the bike, then outlined with a striping brush and a steady hand. No vinyl, no shortcuts.</p>
+                    </li>
+                    <li class="step" data-step="7">
+                        <span class="step-no">07</span>
+                        <h3>Clear, cut &amp; buff</h3>
+                        <p>Coats of clear, color-sanded flat and buffed back to glass. Then it gets checked under the lights one more time before the keys go back.</p>
+                    </li>
+                </ol>
+            </div>
+        </section>
+
+        <!-- ============ SERVICES ============ -->
+        <section class="services" id="services" aria-labelledby="services-title">
+            <div class="wrap section-head">
+                <p class="eyebrow">What we do</p>
+                <h2 id="services-title">Body, paint, <em>and soul.</em></h2>
+            </div>
+            <ul class="wrap service-grid">
+                <li class="service" data-tilt>
+                    <svg class="service-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 30l6-12h20l8 8h2a2 2 0 0 1 2 2v6H6z"/><circle cx="14" cy="34" r="4"/><circle cx="34" cy="34" r="4"/><path d="M20 10l2 5M28 8l-1 6M36 12l-3 4"/></svg>
+                    <h3>Collision &amp; frame</h3>
+                    <p>Structural straightening, panel replacement, welding and rust repair — done so the car drives as straight as it looks.</p>
+                </li>
+                <li class="service" data-tilt>
+                    <svg class="service-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M30 6h6v10h-6zM28 16h10v6H28zM33 22v6"/><path d="M33 28c-6 0-10 4-14 4s-7-2-11-2"/><path d="M8 38c4-3 8 1 12-2s8 1 12-2" /></svg>
+                    <h3>Custom paint</h3>
+                    <p>Candy, pearl, metal flake, two-tones and color changes. If you can picture it, we can mix it and lay it down.</p>
+                </li>
+                <li class="service" data-tilt>
+                    <svg class="service-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 36c8-18 18-22 36-24"/><path d="M6 36c10-10 20-12 30-10" /><path d="M36 6l6 6-14 14-6-6z"/></svg>
+                    <h3>Pinstripe &amp; graphics</h3>
+                    <p>Hand-laid flames, scallops, outlines and lettering. Real brush, real paint, one of one.</p>
+                </li>
+                <li class="service" data-tilt>
+                    <svg class="service-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 30c0-10 6-16 16-16h8c6 0 8 4 8 8v8z"/><path d="M8 30h32v6H8z"/><path d="M16 14l4 16M24 14l2 16M32 14v16"/></svg>
+                    <h3>Upholstery &amp; interiors</h3>
+                    <p>Seats rebuilt and recovered, pleats, diamond stitch, headliners and carpet — stitched tight and built to be sat on.</p>
+                </li>
+                <li class="service" data-tilt>
+                    <svg class="service-icon" viewBox="0 0 48 48" aria-hidden="true"><circle cx="12" cy="32" r="7"/><circle cx="38" cy="32" r="7"/><path d="M12 32l8-12h10l8 12M20 20l-3-6h-5M30 20l4-8h5"/></svg>
+                    <h3>Motorcycle customs</h3>
+                    <p>Baggers, tanks, fenders, fairings and full builds. Stretched bags, color-matched dash, the works.</p>
+                </li>
+                <li class="service" data-tilt>
+                    <svg class="service-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M12 6h18l8 8v28H12z"/><path d="M30 6v8h8M18 22h14M18 28h14M18 34h8"/></svg>
+                    <h3>Insurance claims</h3>
+                    <p>Honest estimates in plain English and in insurance-speak. We’ll walk you through what’s covered and what’s not.</p>
+                </li>
+            </ul>
+        </section>
+
+        <!-- ============ PORTFOLIO ============ -->
+        <section class="portfolio" aria-labelledby="portfolio-title">
+            <div class="wrap section-head">
+                <p class="eyebrow">The Portfolio</p>
+                <h2 id="portfolio-title">From the <em>bay floor.</em></h2>
+                <div class="filters" role="group" aria-label="Filter photos">
+                    <!-- filters:start -->
+                    <button type="button" class="chip" aria-pressed="true" data-filter="all">All <span>74</span></button>
+                    <button type="button" class="chip" aria-pressed="false" data-filter="builds">Full Builds <span>37</span></button>
+                    <button type="button" class="chip" aria-pressed="false" data-filter="paint">Paint & Graphics <span>16</span></button>
+                    <button type="button" class="chip" aria-pressed="false" data-filter="interiors">Seats & Interiors <span>6</span></button>
+                    <button type="button" class="chip" aria-pressed="false" data-filter="details">Details & Chrome <span>11</span></button>
+                    <button type="button" class="chip" aria-pressed="false" data-filter="cars">Cars <span>4</span></button>
+                    <!-- filters:end -->
+                </div>
+            </div>
+            <ul class="wrap masonry" data-gallery aria-live="polite">
+                <!-- gallery:start -->
+                    <li class="tile" data-cat="builds" style="--ph:#7a7556;--ar:640/480"><a href="images/work/68-640.webp" data-lightbox data-caption="Orange and black bagger with outlined flame graphics and a polished spinner front wheel, parked by Heathwood Park" data-label="Full Builds"><img src="images/work/68-480.webp" srcset="images/work/68-480.webp 480w, images/work/68-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Orange and black bagger with outlined flame graphics and a polished spinner front wheel, parked by Heathwood Park" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#725853;--ar:640/480"><a href="images/work/14-640.webp" data-lightbox data-caption="Peach custom bagger with stretched saddlebags and maroon seat, glowing red underneath inside the paint shop" data-label="Full Builds"><img src="images/work/14-480.webp" srcset="images/work/14-480.webp 480w, images/work/14-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Peach custom bagger with stretched saddlebags and maroon seat, glowing red underneath inside the paint shop" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#3e2f29;--ar:640/480"><a href="images/work/64-640.webp" data-lightbox data-caption="Fuel tank in candy red and black metal flake with silver pinstripe accents" data-label="Paint & Graphics"><img src="images/work/64-480.webp" srcset="images/work/64-480.webp 480w, images/work/64-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Fuel tank in candy red and black metal flake with silver pinstripe accents" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#6b7374;--ar:640/480"><a href="images/work/72-640.webp" data-lightbox data-caption="Motorcycle tank freshly sprayed in deep candy teal, reflecting the shop lights" data-label="Paint & Graphics"><img src="images/work/72-480.webp" srcset="images/work/72-480.webp 480w, images/work/72-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Motorcycle tank freshly sprayed in deep candy teal, reflecting the shop lights" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#757475;--ar:640/480"><a href="images/work/23-640.webp" data-lightbox data-caption="Root beer and gold road glide with sweeping graphics, whitewall tires and spoke wheels" data-label="Full Builds"><img src="images/work/23-480.webp" srcset="images/work/23-480.webp 480w, images/work/23-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Root beer and gold road glide with sweeping graphics, whitewall tires and spoke wheels" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#431f1f;--ar:640/480"><a href="images/work/53-640.webp" data-lightbox data-caption="Candy apple red bagger on a lift glowing with red accent lighting in the dark shop" data-label="Full Builds"><img src="images/work/53-480.webp" srcset="images/work/53-480.webp 480w, images/work/53-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Candy apple red bagger on a lift glowing with red accent lighting in the dark shop" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#8d8881;--ar:1024/576"><a href="images/work/11-960.webp" data-lightbox data-caption="Tangerine chopper-style bagger with stretched bags parked on a sunny lot" data-label="Full Builds"><img src="images/work/11-480.webp" srcset="images/work/11-480.webp 480w, images/work/11-960.webp 960w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="1024" height="576" alt="Tangerine chopper-style bagger with stretched bags parked on a sunny lot" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#7f736a;--ar:758/576"><a href="images/work/12-758.webp" data-lightbox data-caption="Close view of a tangerine chopper bagger showing chrome engine and long saddlebag lines" data-label="Full Builds"><img src="images/work/12-480.webp" srcset="images/work/12-480.webp 480w, images/work/12-758.webp 758w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="758" height="576" alt="Close view of a tangerine chopper bagger showing chrome engine and long saddlebag lines" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#71645d;--ar:640/480"><a href="images/work/10-640.webp" data-lightbox data-caption="Tangerine metallic bagger inside the shop with its owner in the background" data-label="Full Builds"><img src="images/work/10-480.webp" srcset="images/work/10-480.webp 480w, images/work/10-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Tangerine metallic bagger inside the shop with its owner in the background" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#716360;--ar:640/480"><a href="images/work/15-640.webp" data-lightbox data-caption="Peach custom bagger with maroon seat and stretched bags, side view" data-label="Full Builds"><img src="images/work/15-480.webp" srcset="images/work/15-480.webp 480w, images/work/15-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Peach custom bagger with maroon seat and stretched bags, side view" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#82706c;--ar:480/640"><a href="images/work/16-480.webp" data-lightbox data-caption="Rear view of the peach bagger showing the stretched fender and taillight" data-label="Full Builds"><img src="images/work/16-480.webp" srcset="images/work/16-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Rear view of the peach bagger showing the stretched fender and taillight" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#716059;--ar:640/480"><a href="images/work/17-640.webp" data-lightbox data-caption="Peach bagger with a large polished front wheel parked outside" data-label="Full Builds"><img src="images/work/17-480.webp" srcset="images/work/17-480.webp 480w, images/work/17-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Peach bagger with a large polished front wheel parked outside" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#60504b;--ar:640/480"><a href="images/work/18-640.webp" data-lightbox data-caption="Front three-quarter view of the peach bagger with twin headlights and big chrome wheel" data-label="Full Builds"><img src="images/work/18-480.webp" srcset="images/work/18-480.webp 480w, images/work/18-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Front three-quarter view of the peach bagger with twin headlights and big chrome wheel" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#616967;--ar:640/480"><a href="images/work/19-640.webp" data-lightbox data-caption="Peach bagger head-on, showing fairing and polished wheel" data-label="Full Builds"><img src="images/work/19-480.webp" srcset="images/work/19-480.webp 480w, images/work/19-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Peach bagger head-on, showing fairing and polished wheel" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#73635c;--ar:640/480"><a href="images/work/20-640.webp" data-lightbox data-caption="Peach fairing and tour pack with chrome trim, close up" data-label="Details & Chrome"><img src="images/work/20-480.webp" srcset="images/work/20-480.webp 480w, images/work/20-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Peach fairing and tour pack with chrome trim, close up" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#99746b;--ar:480/640"><a href="images/work/21-480.webp" data-lightbox data-caption="Cockpit of the peach bagger with color-matched gauges and dash" data-label="Details & Chrome"><img src="images/work/21-480.webp" srcset="images/work/21-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Cockpit of the peach bagger with color-matched gauges and dash" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#8d6050;--ar:480/640"><a href="images/work/22-480.webp" data-lightbox data-caption="Peach side panel lit red with fine pinstripe detail" data-label="Details & Chrome"><img src="images/work/22-480.webp" srcset="images/work/22-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Peach side panel lit red with fine pinstripe detail" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#856962;--ar:480/640"><a href="images/work/24-480.webp" data-lightbox data-caption="Rear of the root beer bagger showing color-matched saddlebags and graphics" data-label="Full Builds"><img src="images/work/24-480.webp" srcset="images/work/24-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Rear of the root beer bagger showing color-matched saddlebags and graphics" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#706862;--ar:640/480"><a href="images/work/25-640.webp" data-lightbox data-caption="Root beer bagger with gold graphics and tan stitched seat" data-label="Full Builds"><img src="images/work/25-480.webp" srcset="images/work/25-480.webp 480w, images/work/25-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Root beer bagger with gold graphics and tan stitched seat" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#95847c;--ar:640/480"><a href="images/work/26-640.webp" data-lightbox data-caption="Root beer fairing shot head-on showing deep metallic finish" data-label="Paint & Graphics"><img src="images/work/26-480.webp" srcset="images/work/26-480.webp 480w, images/work/26-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Root beer fairing shot head-on showing deep metallic finish" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#716353;--ar:640/480"><a href="images/work/67-640.webp" data-lightbox data-caption="Rear three-quarter view of the orange and black flame bagger" data-label="Full Builds"><img src="images/work/67-480.webp" srcset="images/work/67-480.webp 480w, images/work/67-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Rear three-quarter view of the orange and black flame bagger" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#736d60;--ar:640/480"><a href="images/work/69-640.webp" data-lightbox data-caption="Orange and black flame bagger side profile with spinner front wheel" data-label="Full Builds"><img src="images/work/69-480.webp" srcset="images/work/69-480.webp 480w, images/work/69-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Orange and black flame bagger side profile with spinner front wheel" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#555153;--ar:640/480"><a href="images/work/66-640.webp" data-lightbox data-caption="Maroon bagger with custom graphics loaded on a trailer" data-label="Full Builds"><img src="images/work/66-480.webp" srcset="images/work/66-480.webp 480w, images/work/66-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Maroon bagger with custom graphics loaded on a trailer" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#594b4d;--ar:640/480"><a href="images/work/71-640.webp" data-lightbox data-caption="Candy red bagger with white seat and spoke wheels" data-label="Full Builds"><img src="images/work/71-480.webp" srcset="images/work/71-480.webp 480w, images/work/71-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Candy red bagger with white seat and spoke wheels" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#7e7a75;--ar:640/480"><a href="images/work/28-640.webp" data-lightbox data-caption="Burgundy Electra Glide with tan seat parked outside the shop" data-label="Full Builds"><img src="images/work/28-480.webp" srcset="images/work/28-480.webp 480w, images/work/28-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Burgundy Electra Glide with tan seat parked outside the shop" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#7c756f;--ar:640/480"><a href="images/work/29-640.webp" data-lightbox data-caption="Burgundy touring bike with tan seat and chrome engine, three-quarter view" data-label="Full Builds"><img src="images/work/29-480.webp" srcset="images/work/29-480.webp 480w, images/work/29-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Burgundy touring bike with tan seat and chrome engine, three-quarter view" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#555551;--ar:640/362"><a href="images/work/32-640.webp" data-lightbox data-caption="Electric blue cruiser inside the shop" data-label="Full Builds"><img src="images/work/32-480.webp" srcset="images/work/32-480.webp 480w, images/work/32-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="362" alt="Electric blue cruiser inside the shop" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#9f998e;--ar:640/480"><a href="images/work/08-640.webp" data-lightbox data-caption="Navy blue road king with whitewalls and black leather seat" data-label="Full Builds"><img src="images/work/08-480.webp" srcset="images/work/08-480.webp 480w, images/work/08-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Navy blue road king with whitewalls and black leather seat" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#706e6c;--ar:640/480"><a href="images/work/06-640.webp" data-lightbox data-caption="Black bagger with purple and lime pinstripe graphics" data-label="Full Builds"><img src="images/work/06-480.webp" srcset="images/work/06-480.webp 480w, images/work/06-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Black bagger with purple and lime pinstripe graphics" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#6b675c;--ar:640/480"><a href="images/work/07-640.webp" data-lightbox data-caption="Black bagger with purple striping and chrome engine, close view" data-label="Full Builds"><img src="images/work/07-480.webp" srcset="images/work/07-480.webp 480w, images/work/07-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Black bagger with purple striping and chrome engine, close view" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#515a5f;--ar:640/480"><a href="images/work/55-640.webp" data-lightbox data-caption="Black road glide with stretched bags parked by a white fence" data-label="Full Builds"><img src="images/work/55-480.webp" srcset="images/work/55-480.webp 480w, images/work/55-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Black road glide with stretched bags parked by a white fence" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#606975;--ar:480/640"><a href="images/work/56-480.webp" data-lightbox data-caption="Rear view of the black road glide showing saddlebags" data-label="Full Builds"><img src="images/work/56-480.webp" srcset="images/work/56-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Rear view of the black road glide showing saddlebags" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#52616d;--ar:640/480"><a href="images/work/57-640.webp" data-lightbox data-caption="Black road glide side profile on blacktop" data-label="Full Builds"><img src="images/work/57-480.webp" srcset="images/work/57-480.webp 480w, images/work/57-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Black road glide side profile on blacktop" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#565f69;--ar:640/480"><a href="images/work/58-640.webp" data-lightbox data-caption="Black road glide with chrome wheel, three-quarter view" data-label="Full Builds"><img src="images/work/58-480.webp" srcset="images/work/58-480.webp 480w, images/work/58-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Black road glide with chrome wheel, three-quarter view" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#654746;--ar:640/480"><a href="images/work/61-640.webp" data-lightbox data-caption="Black bagger with red underglow inside the shop at night" data-label="Full Builds"><img src="images/work/61-480.webp" srcset="images/work/61-480.webp 480w, images/work/61-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Black bagger with red underglow inside the shop at night" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#392726;--ar:640/640"><a href="images/work/54-640.webp" data-lightbox data-caption="Candy red bagger glowing red and green under shop lights" data-label="Full Builds"><img src="images/work/54-480.webp" srcset="images/work/54-480.webp 480w, images/work/54-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="640" alt="Candy red bagger glowing red and green under shop lights" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#593735;--ar:640/480"><a href="images/work/60-640.webp" data-lightbox data-caption="Candy red bagger with laser light pattern on the shop wall" data-label="Full Builds"><img src="images/work/60-480.webp" srcset="images/work/60-480.webp 480w, images/work/60-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Candy red bagger with laser light pattern on the shop wall" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#544938;--ar:640/480"><a href="images/work/42-640.webp" data-lightbox data-caption="Yellow bagger with black graphics on a motorcycle lift" data-label="Full Builds"><img src="images/work/42-480.webp" srcset="images/work/42-480.webp 480w, images/work/42-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Yellow bagger with black graphics on a motorcycle lift" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#695f40;--ar:640/480"><a href="images/work/77-640.webp" data-lightbox data-caption="Yellow bagger with black stripe graphics, close view" data-label="Full Builds"><img src="images/work/77-480.webp" srcset="images/work/77-480.webp 480w, images/work/77-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Yellow bagger with black stripe graphics, close view" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#5c5355;--ar:640/480"><a href="images/work/36-640.webp" data-lightbox data-caption="Red standard motorcycle with black seat, restored" data-label="Full Builds"><img src="images/work/36-480.webp" srcset="images/work/36-480.webp 480w, images/work/36-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Red standard motorcycle with black seat, restored" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#5e5658;--ar:640/480"><a href="images/work/37-640.webp" data-lightbox data-caption="Red standard motorcycle side profile" data-label="Full Builds"><img src="images/work/37-480.webp" srcset="images/work/37-480.webp 480w, images/work/37-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Red standard motorcycle side profile" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#8e8277;--ar:640/480"><a href="images/work/38-640.webp" data-lightbox data-caption="Red standard motorcycle three-quarter view" data-label="Full Builds"><img src="images/work/38-480.webp" srcset="images/work/38-480.webp 480w, images/work/38-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Red standard motorcycle three-quarter view" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="builds" style="--ph:#6c5c5a;--ar:640/640"><a href="images/work/03-640.webp" data-lightbox data-caption="Collage of tangerine and red baggers" data-label="Full Builds"><img src="images/work/03-480.webp" srcset="images/work/03-480.webp 480w, images/work/03-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="640" alt="Collage of tangerine and red baggers" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#76665a;--ar:480/640"><a href="images/work/04-480.webp" data-lightbox data-caption="Orange and black side panel with a sweeping swoop graphic" data-label="Paint & Graphics"><img src="images/work/04-480.webp" srcset="images/work/04-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Orange and black side panel with a sweeping swoop graphic" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#787469;--ar:480/640"><a href="images/work/05-480.webp" data-lightbox data-caption="Black saddlebags with purple and lime spear graphics" data-label="Paint & Graphics"><img src="images/work/05-480.webp" srcset="images/work/05-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Black saddlebags with purple and lime spear graphics" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#635e62;--ar:640/640"><a href="images/work/13-640.webp" data-lightbox data-caption="Collage of black and purple pinstripe paint work" data-label="Paint & Graphics"><img src="images/work/13-480.webp" srcset="images/work/13-480.webp 480w, images/work/13-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="640" alt="Collage of black and purple pinstripe paint work" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#7e746a;--ar:640/480"><a href="images/work/62-640.webp" data-lightbox data-caption="Red and black panel with silver outline graphic, mid-process" data-label="Paint & Graphics"><img src="images/work/62-480.webp" srcset="images/work/62-480.webp 480w, images/work/62-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Red and black panel with silver outline graphic, mid-process" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#766e65;--ar:640/480"><a href="images/work/63-640.webp" data-lightbox data-caption="Painter checking red and black graphics on a panel" data-label="Paint & Graphics"><img src="images/work/63-480.webp" srcset="images/work/63-480.webp 480w, images/work/63-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Painter checking red and black graphics on a panel" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#393129;--ar:480/640"><a href="images/work/65-480.webp" data-lightbox data-caption="Tank top with multicolor hand pinstripe over black" data-label="Paint & Graphics"><img src="images/work/65-480.webp" srcset="images/work/65-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Tank top with multicolor hand pinstripe over black" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#6e5f5e;--ar:640/480"><a href="images/work/30-640.webp" data-lightbox data-caption="Burgundy tank with gold Harley-Davidson script" data-label="Paint & Graphics"><img src="images/work/30-480.webp" srcset="images/work/30-480.webp 480w, images/work/30-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Burgundy tank with gold Harley-Davidson script" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#746664;--ar:640/640"><a href="images/work/01-640.webp" data-lightbox data-caption="Collage of a burgundy tank with script lettering" data-label="Paint & Graphics"><img src="images/work/01-480.webp" srcset="images/work/01-480.webp 480w, images/work/01-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="640" alt="Collage of a burgundy tank with script lettering" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#974041;--ar:800/600"><a href="images/work/49-800.webp" data-lightbox data-caption="Candy red saddlebag with color-matched speaker grille" data-label="Paint & Graphics"><img src="images/work/49-480.webp" srcset="images/work/49-480.webp 480w, images/work/49-800.webp 800w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="800" height="600" alt="Candy red saddlebag with color-matched speaker grille" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#8b363c;--ar:580/566"><a href="images/work/51-580.webp" data-lightbox data-caption="Candy red fender with a Kansas City Chiefs emblem" data-label="Paint & Graphics"><img src="images/work/51-480.webp" srcset="images/work/51-480.webp 480w, images/work/51-580.webp 580w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="580" height="566" alt="Candy red fender with a Kansas City Chiefs emblem" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#645a5a;--ar:640/361"><a href="images/work/75-640.webp" data-lightbox data-caption="Burgundy front fender with Classic script" data-label="Paint & Graphics"><img src="images/work/75-480.webp" srcset="images/work/75-480.webp 480w, images/work/75-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="361" alt="Burgundy front fender with Classic script" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#7f6369;--ar:640/361"><a href="images/work/76-640.webp" data-lightbox data-caption="Burgundy batwing fairing with deep clear coat" data-label="Paint & Graphics"><img src="images/work/76-480.webp" srcset="images/work/76-480.webp 480w, images/work/76-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="361" alt="Burgundy batwing fairing with deep clear coat" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="paint" style="--ph:#565752;--ar:640/480"><a href="images/work/31-640.webp" data-lightbox data-caption="Helmet sprayed in metallic blue" data-label="Paint & Graphics"><img src="images/work/31-480.webp" srcset="images/work/31-480.webp 480w, images/work/31-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Helmet sprayed in metallic blue" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="interiors" style="--ph:#9c7a61;--ar:480/640"><a href="images/work/27-480.webp" data-lightbox data-caption="Orange and black custom seat back with number graphic" data-label="Seats & Interiors"><img src="images/work/27-480.webp" srcset="images/work/27-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Orange and black custom seat back with number graphic" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="interiors" style="--ph:#63574e;--ar:640/480"><a href="images/work/34-640.webp" data-lightbox data-caption="Black pleated vinyl seat recovered in the shop" data-label="Seats & Interiors"><img src="images/work/34-480.webp" srcset="images/work/34-480.webp 480w, images/work/34-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Black pleated vinyl seat recovered in the shop" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="interiors" style="--ph:#75695e;--ar:640/480"><a href="images/work/35-640.webp" data-lightbox data-caption="Close up of black pleated seat stitching" data-label="Seats & Interiors"><img src="images/work/35-480.webp" srcset="images/work/35-480.webp 480w, images/work/35-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Close up of black pleated seat stitching" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="interiors" style="--ph:#615b53;--ar:480/640"><a href="images/work/52-480.webp" data-lightbox data-caption="White seat with red stitched accents" data-label="Seats & Interiors"><img src="images/work/52-480.webp" srcset="images/work/52-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="White seat with red stitched accents" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="interiors" style="--ph:#6d6b6b;--ar:640/480"><a href="images/work/73-640.webp" data-lightbox data-caption="Black diamond-stitched motorcycle seat" data-label="Seats & Interiors"><img src="images/work/73-480.webp" srcset="images/work/73-480.webp 480w, images/work/73-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Black diamond-stitched motorcycle seat" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="interiors" style="--ph:#6f6858;--ar:640/480"><a href="images/work/09-640.webp" data-lightbox data-caption="Seats and fairing parts in white on the shop bench" data-label="Seats & Interiors"><img src="images/work/09-480.webp" srcset="images/work/09-480.webp 480w, images/work/09-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Seats and fairing parts in white on the shop bench" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#863a3d;--ar:480/640"><a href="images/work/47-480.webp" data-lightbox data-caption="Candy red front end with chrome spoke wheel" data-label="Details & Chrome"><img src="images/work/47-480.webp" srcset="images/work/47-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Candy red front end with chrome spoke wheel" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#864148;--ar:480/360"><a href="images/work/48-480.webp" data-lightbox data-caption="Chrome V-twin engine framed by candy red bodywork" data-label="Details & Chrome"><img src="images/work/48-480.webp" srcset="images/work/48-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="360" alt="Chrome V-twin engine framed by candy red bodywork" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#5d5c5b;--ar:640/480"><a href="images/work/74-640.webp" data-lightbox data-caption="Chrome V-twin engine on a black bagger" data-label="Details & Chrome"><img src="images/work/74-480.webp" srcset="images/work/74-480.webp 480w, images/work/74-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Chrome V-twin engine on a black bagger" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#414444;--ar:354/640"><a href="images/work/33-354.webp" data-lightbox data-caption="Rear of a blue bike with LED taillight strip" data-label="Details & Chrome"><img src="images/work/33-354.webp" srcset="images/work/33-354.webp 354w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="354" height="640" alt="Rear of a blue bike with LED taillight strip" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#505061;--ar:640/640"><a href="images/work/39-640.webp" data-lightbox data-caption="Blue rear fender with LED lighting" data-label="Details & Chrome"><img src="images/work/39-480.webp" srcset="images/work/39-480.webp 480w, images/work/39-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="640" alt="Blue rear fender with LED lighting" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#646757;--ar:480/640"><a href="images/work/40-480.webp" data-lightbox data-caption="Wheel with green painted barrel and brushed spokes" data-label="Details & Chrome"><img src="images/work/40-480.webp" srcset="images/work/40-480.webp 480w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="480" height="640" alt="Wheel with green painted barrel and brushed spokes" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#656959;--ar:640/480"><a href="images/work/41-640.webp" data-lightbox data-caption="Green and silver custom wheel" data-label="Details & Chrome"><img src="images/work/41-480.webp" srcset="images/work/41-480.webp 480w, images/work/41-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Green and silver custom wheel" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="details" style="--ph:#4f4b48;--ar:640/640"><a href="images/work/02-640.webp" data-lightbox data-caption="Collage of polished and diamond-plate trim parts" data-label="Details & Chrome"><img src="images/work/02-480.webp" srcset="images/work/02-480.webp 480w, images/work/02-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="640" alt="Collage of polished and diamond-plate trim parts" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="cars" style="--ph:#6f706f;--ar:640/480"><a href="images/work/43-640.webp" data-lightbox data-caption="Silver Honda Accord coupe front, repaired and refinished" data-label="Cars"><img src="images/work/43-480.webp" srcset="images/work/43-480.webp 480w, images/work/43-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Silver Honda Accord coupe front, repaired and refinished" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="cars" style="--ph:#5c5853;--ar:640/480"><a href="images/work/44-640.webp" data-lightbox data-caption="Silver Accord coupe three-quarter view outside the shop" data-label="Cars"><img src="images/work/44-480.webp" srcset="images/work/44-480.webp 480w, images/work/44-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Silver Accord coupe three-quarter view outside the shop" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="cars" style="--ph:#5f5f60;--ar:640/480"><a href="images/work/45-640.webp" data-lightbox data-caption="Silver Accord coupe side view on State Avenue" data-label="Cars"><img src="images/work/45-480.webp" srcset="images/work/45-480.webp 480w, images/work/45-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Silver Accord coupe side view on State Avenue" loading="lazy" decoding="async"></a></li>
+                    <li class="tile" data-cat="cars" style="--ph:#6b6a68;--ar:640/480"><a href="images/work/46-640.webp" data-lightbox data-caption="Rear of the silver Accord coupe with tinted taillights" data-label="Cars"><img src="images/work/46-480.webp" srcset="images/work/46-480.webp 480w, images/work/46-640.webp 640w" sizes="(min-width: 1200px) 300px, (min-width: 700px) 33vw, 50vw" width="640" height="480" alt="Rear of the silver Accord coupe with tinted taillights" loading="lazy" decoding="async"></a></li>
+                <!-- gallery:end -->
+            </ul>
+        </section>
+
+        <!-- ============ LEGACY ============ -->
+        <section class="legacy" id="legacy" aria-labelledby="legacy-title">
+            <div class="wrap legacy-grid">
+                <figure class="legacy-photo">
+                    <img src="images/work/shop-741.webp" srcset="images/work/shop-480.webp 480w, images/work/shop-741.webp 741w" sizes="(min-width: 900px) 45vw, 100vw" width="741" height="544" alt="Dale's Auto Body, the white block shop building on State Avenue with customer cars in the lot" loading="lazy" decoding="async">
+                    <figcaption>1310 State Avenue · Kansas City, Kansas</figcaption>
+                </figure>
+                <div class="legacy-copy">
+                    <p class="eyebrow">Our Story</p>
+                    <h2 id="legacy-title">Same corner. Same hands. <em data-years-word>Fifty</em> years.</h2>
+                    <!-- Family: this is the place for Dale's own story — how he started, the first car he painted, the bikes he's proudest of. -->
+                    <p>Dale opened the doors on State Avenue in 1975, and the shop has been his ever since. No franchise, no call center, no corporate paint schedule — just a guy who loves the work, a booth, and a lot full of neighbors’ cars.</p>
+                    <p>Over the years the jobs have ranged from fender-benders on the family sedan to full candy builds on show baggers. The approach has never changed: do it right, tell people the truth, and don’t hand back the keys until it’s something you’d put your name on.</p>
+                    <dl class="stats">
+                        <div><dt>Founded</dt><dd>1975</dd></div>
+                        <div><dt>Years on State Ave</dt><dd data-count data-years-count>50</dd></div>
+                        <div><dt>Owner on site</dt><dd>Every day</dd></div>
+                    </dl>
+                    <svg class="flourish" aria-hidden="true"><use href="#flourish"/></svg>
                 </div>
             </div>
         </section>
 
-        <section class="services" id="services">
-            <div class="container">
-                <div class="section-header">
-                    <p class="eyebrow">What we fix</p>
-                    <h2>Collision, paint, and upholstery done right.</h2>
-                    <p class="lede">Small shop focus with the tools to handle frame work, booth paint, and interior repair.</p>
-                </div>
-                <div class="service-grid">
-                    <article class="card">
-                        <h3>Collision & frame</h3>
-                        <p>Structural straightening, panel alignment, weld repair, and rust remediation that keeps you safe.</p>
-                    </article>
-                    <article class="card">
-                        <h3>Paint & finish</h3>
-                        <p>Prep, primer, and booth work with careful color matching and clean tapelines.</p>
-                    </article>
-                    <article class="card">
-                        <h3>Upholstery & trim</h3>
-                        <p>Seat rebuilds, headliners, carpet kits, and dash refreshes stitched clean and tight.</p>
-                    </article>
-                    <article class="card">
-                        <h3>Insurance-friendly</h3>
-                        <p>Estimates that speak insurance language without the dealership runaround.</p>
-                    </article>
-                </div>
-                <div class="trust-grid">
-                    <article class="card">
-                        <p class="eyebrow">Trusted locally</p>
-                        <h3>Owner on site</h3>
-                        <p>Dale answers the phone, looks at the car, and signs off every job.</p>
-                    </article>
-                    <article class="card">
-                        <p class="eyebrow">Quality first</p>
-                        <h3>Checked under bright light</h3>
-                        <p>Panels are inspected for straight lines and even clear before they leave.</p>
-                    </article>
-                    <article class="card">
-                        <p class="eyebrow">Straight talk</p>
-                        <h3>Clear estimates</h3>
-                        <p>Plain language on parts, paint, and timeframes.</p>
-                    </article>
-                </div>
+        <!-- ============ ESTIMATE + VISIT ============ -->
+        <section class="visit" id="visit" aria-labelledby="visit-title">
+            <div class="wrap section-head">
+                <p class="eyebrow">Come by the shop</p>
+                <h2 id="visit-title">Bring it in. <em>We’ll take a look.</em></h2>
             </div>
-        </section>
-
-        <section class="visit" id="visit">
-            <div class="container visit-grid">
-                <div class="visit-card card">
-                    <p class="eyebrow">Come by</p>
-                    <h2>1310 State Avenue, Kansas City, KS</h2>
-                    <p>Pull into the lot off State Avenue and step into the bay. Call ahead if you're towing.</p>
-                    <div class="contact-list">
-                        <a href="tel:913-371-6654">Call (913) 371-6654</a>
-                        <a href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
-                        <span>Weekdays 10a – 6p • Weekends by appointment</span>
+            <div class="wrap visit-grid">
+                <form class="estimate" id="estimate" data-estimate novalidate>
+                    <h3>Request a free estimate</h3>
+                    <p class="form-note">Fill this out and it’ll open a ready-to-send email to the shop. Photos help — attach a few before you hit send.</p>
+                    <div class="field-row">
+                        <label class="field"><span>Your name</span><input name="name" autocomplete="name" required></label>
+                        <label class="field"><span>Phone</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" required></label>
                     </div>
-                </div>
-                <div class="map">
-                    <iframe 
-                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&output=embed" 
-                        width="100%" 
-                        height="100%" 
-                        style="border:0;" 
-                        allowfullscreen="" 
-                        loading="lazy" 
-                        referrerpolicy="no-referrer-when-downgrade">
-                    </iframe>
+                    <label class="field"><span>Vehicle <small>(year, make, model)</small></span><input name="vehicle" placeholder="2008 Harley Road Glide" required></label>
+                    <fieldset class="field">
+                        <legend>What do you need?</legend>
+                        <div class="pills">
+                            <label><input type="checkbox" name="work" value="Collision repair"><span>Collision</span></label>
+                            <label><input type="checkbox" name="work" value="Custom paint"><span>Custom paint</span></label>
+                            <label><input type="checkbox" name="work" value="Pinstripe / graphics"><span>Pinstripe</span></label>
+                            <label><input type="checkbox" name="work" value="Upholstery"><span>Upholstery</span></label>
+                            <label><input type="checkbox" name="work" value="Rust repair"><span>Rust</span></label>
+                            <label><input type="checkbox" name="work" value="Insurance claim"><span>Insurance</span></label>
+                        </div>
+                    </fieldset>
+                    <label class="field"><span>Tell us about it</span><textarea name="details" rows="4" placeholder="Where's the damage, or what are you dreaming up?"></textarea></label>
+                    <button class="btn btn-paint btn-block" type="submit">Write the email <span aria-hidden="true">→</span></button>
+                    <p class="form-status" data-form-status role="status"></p>
+                </form>
+
+                <div class="visit-info">
+                    <div class="hours-card">
+                        <div class="hours-head">
+                            <h3>Shop hours</h3>
+                            <span class="status status-lg" data-status><span class="status-dot"></span><span data-status-text>Central Time</span></span>
+                        </div>
+                        <table class="hours" data-hours>
+                            <caption class="sr-only">Weekly hours, Central Time</caption>
+                            <tbody>
+                                <tr data-day="1"><th scope="row">Monday</th><td>10 AM – 6 PM</td></tr>
+                                <tr data-day="2"><th scope="row">Tuesday</th><td>10 AM – 6 PM</td></tr>
+                                <tr data-day="3"><th scope="row">Wednesday</th><td>10 AM – 6 PM</td></tr>
+                                <tr data-day="4"><th scope="row">Thursday</th><td>10 AM – 6 PM</td></tr>
+                                <tr data-day="5"><th scope="row">Friday</th><td>10 AM – 6 PM</td></tr>
+                                <tr data-day="6"><th scope="row">Saturday</th><td>By appointment</td></tr>
+                                <tr data-day="0"><th scope="row">Sunday</th><td>By appointment</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <address class="contact-card">
+                        <a class="contact-line" href="https://www.google.com/maps/dir/?api=1&amp;destination=1310+State+Ave+Kansas+City+KS+66102" target="_blank" rel="noopener">
+                            <span class="contact-label">Address</span>
+                            <span>1310 State Avenue<br>Kansas City, KS 66102</span>
+                            <span class="contact-go" aria-hidden="true">Directions ↗</span>
+                        </a>
+                        <a class="contact-line" href="tel:+19133716654">
+                            <span class="contact-label">Phone</span>
+                            <span>(913) 371-6654</span>
+                            <span class="contact-go" aria-hidden="true">Call ↗</span>
+                        </a>
+                        <a class="contact-line" href="mailto:dalesautobody@gmail.com">
+                            <span class="contact-label">Email</span>
+                            <span>dalesautobody@gmail.com</span>
+                            <span class="contact-go" aria-hidden="true">Write ↗</span>
+                        </a>
+                    </address>
+                    <div class="map" data-map>
+                        <button type="button" class="map-load" data-map-load>
+                            <span>Load the map</span>
+                            <small>Pull into the lot off State Ave. Towing in? Call ahead.</small>
+                        </button>
+                    </div>
                 </div>
             </div>
         </section>
     </main>
 
-    <footer class="footer">
-        <div class="container footer-inner">
-            <div>
-                <p class="eyebrow">Thank you, Kansas City</p>
-                <p>Independent since 1975—serving neighbors who keep us busy.</p>
+    <footer class="site-footer">
+        <div class="wrap">
+            <svg class="flourish flourish-footer" aria-hidden="true"><use href="#flourish"/></svg>
+            <p class="footer-mark" aria-hidden="true"><em>Dale’s</em></p>
+            <div class="footer-row">
+                <p>Independent since 1975. Thank you, Kansas City, for keeping the booth warm.</p>
+                <p class="footer-links">
+                    <a href="tel:+19133716654">(913) 371-6654</a>
+                    <a href="mailto:dalesautobody@gmail.com">dalesautobody@gmail.com</a>
+                    <a href="#top">Back to top ↑</a>
+                </p>
             </div>
-            <div class="footer-cta">
-                <a class="btn solid" href="tel:913-371-6654">Call (913) 371-6654</a>
-                <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
-            </div>
+            <p class="fine">© <span data-year>2026</span> Dale’s Auto Body · 1310 State Avenue, Kansas City, KS</p>
         </div>
     </footer>
 
-    <script src="js/script.js"></script>
+    <!-- Lightbox -->
+    <dialog class="lightbox" data-lightbox-dialog aria-label="Photo viewer">
+        <figure class="lightbox-figure">
+            <img data-lightbox-img alt="">
+            <figcaption><span class="lightbox-label" data-lightbox-label></span><span data-lightbox-caption></span><span class="lightbox-count" data-lightbox-count></span></figcaption>
+        </figure>
+        <button type="button" class="lightbox-btn lightbox-close" data-lightbox-close aria-label="Close">✕</button>
+        <button type="button" class="lightbox-btn lightbox-prev" data-lightbox-prev aria-label="Previous photo">←</button>
+        <button type="button" class="lightbox-btn lightbox-next" data-lightbox-next aria-label="Next photo">→</button>
+    </dialog>
+
+    <script src="js/paint.js" defer></script>
+    <script src="js/script.js" defer></script>
 </body>
 </html>
