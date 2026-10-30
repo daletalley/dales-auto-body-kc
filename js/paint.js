@@ -9,8 +9,8 @@
  * even panel so content stays readable. The Finish picker repaints it all.
  *
  * No dependencies. Falls back to a CSS gradient when WebGL is unavailable,
- * renders a single still frame for prefers-reduced-motion, drops to 30fps
- * past the hero, and stops drawing when the tab is hidden.
+ * renders a single still frame for prefers-reduced-motion, renders at 30fps,
+ * and stops drawing when the tab is hidden.
  */
 (() => {
     'use strict';
@@ -192,7 +192,7 @@
         );
 
         const state = {
-            light: [0.8, 0.6], lightTarget: [0.8, 0.6],
+            light: [0.8, 0.6], lightTarget: [0.8, 0.6], pointer: [0.5, 0.5],
             color: [...PAINTS.apple.color], colorTarget: [...PAINTS.apple.color],
             flake: [...PAINTS.apple.flake], flakeTarget: [...PAINTS.apple.flake],
             ambient: 0, lastPointer: -1e9, lastFrame: 0,
@@ -201,9 +201,9 @@
 
         function resize() {
             // Cap the buffer: flakes need real pixels, but a 4K screen doesn't.
-            const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+            const dpr = Math.min(window.devicePixelRatio || 1, 1);
             const width = window.innerWidth, height = window.innerHeight;
-            state.dpr = width * height * dpr * dpr > 2.4e6 ? Math.sqrt(2.4e6 / (width * height)) : dpr;
+            state.dpr = width * height * dpr * dpr > 1.4e6 ? Math.sqrt(1.4e6 / (width * height)) : dpr;
             canvas.width = Math.max(1, Math.round(width * state.dpr));
             canvas.height = Math.max(1, Math.round(height * state.dpr));
             gl.viewport(0, 0, canvas.width, canvas.height);
@@ -220,13 +220,16 @@
             const t = (now - state.start) / 1000;
 
             // Idle: the light drifts on its own, like walking past the car.
-            if (now - state.lastPointer > 3500 && !reduceMotion.matches) {
-                const hero = [0.5 + Math.cos(t * 0.23) * 0.34, 0.55 + Math.sin(t * 0.31) * 0.28];
-                // Below the hero, keep the idle light out from behind the text.
-                const edge = [0.9 + Math.cos(t * 0.17) * 0.06, 0.5 + Math.sin(t * 0.21) * 0.35];
-                state.lightTarget = [lerp(hero[0], edge[0], state.ambient), lerp(hero[1], edge[1], state.ambient)];
-            }
-            state.light = lerp3(state.light, state.lightTarget, 0.08);
+            // The light drifts on its own; the pointer only leans on it a little.
+            const slow = reduceMotion.matches ? 0 : t;
+            const hero = [0.5 + Math.cos(slow * 0.16) * 0.34, 0.55 + Math.sin(slow * 0.21) * 0.26];
+            // Below the hero, keep the drifting light out from behind the text.
+            const edge = [0.9 + Math.cos(slow * 0.12) * 0.06, 0.5 + Math.sin(slow * 0.15) * 0.35];
+            const idle = [lerp(hero[0], edge[0], state.ambient), lerp(hero[1], edge[1], state.ambient)];
+            const lean = now - state.lastPointer < 4000 ? 0.28 : 0;
+            state.lean = lerp(state.lean || 0, lean, 0.03);
+            state.lightTarget = [lerp(idle[0], state.pointer[0], state.lean), lerp(idle[1], state.pointer[1], state.lean)];
+            state.light = lerp3(state.light, state.lightTarget, 0.05);
             state.color = lerp3(state.color, state.colorTarget, 0.06);
             state.flake = lerp3(state.flake, state.flakeTarget, 0.06);
             state.ambient = lerp(state.ambient, ambientTarget(), 0.12);
@@ -245,7 +248,7 @@
             state.raf = 0;
             if (!state.visible) return;
             // Past the hero the panel is calm; 30fps is plenty and saves battery.
-            const minGap = state.ambient > 0.95 ? 1000 / 31 : 0;
+            const minGap = 1000 / 31;
             if (now - state.lastFrame >= minGap) { draw(now); state.lastFrame = now; }
             if (!reduceMotion.matches) state.raf = requestAnimationFrame(loop);
         }
@@ -264,7 +267,7 @@
 
         window.addEventListener('pointermove', (e) => {
             if (e.pointerType === 'touch') return;
-            state.lightTarget = [e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight];
+            state.pointer = [e.clientX / window.innerWidth, 1 - e.clientY / window.innerHeight];
             state.lastPointer = performance.now();
             nudge();
         }, { passive: true });

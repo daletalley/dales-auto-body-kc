@@ -170,10 +170,12 @@
             st.raf = 0;
             if (st.mode === 'auto') {
                 const p = clamp((now - st.t0) / AUTO_MS, 0, 1);
-                // Fill in the whole path since the last frame so fast passes don't skip.
-                const steps = 6;
+                // Fill in the whole path since the last frame, so the coat comes
+                // out just as full on a slow machine as on a fast one.
+                const dt = Math.min(250, now - (st.prev || now)) || 16;
+                const steps = Math.max(6, Math.round(6 * dt / 16.7));
                 for (let i = 0; i < steps; i++) {
-                    const q = clamp(p - (i / steps) * (16 / AUTO_MS), 0, 1);
+                    const q = clamp(p - (i / steps) * (dt / AUTO_MS), 0, 1);
                     const n = autoNozzle(q);
                     spray(n.x, n.y, st.h * 0.11, 100);
                 }
@@ -189,6 +191,7 @@
                 root.classList.add('is-free');
             }
             if (st.pointerDown && st.nozzle) spray(st.nozzle.x, st.nozzle.y, 34, 90);
+            st.prev = now;
             render(now);
             if (st.mode === 'auto' || st.mode === 'shine' || st.pointerDown || st.nozzle) st.raf = requestAnimationFrame(frame);
         }
@@ -213,10 +216,11 @@
             if (site && st.color === COLORS.tangerine.rgb) {
                 const n = parseInt(site[1], 16);
                 st.color = [n >> 16, (n >> 8) & 255, n & 255];
-                chips.forEach((c) => c.setAttribute('aria-pressed', 'false'));
+                chips.forEach((c) => c.setAttribute('aria-checked', 'false'));
             }
             st.mode = 'auto';
             st.t0 = performance.now();
+            st.prev = 0;
             root.classList.remove('is-free');
             setStatus('Spraying a fresh coat of ' + nameOf(st.color) + '…');
             kick();
@@ -253,7 +257,7 @@
 
         chips.forEach((chip) => chip.addEventListener('click', () => {
             st.color = COLORS[chip.dataset.signColor].rgb;
-            chips.forEach((c) => c.setAttribute('aria-pressed', String(c === chip)));
+            chips.forEach((c) => c.setAttribute('aria-checked', String(c === chip)));
             if (st.mode !== 'auto') setStatus(`${COLORS[chip.dataset.signColor].name} loaded. Press and drag on the sign to spray.`);
         }));
         respray?.addEventListener('click', resprayAll);

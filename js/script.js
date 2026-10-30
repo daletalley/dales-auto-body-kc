@@ -112,7 +112,7 @@
     /* ---------- Reveal on scroll ---------- */
     function initReveal() {
         const root = document.documentElement;
-        const targets = $$('.reveal, .section-head .eyebrow, .section-head .section-lede, .filters, .service, .legacy-copy p, .visit-contact, .map, .booth-steps, .sign-tools');
+        const targets = $$('.reveal, .section-head .eyebrow, .section-head .section-lede, .filters, .service, .legacy-copy p, .visit-contact, .map, .booth-steps, .sign-bar');
         targets.forEach((el) => el.classList.add('will-reveal'));
         // Hero text plays immediately (instantly, with reduced motion).
         requestAnimationFrame(() => root.classList.add('is-loaded'));
@@ -277,14 +277,14 @@
     // runs along the line. They draw themselves in when the section arrives,
     // float slowly, and move at their own depth as you scroll.
     const GHOSTS = {
-        top:      [['1975', 4, 70, 9, -9, 0.3], ['1975', 84, 14, 7, 7, 0.45]],
-        work:     [['Candy', 64, 4, 20, -4, 0.3], ['1975', -3, 52, 14, -10, 0.55], ['Dale’s', 58, 84, 15, 3, 0.2]],
-        craft:    [['Flake', -3, 4, 19, -6, 0.35], ['1975', 76, 80, 12, 8, 0.5]],
-        services: [['Body Shop', 38, 2, 15, -3, 0.3], ['1975', -6, 66, 15, -12, 0.45]],
-        legacy:   [['1975', 50, -4, 25, -6, 0.3], ['1975', -8, 34, 14, 10, 0.55], ['1975', 70, 60, 11, -14, 0.75], ['1975', 26, 82, 17, 4, 0.4], ['1975', 88, 24, 8, 18, 0.9], ['1975', 8, 2, 9, -20, 0.8], ['Dale’s', 40, 44, 12, -2, 0.15]],
-        sign:     [['KC', 0, 0, 28, -8, 0.3], ['1975', 60, 78, 12, 6, 0.5]],
-        visit:    [['State Ave', 30, 0, 15, -3, 0.3], ['1310', -4, 70, 16, -8, 0.45], ['1975', 80, 40, 10, 12, 0.6]],
-        footer:   [['1975', 66, 4, 17, -6, 0.3], ['1975', -4, 44, 10, 10, 0.5]],
+        top:      [['1975', 3, 72, 8, -9, 0.3], ['KC', 86, 12, 9, 7, 0.45]],
+        work:     [['1975', 62, 2, 18, -4, 0.3], ['KC', -2, 50, 16, -10, 0.55], ['State Avenue', 46, 86, 9, 3, 0.2]],
+        craft:    [['1310 State Avenue', -2, 2, 9, -4, 0.3], ['1975', 78, 80, 12, 8, 0.5]],
+        services: [['State Avenue', 34, 0, 11, -3, 0.3], ['1975', -6, 66, 15, -12, 0.45]],
+        legacy:   [['1975', 50, -4, 25, -6, 0.3], ['1975', -8, 34, 14, 10, 0.55], ['1975', 70, 60, 11, -14, 0.75], ['1975', 26, 82, 17, 4, 0.4], ['1975', 88, 24, 8, 18, 0.9], ['1975', 8, 2, 9, -20, 0.8], ['KC', 40, 44, 12, -2, 0.15]],
+        sign:     [['KC', -4, 10, 34, -8, 0.25], ['1975', 74, 70, 13, 6, 0.5]],
+        visit:    [['1310 State Avenue', 6, 0, 10, -3, 0.3], ['State Avenue', 48, 78, 10, -6, 0.45], ['1975', 82, 36, 10, 12, 0.6]],
+        footer:   [['1975', 66, 4, 17, -6, 0.3], ['KC', -4, 44, 12, 10, 0.5]],
     };
 
     function initGhosts() {
@@ -304,7 +304,7 @@
             const items = list.map(([text, x, y, size, rot, depth], n) => {
                 const wrap = document.createElement('div');
                 wrap.className = 'ghost';
-                wrap.style.cssText = `left:${x}%;top:${y}%;--h:${size}vw;--r:${rot}deg;--d:${n * 0.35}s;--float:${14 + ((n * 7) % 9)}s`;
+                wrap.style.cssText = `left:${x}%;top:${y}%;--h:${size}vw;--r:${rot}deg;--d:${n * 0.35}s;--float:${26 + ((n * 7) % 12)}s`;
                 const svg = document.createElementNS(NS, 'svg');
                 const id = `glint-${gid++}`;
                 svg.innerHTML = `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="160" y2="40">

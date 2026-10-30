@@ -98,10 +98,10 @@
                     <span class="sr-only">Dale’s Upholstery &amp; Auto Body, Kansas City, KS</span>
                     <span class="hero-logo" aria-hidden="true"></span>
                 </h1>
-                <p class="hero-lede reveal">
-                    Collision repair, custom candy &amp; flake, hand pinstripe and upholstery from a family shop
-                    that has been turning dents into show finishes for <strong data-years>50+</strong> years.
-                </p>
+                <div class="hero-pitch reveal">
+                    <p class="hero-services"><span>Collision repair</span><span>Custom paint</span><span>Pinstripe</span><span>Upholstery</span></p>
+                    <p class="hero-lede">A family shop on State Avenue, turning dents into show finishes for <strong data-years>51</strong> years.</p>
+                </div>
                 <div class="hero-actions reveal">
                     <a class="btn btn-paint" href="tel:+19133716654" data-magnetic>
                         <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
@@ -109,18 +109,16 @@
                     </a>
                     <a class="btn btn-ghost" href="#visit">Free estimate <span aria-hidden="true">→</span></a>
                 </div>
-                <div class="finish reveal" data-finish style="--i:1">
-                    <span class="finish-label" id="finish-label">Finish</span>
-                    <div class="finish-chips" role="radiogroup" aria-labelledby="finish-label">
+                <div class="finish reveal" data-finish>
+                    <span class="finish-name" id="finish-name" data-finish-name aria-live="polite">Candy Apple Red</span>
+                    <div class="finish-chips" role="radiogroup" aria-label="Paint color for the site">
                         <button type="button" role="radio" class="paint-chip" style="--c:#ff5a1f" data-swatch="tangerine" aria-checked="false" tabindex="-1" aria-label="Candy Tangerine"></button>
                         <button type="button" role="radio" class="paint-chip" style="--c:#c8102e" data-swatch="apple" aria-checked="true" tabindex="0" aria-label="Candy Apple Red"></button>
                         <button type="button" role="radio" class="paint-chip" style="--c:#0fa3a3" data-swatch="teal" aria-checked="false" tabindex="-1" aria-label="Candy Teal"></button>
                         <button type="button" role="radio" class="paint-chip" style="--c:#8a3f1c" data-swatch="rootbeer" aria-checked="false" tabindex="-1" aria-label="Root Beer"></button>
                         <button type="button" role="radio" class="paint-chip" style="--c:#5b34a8" data-swatch="purple" aria-checked="false" tabindex="-1" aria-label="Midnight Purple"></button>
                         <button type="button" role="radio" class="paint-chip" style="--c:#2a5ae0" data-swatch="cobalt" aria-checked="false" tabindex="-1" aria-label="Cobalt Blue"></button>
-                        <span class="finish-indicator" aria-hidden="true"></span>
                     </div>
-                    <span class="finish-name" data-finish-name aria-live="polite">Candy Apple Red</span>
                 </div>
             </div>
         </section>
@@ -239,16 +237,16 @@
             <div class="wrap section-head">
                 <p class="eyebrow">The Craft</p>
                 <h2 id="craft-title">Dent to <em>deep shine.</em></h2>
-                <p class="section-lede">One tank, start to finish. Every step we do on every job.</p>
+                <p class="section-lede">One dented door, start to finish. The same steps on every car we fix.</p>
             </div>
             <div class="wrap">
                 <figure class="booth" data-craft>
-                    <canvas data-craft-gl role="img" aria-label="Rendered film of a motorcycle tank being repaired and painted: the dent is hammered out, filler is sanded smooth, primer, metallic base and candy are sprayed on, a gold pinstripe is pulled by hand, then it is cleared and buffed to a mirror finish."></canvas>
+                    <canvas data-craft-gl role="img" aria-label="Rendered film of a dented car door being repaired: the dent is hammered out, sanded to bare metal, filled and blocked, masked and primed, sprayed in a color matched to the car, cleared, and the pinstripe is re-laid by hand down the whole side."></canvas>
                     <canvas data-craft-fx aria-hidden="true"></canvas>
-                    <img class="booth-poster" src="images/work/64-640.webp" alt="Candy red and black flake tank with silver pinstripe, finished at the shop" width="640" height="480" loading="lazy">
+                    <img class="booth-poster" src="images/work/44-640.webp" alt="Silver Accord coupe after repair and refinish at the shop" width="640" height="480" loading="lazy">
                     <figcaption class="booth-hud">
                         <span class="booth-step"><span class="booth-no" data-craft-no>01</span><span class="booth-name" data-craft-name>Damage</span></span>
-                        <span class="booth-caption" data-craft-caption>Bare steel and one ugly dent.</span>
+                        <span class="booth-caption" data-craft-caption>One door, one bad day.</span>
                     </figcaption>
                     <span class="booth-time" data-craft-time aria-hidden="true">00:00:00</span>
                     <button type="button" class="booth-play" data-craft-play aria-pressed="false" aria-label="Pause the film">
@@ -259,12 +257,12 @@
                 <ol class="booth-steps" aria-label="Jump to a step">
                     <li><button type="button" data-craft-step><span>01</span>Damage</button></li>
                     <li><button type="button" data-craft-step><span>02</span>Straighten</button></li>
-                    <li><button type="button" data-craft-step><span>03</span>Fill &amp; block</button></li>
-                    <li><button type="button" data-craft-step><span>04</span>Prime</button></li>
-                    <li><button type="button" data-craft-step><span>05</span>Base</button></li>
-                    <li><button type="button" data-craft-step><span>06</span>Candy &amp; flake</button></li>
-                    <li><button type="button" data-craft-step><span>07</span>Pinstripe</button></li>
-                    <li><button type="button" data-craft-step><span>08</span>Clear &amp; buff</button></li>
+                    <li><button type="button" data-craft-step><span>03</span>Sand</button></li>
+                    <li><button type="button" data-craft-step><span>04</span>Fill &amp; block</button></li>
+                    <li><button type="button" data-craft-step><span>05</span>Mask &amp; prime</button></li>
+                    <li><button type="button" data-craft-step><span>06</span>Color match</button></li>
+                    <li><button type="button" data-craft-step><span>07</span>Clear</button></li>
+                    <li><button type="button" data-craft-step><span>08</span>Pinstripe</button></li>
                     <li><button type="button" data-craft-step><span>09</span>Showroom</button></li>
                 </ol>
             </div>
@@ -330,30 +328,30 @@
 
 
         <!-- ============ THE ORIGINAL SIGN: spray it ============ -->
-        <section class="sign" id="sign" aria-labelledby="sign-title" data-ghost="KC">
-            <div class="wrap sign-grid">
-                <div class="sign-copy">
-                    <p class="eyebrow">Where it started</p>
-                    <h2 id="sign-title">The original <em>sign.</em></h2>
-                    <p class="section-lede">Before the website there was this: a classic pickup, a guy down on one knee doing the work, and the shop’s name arched over the top. We gave it a fresh coat. Then the gun’s yours.</p>
-                    <div class="sign-tools">
-                        <div class="sign-colors" role="group" aria-label="Paint color">
-                            <button type="button" class="swatch" style="--c:#ff5a1f" data-sign-color="tangerine" aria-pressed="true" aria-label="Candy Tangerine"></button>
-                            <button type="button" class="swatch" style="--c:#c8102e" data-sign-color="apple" aria-pressed="false" aria-label="Candy Apple Red"></button>
-                            <button type="button" class="swatch" style="--c:#0fa3a3" data-sign-color="teal" aria-pressed="false" aria-label="Candy Teal"></button>
-                            <button type="button" class="swatch" style="--c:#285ae6" data-sign-color="cobalt" aria-pressed="false" aria-label="Cobalt Blue"></button>
-                            <button type="button" class="swatch" style="--c:#e2b23c" data-sign-color="gold" aria-pressed="false" aria-label="Gold Leaf"></button>
-                            <button type="button" class="swatch" style="--c:#f0ece4" data-sign-color="pearl" aria-pressed="false" aria-label="Pearl White"></button>
-                        </div>
-                        <button type="button" class="btn btn-sm btn-ghost" data-sign-respray>Respray it</button>
-                    </div>
-                    <p class="sign-status" data-sign-status aria-live="polite">Scroll down a little and watch it get painted.</p>
+        <section class="sign" id="sign" aria-labelledby="sign-title">
+            <div class="wrap section-head sign-head">
+                <p class="eyebrow">Where it started</p>
+                <h2 id="sign-title">The original <em>sign.</em></h2>
+                <p class="section-lede">A classic pickup, a guy down on one knee doing the work, and the shop’s name arched over the top. It gets a fresh coat when you get here. Then drag across it and spray your own.</p>
+            </div>
+            <figure class="sign-stage" data-sign="images/brand/sign.png">
+                <img class="sign-fallback" data-sign-fallback src="images/brand/sign.png" width="1126" height="650" alt="Dale’s Upholstery &amp; Auto Body, Kansas City, KS, (913) 371-6654: the shop’s original logo, a line drawing of a classic pickup with a mechanic kneeling beside it" loading="lazy" decoding="async">
+                <canvas aria-hidden="true"></canvas>
+            </figure>
+            <div class="wrap sign-bar">
+                <div class="finish-chips" role="radiogroup" aria-label="Spray color">
+                    <button type="button" role="radio" class="paint-chip" style="--c:#c8102e" data-sign-color="apple" aria-checked="false" aria-label="Candy Apple Red"></button>
+                    <button type="button" role="radio" class="paint-chip" style="--c:#ff5a1f" data-sign-color="tangerine" aria-checked="false" aria-label="Candy Tangerine"></button>
+                    <button type="button" role="radio" class="paint-chip" style="--c:#0fa3a3" data-sign-color="teal" aria-checked="false" aria-label="Candy Teal"></button>
+                    <button type="button" role="radio" class="paint-chip" style="--c:#285ae6" data-sign-color="cobalt" aria-checked="false" aria-label="Cobalt Blue"></button>
+                    <button type="button" role="radio" class="paint-chip" style="--c:#e2b23c" data-sign-color="gold" aria-checked="false" aria-label="Gold Leaf"></button>
+                    <button type="button" role="radio" class="paint-chip" style="--c:#f0ece4" data-sign-color="pearl" aria-checked="false" aria-label="Pearl White"></button>
                 </div>
-                <figure class="sign-stage" data-sign="images/brand/sign.png">
-                    <img class="sign-fallback" data-sign-fallback src="images/brand/sign.png" width="1126" height="650" alt="Dale’s Upholstery &amp; Auto Body, Kansas City, KS, (913) 371-6654: the shop’s original logo, a line drawing of a classic pickup with a mechanic kneeling beside it" loading="lazy" decoding="async">
-                    <canvas aria-hidden="true"></canvas>
-                    <figcaption>Hand-drawn shop logo · Kansas City, KS</figcaption>
-                </figure>
+                <p class="sign-status" data-sign-status aria-live="polite">Scroll a little further and watch it get painted.</p>
+                <button type="button" class="sign-respray" data-sign-respray>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.7 6.3A8 8 0 1 0 20 12h-2a6 6 0 1 1-1.8-4.2L13 11h7V4z"/></svg>
+                    Respray
+                </button>
             </div>
         </section>
 

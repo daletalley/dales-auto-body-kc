@@ -13,7 +13,7 @@ nothing to install to view it.
 | `index.html` | The whole site. Showroom, portfolio and filter markup are generated (see below). |
 | `css/style.css` | All styles. Design tokens live at the top in `:root`. |
 | `js/paint.js` | The live candy-paint backdrop behind the whole site (WebGL, metal flake). The cursor is the light; the hero's Finish picker repaints it. |
-| `js/craft.js` | "The Craft": a real-time WebGL render of a tank going from dented steel to show finish (layered paint materials, booth reflections, bloom), tools and particles on a 2D layer above. |
+| `js/craft.js` | "The Craft": a real-time WebGL render of a dented car door repaired start to finish (procedural car, booth reflections, featheredge sanding, masking, color match, pinstripe), tools and particles on a 2D layer above. |
 | `js/sign.js` | "The Original Sign": the old truck logo sprayed on live; visitors can spray it too. |
 | `js/script.js` | Live shop hours, nav, reveals, spray-on headings/photos, gallery filters + "see all", lightbox, estimate form. |
 | `tools/work.json` | **The portfolio.** One entry per photo: number, category, alt text, optional showroom title. |
