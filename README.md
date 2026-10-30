@@ -13,7 +13,7 @@ nothing to install to view it.
 | `index.html` | The whole site. Showroom, portfolio and filter markup are generated (see below). |
 | `css/style.css` | All styles. Design tokens live at the top in `:root`. |
 | `js/paint.js` | The live candy-paint backdrop behind the whole site (WebGL, metal flake). The cursor is the light; the hero's Finish picker repaints it. |
-| `js/craft.js` | "The Craft": a ~25s Canvas film of a tank going from dented steel to show finish. |
+| `js/craft.js` | "The Craft": a real-time WebGL render of a tank going from dented steel to show finish (layered paint materials, booth reflections, bloom), tools and particles on a 2D layer above. |
 | `js/sign.js` | "The Original Sign": the old truck logo sprayed on live; visitors can spray it too. |
 | `js/script.js` | Live shop hours, nav, reveals, spray-on headings/photos, gallery filters + "see all", lightbox, estimate form. |
 | `tools/work.json` | **The portfolio.** One entry per photo: number, category, alt text, optional showroom title. |
@@ -53,7 +53,7 @@ no-JS visitors see). Keep them in sync.
 
 - Respects `prefers-reduced-motion`: the shader renders one still frame and animations are off.
 - Without WebGL the hero falls back to a CSS gradient; without JavaScript the whole page still reads.
-- The estimate form opens a prefilled email (no server needed). Swap in Formspree/Netlify Forms later
-  if you want submissions to land somewhere else.
+- No contact form on purpose: people call, come by, or email the shop directly.
 - The Google Map is a live embed (lazy-loaded as it scrolls into view).
-- Section names in outlined pinstripe lettering come from each section's `data-ghost` attribute.
+- The outlined pinstripe lettering ("1975", "Dale's", ...) is configured in the `GHOSTS` table in `js/script.js`.
+- Every accent color follows the hero's Finish picker through the `--paint` CSS variable.

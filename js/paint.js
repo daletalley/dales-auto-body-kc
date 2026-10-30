@@ -127,10 +127,9 @@
 
             vec3 col = candy + flake + clear;
 
-            // Hero: keep the left side calm for the headline, vignette the rest.
-            float calm = smoothstep(0.0, 0.62, uv.x);
-            float vig = smoothstep(1.25, 0.3, length((uv - vec2(0.62, 0.5)) * vec2(1.0, 1.25)));
-            float hero = mix(0.45, 1.0, calm) * mix(0.25, 1.0, vig);
+                        // Hero: centered composition, edges vignetted.
+            float vig = smoothstep(1.2, 0.25, length((uv - vec2(0.5, 0.5)) * vec2(1.0, 1.2)));
+            float hero = mix(0.3, 1.0, vig);
             // Past the hero: an even, dim panel; only the light near the
             // pointer really wakes it up, like a flashlight on wet paint.
             float spot = 1.0 / (1.0 + dot(d, d) * 1.6);
@@ -193,9 +192,9 @@
         );
 
         const state = {
-            light: [0.72, 0.62], lightTarget: [0.72, 0.62],
-            color: [...PAINTS.tangerine.color], colorTarget: [...PAINTS.tangerine.color],
-            flake: [...PAINTS.tangerine.flake], flakeTarget: [...PAINTS.tangerine.flake],
+            light: [0.8, 0.6], lightTarget: [0.8, 0.6],
+            color: [...PAINTS.apple.color], colorTarget: [...PAINTS.apple.color],
+            flake: [...PAINTS.apple.flake], flakeTarget: [...PAINTS.apple.flake],
             ambient: 0, lastPointer: -1e9, lastFrame: 0,
             visible: !document.hidden, raf: 0, start: performance.now(), dpr: 1,
         };
@@ -222,7 +221,7 @@
 
             // Idle: the light drifts on its own, like walking past the car.
             if (now - state.lastPointer > 3500 && !reduceMotion.matches) {
-                const hero = [0.68 + Math.cos(t * 0.23) * 0.22, 0.58 + Math.sin(t * 0.31) * 0.2];
+                const hero = [0.5 + Math.cos(t * 0.23) * 0.34, 0.55 + Math.sin(t * 0.31) * 0.28];
                 // Below the hero, keep the idle light out from behind the text.
                 const edge = [0.9 + Math.cos(t * 0.17) * 0.06, 0.5 + Math.sin(t * 0.21) * 0.35];
                 state.lightTarget = [lerp(hero[0], edge[0], state.ambient), lerp(hero[1], edge[1], state.ambient)];
@@ -311,6 +310,7 @@
             if (type) type.textContent = PAINTS[key].type;
             group?.style.setProperty('--i', String(chips.indexOf(btn)));
             document.documentElement.style.setProperty('--paint', getComputedStyle(btn).getPropertyValue('--c').trim());
+            document.documentElement.dispatchEvent(new CustomEvent('paintchange', { detail: key }));
             if (focus) btn.focus();
             onPick?.(key);
         };

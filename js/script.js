@@ -112,7 +112,7 @@
     /* ---------- Reveal on scroll ---------- */
     function initReveal() {
         const root = document.documentElement;
-        const targets = $$('.reveal, .section-head .eyebrow, .section-head .section-lede, .filters, .service, .legacy-copy p, .stats, .estimate, .visit-info, .flourish, .booth-steps, .sign-tools');
+        const targets = $$('.reveal, .section-head .eyebrow, .section-head .section-lede, .filters, .service, .legacy-copy p, .visit-contact, .map, .booth-steps, .sign-tools');
         targets.forEach((el) => el.classList.add('will-reveal'));
         // Hero text plays immediately (instantly, with reduced motion).
         requestAnimationFrame(() => root.classList.add('is-loaded'));
@@ -271,44 +271,93 @@
         });
     }
 
-    /* ---------- Estimate form -> prefilled email (no backend needed) ---------- */
-    function initEstimate() {
-        const form = $('[data-estimate]');
-        if (!form) return;
-        const status = $('[data-form-status]', form);
+    /* ---------- Pinstripe lettering: drawn in, drifting, catching the light ---------- */
+    // Big outlined words behind each section, like a striper's practice board.
+    // Each is two outlines a hair apart (a double pinstripe) plus a glint that
+    // runs along the line. They draw themselves in when the section arrives,
+    // float slowly, and move at their own depth as you scroll.
+    const GHOSTS = {
+        top:      [['1975', 4, 70, 9, -9, 0.3], ['1975', 84, 14, 7, 7, 0.45]],
+        work:     [['Candy', 64, 4, 20, -4, 0.3], ['1975', -3, 52, 14, -10, 0.55], ['Dale’s', 58, 84, 15, 3, 0.2]],
+        craft:    [['Flake', -3, 4, 19, -6, 0.35], ['1975', 76, 80, 12, 8, 0.5]],
+        services: [['Body Shop', 38, 2, 15, -3, 0.3], ['1975', -6, 66, 15, -12, 0.45]],
+        legacy:   [['1975', 50, -4, 25, -6, 0.3], ['1975', -8, 34, 14, 10, 0.55], ['1975', 70, 60, 11, -14, 0.75], ['1975', 26, 82, 17, 4, 0.4], ['1975', 88, 24, 8, 18, 0.9], ['1975', 8, 2, 9, -20, 0.8], ['Dale’s', 40, 44, 12, -2, 0.15]],
+        sign:     [['KC', 0, 0, 28, -8, 0.3], ['1975', 60, 78, 12, 6, 0.5]],
+        visit:    [['State Ave', 30, 0, 15, -3, 0.3], ['1310', -4, 70, 16, -8, 0.45], ['1975', 80, 40, 10, 12, 0.6]],
+        footer:   [['1975', 66, 4, 17, -6, 0.3], ['1975', -4, 44, 10, 10, 0.5]],
+    };
 
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const required = $$('[required]', form);
-            const missing = required.filter((el) => !el.value.trim());
-            required.forEach((el) => el.toggleAttribute('aria-invalid', missing.includes(el)));
-            if (missing.length) {
-                status.textContent = 'Just need your name, phone, and vehicle so Dale can call you back.';
-                status.dataset.tone = 'warn';
-                missing[0].focus();
-                return;
-            }
+    function initGhosts() {
+        const NS = 'http://www.w3.org/2000/svg';
+        const still = reduceMotion();
+        const layers = [];
+        let gid = 0;
 
-            const data = new FormData(form);
-            const work = data.getAll('work');
-            const subject = `Estimate request: ${data.get('vehicle')}`;
-            const body = [
-                `Name: ${data.get('name')}`,
-                `Phone: ${data.get('phone')}`,
-                `Vehicle: ${data.get('vehicle')}`,
-                `Work needed: ${work.length ? work.join(', ') : 'Not sure yet'}`,
-                '',
-                String(data.get('details') || '').trim() || '(No details given)',
-                '',
-                '— Sent from daleskc.com. Photos attached if I have them.',
-            ].join('\n');
-
-            window.location.href = `mailto:dalesautobody@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-            status.textContent = 'Your email app should be open with everything filled in. No email app? Call (913) 371-6654.';
-            status.dataset.tone = 'ok';
+        const build = () => Object.entries(GHOSTS).forEach(([id, list]) => {
+            const host = id === 'footer' ? $('.site-footer') : document.getElementById(id);
+            if (!host) return;
+            host.classList.add('has-ghosts');
+            const layer = document.createElement('div');
+            layer.className = 'ghosts';
+            layer.setAttribute('aria-hidden', 'true');
+            host.prepend(layer);
+            const items = list.map(([text, x, y, size, rot, depth], n) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'ghost';
+                wrap.style.cssText = `left:${x}%;top:${y}%;--h:${size}vw;--r:${rot}deg;--d:${n * 0.35}s;--float:${14 + ((n * 7) % 9)}s`;
+                const svg = document.createElementNS(NS, 'svg');
+                const id = `glint-${gid++}`;
+                svg.innerHTML = `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="160" y2="40">
+                        <stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.9"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+                        ${still ? '' : `<animateTransform attributeName="gradientTransform" type="translate" from="-400 0" to="1400 0" dur="${7 + (n % 4) * 1.7}s" begin="${n * 1.3}s" repeatCount="indefinite"/>`}
+                    </linearGradient></defs>
+                    <text class="g-back" x="0" y="0">${text}</text>
+                    <text class="g-front" x="2.4" y="2.4">${text}</text>
+                    <text class="g-glint" x="2.4" y="2.4" stroke="url(#${id})">${text}</text>`;
+                wrap.append(svg);
+                layer.append(wrap);
+                return { wrap, svg, depth, rot };
+            });
+            layers.push({ host, layer, items });
         });
 
-        form.addEventListener('input', (e) => { if (e.target.value.trim()) e.target.removeAttribute('aria-invalid'); });
+        // Fit each SVG's viewBox to its text once the display face is ready.
+        const fit = () => layers.forEach(({ items }) => items.forEach(({ svg }) => {
+            const b = svg.querySelector('text').getBBox();
+            if (!b.width) return;
+            svg.setAttribute('viewBox', `${b.x - 4} ${b.y - 4} ${b.width + 12} ${b.height + 12}`);
+        }));
+
+        build();
+        (document.fonts?.ready || Promise.resolve()).then(fit);
+
+        if (still || !('IntersectionObserver' in window)) {
+            layers.forEach(({ layer }) => layer.classList.add('is-drawn'));
+            return;
+        }
+        const io = new IntersectionObserver((entries) => entries.forEach((e) => {
+            if (e.isIntersecting) { e.target.classList.add('is-drawn'); io.unobserve(e.target); }
+        }), { threshold: 0.12 });
+        layers.forEach(({ layer }) => io.observe(layer));
+
+        // Parallax: every word sits at its own depth.
+        let ticking = false;
+        const update = () => {
+            ticking = false;
+            const vh = window.innerHeight;
+            layers.forEach(({ host, items }) => {
+                const r = host.getBoundingClientRect();
+                if (r.bottom < -200 || r.top > vh + 200) return;
+                const prog = (r.top + r.height / 2 - vh / 2) / vh;
+                items.forEach(({ wrap, depth }) => {
+                    wrap.style.setProperty('--py', `${(-prog * depth * 160).toFixed(1)}px`);
+                    wrap.style.setProperty('--pr', `${(prog * depth * 5).toFixed(2)}deg`);
+                });
+            });
+        };
+        window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
+        window.addEventListener('resize', update);
+        update();
     }
 
     /* ---------- Small tactile touches ---------- */
@@ -334,7 +383,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        [initYears, initStatus, initNav, initReveal, initSpray, initCounters, initFilters, initLightbox, initEstimate, initTactile]
+        [initYears, initStatus, initNav, initGhosts, initReveal, initSpray, initCounters, initFilters, initLightbox, initTactile]
             .forEach((fn) => { try { fn(); } catch (err) { console.error(`[daleskc] ${fn.name} failed`, err); } });
     });
 })();

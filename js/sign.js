@@ -208,6 +208,13 @@
                 setStatus('Press and drag on the sign to spray your own colors.');
                 return;
             }
+            // Spray in the site's current Finish.
+            const site = getComputedStyle(document.documentElement).getPropertyValue('--paint').trim().match(/^#([0-9a-f]{6})$/i);
+            if (site && st.color === COLORS.tangerine.rgb) {
+                const n = parseInt(site[1], 16);
+                st.color = [n >> 16, (n >> 8) & 255, n & 255];
+                chips.forEach((c) => c.setAttribute('aria-pressed', 'false'));
+            }
             st.mode = 'auto';
             st.t0 = performance.now();
             root.classList.remove('is-free');
@@ -221,7 +228,7 @@
             start();
         }
 
-        const nameOf = (rgb) => Object.values(COLORS).find((c) => c.rgb === rgb)?.name || 'candy';
+        const nameOf = (rgb) => Object.values(COLORS).find((c) => c.rgb === rgb)?.name || 'the shop’s current finish';
 
         // Visitor takes the gun.
         const toLocal = (e) => {

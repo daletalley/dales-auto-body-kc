@@ -63,15 +63,6 @@
     <a class="skip-link" href="#main">Skip to content</a>
     <canvas class="paint-bg" data-paint aria-hidden="true"></canvas>
 
-    <!-- Reusable pinstripe flourish, drawn on scroll -->
-    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-        <defs>
-            <symbol id="flourish" viewBox="0 0 240 40">
-                <path d="M120 20c-14-16-38-16-46-4-6 9 4 18 13 12 7-5 2-14-6-10M120 20c14-16 38-16 46-4 6 9-4 18-13 12-7-5-2-14 6-10M120 20c-30 10-64 12-118 2M120 20c30 10 64 12 118 2M120 20c-6 6-6 12 0 16 6-4 6-10 0-16"/>
-            </symbol>
-        </defs>
-    </svg>
-
     <header class="site-header" data-header>
         <div class="wrap header-inner">
             <a class="wordmark" href="#top" aria-label="Dale's Auto Body, back to top">
@@ -88,7 +79,7 @@
                     <li><a href="#services">Services</a></li>
                     <li><a href="#legacy">Our Story</a></li>
                     <li><a href="#visit">Visit</a></li>
-                    <li class="nav-cta"><a class="btn btn-sm btn-paint" href="#estimate">Free estimate</a></li>
+                    <li class="nav-cta"><a class="btn btn-sm btn-paint" href="tel:+19133716654">Call (913) 371-6654</a></li>
                 </ul>
             </nav>
         </div>
@@ -99,47 +90,37 @@
         <section class="hero" id="top" aria-labelledby="hero-title">
             <div class="hero-shade" aria-hidden="true"></div>
             <div class="wrap hero-inner">
-                <div class="hero-copy">
-                    <p class="kicker reveal">
-                        <span class="status" data-status aria-live="polite"><span class="status-dot"></span><span data-status-text>Kansas City, KS</span></span>
-                        <span class="kicker-addr">1310 State Ave · Est. 1975</span>
-                    </p>
-                    <h1 class="hero-title" id="hero-title">
-                        <span class="sr-only">Dale’s Upholstery &amp; Auto Body, Kansas City. </span>
-                        <span class="line"><span>Straight</span></span>
-                        <span class="line"><span>metal.</span></span>
-                    </h1>
-                    <p class="hero-lede reveal">
-                        Collision repair, custom candy &amp; flake, hand pinstripe and upholstery from a family shop
-                        that has been turning dents into show finishes for <strong data-years>50+</strong> years.
-                    </p>
-                    <div class="hero-actions reveal">
-                        <a class="btn btn-paint" href="tel:+19133716654" data-magnetic>
-                            <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
-                            (913) 371-6654
-                        </a>
-                        <a class="btn btn-ghost" href="#estimate">Free estimate <span aria-hidden="true">→</span></a>
-                    </div>
+                <p class="kicker reveal">
+                    <span class="status" data-status aria-live="polite"><span class="status-dot"></span><span data-status-text>Kansas City, KS</span></span>
+                    <span class="kicker-addr">1310 State Ave · Kansas City, KS</span>
+                </p>
+                <h1 class="hero-logo-line" id="hero-title">
+                    <span class="sr-only">Dale’s Upholstery &amp; Auto Body, Kansas City, KS</span>
+                    <span class="hero-logo" aria-hidden="true"></span>
+                </h1>
+                <p class="hero-lede reveal">
+                    Collision repair, custom candy &amp; flake, hand pinstripe and upholstery from a family shop
+                    that has been turning dents into show finishes for <strong data-years>50+</strong> years.
+                </p>
+                <div class="hero-actions reveal">
+                    <a class="btn btn-paint" href="tel:+19133716654" data-magnetic>
+                        <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
+                        (913) 371-6654
+                    </a>
+                    <a class="btn btn-ghost" href="#visit">Free estimate <span aria-hidden="true">→</span></a>
                 </div>
-
-                <div class="hero-mark">
-                    <div class="line hero-logo-line"><div class="hero-logo" aria-hidden="true"></div></div>
-                    <div class="finish reveal" data-finish style="--i:0">
-                        <div class="finish-meta">
-                            <span class="finish-label" id="finish-label">Finish</span>
-                            <span class="finish-name" data-finish-name aria-live="polite">Candy Tangerine</span>
-                            <span class="finish-type" data-finish-type>Candy over gold base</span>
-                        </div>
-                        <div class="finish-chips" role="radiogroup" aria-labelledby="finish-label">
-                            <button type="button" role="radio" class="paint-chip" style="--c:#ff5a1f" data-swatch="tangerine" aria-checked="true" tabindex="0" aria-label="Candy Tangerine"></button>
-                            <button type="button" role="radio" class="paint-chip" style="--c:#c8102e" data-swatch="apple" aria-checked="false" tabindex="-1" aria-label="Candy Apple Red"></button>
-                            <button type="button" role="radio" class="paint-chip" style="--c:#0fa3a3" data-swatch="teal" aria-checked="false" tabindex="-1" aria-label="Candy Teal"></button>
-                            <button type="button" role="radio" class="paint-chip" style="--c:#8a3f1c" data-swatch="rootbeer" aria-checked="false" tabindex="-1" aria-label="Root Beer"></button>
-                            <button type="button" role="radio" class="paint-chip" style="--c:#5b34a8" data-swatch="purple" aria-checked="false" tabindex="-1" aria-label="Midnight Purple"></button>
-                            <button type="button" role="radio" class="paint-chip" style="--c:#2a5ae0" data-swatch="cobalt" aria-checked="false" tabindex="-1" aria-label="Cobalt Blue"></button>
-                            <span class="finish-indicator" aria-hidden="true"></span>
-                        </div>
+                <div class="finish reveal" data-finish style="--i:1">
+                    <span class="finish-label" id="finish-label">Finish</span>
+                    <div class="finish-chips" role="radiogroup" aria-labelledby="finish-label">
+                        <button type="button" role="radio" class="paint-chip" style="--c:#ff5a1f" data-swatch="tangerine" aria-checked="false" tabindex="-1" aria-label="Candy Tangerine"></button>
+                        <button type="button" role="radio" class="paint-chip" style="--c:#c8102e" data-swatch="apple" aria-checked="true" tabindex="0" aria-label="Candy Apple Red"></button>
+                        <button type="button" role="radio" class="paint-chip" style="--c:#0fa3a3" data-swatch="teal" aria-checked="false" tabindex="-1" aria-label="Candy Teal"></button>
+                        <button type="button" role="radio" class="paint-chip" style="--c:#8a3f1c" data-swatch="rootbeer" aria-checked="false" tabindex="-1" aria-label="Root Beer"></button>
+                        <button type="button" role="radio" class="paint-chip" style="--c:#5b34a8" data-swatch="purple" aria-checked="false" tabindex="-1" aria-label="Midnight Purple"></button>
+                        <button type="button" role="radio" class="paint-chip" style="--c:#2a5ae0" data-swatch="cobalt" aria-checked="false" tabindex="-1" aria-label="Cobalt Blue"></button>
+                        <span class="finish-indicator" aria-hidden="true"></span>
                     </div>
+                    <span class="finish-name" data-finish-name aria-live="polite">Candy Apple Red</span>
                 </div>
             </div>
         </section>
@@ -252,24 +233,25 @@
             </div>
         </section>
 
-        <div class="divider" aria-hidden="true"><svg class="flourish"><use href="#flourish"/></svg></div>
 
         <!-- ============ THE CRAFT: one tank, dent to show finish ============ -->
         <section class="craft" id="craft" aria-labelledby="craft-title" data-ghost="Flake">
             <div class="wrap section-head">
                 <p class="eyebrow">The Craft</p>
                 <h2 id="craft-title">Dent to <em>deep shine.</em></h2>
-                <p class="section-lede">One tank, start to finish. Every step we do on every job, in about 25 seconds.</p>
+                <p class="section-lede">One tank, start to finish. Every step we do on every job.</p>
             </div>
             <div class="wrap">
                 <figure class="booth" data-craft>
-                    <canvas role="img" aria-label="Animation of a motorcycle tank being repaired and painted: the dent is hammered out, filler is sanded smooth, primer, metallic base and candy are sprayed on, a gold pinstripe is pulled by hand, then it is cleared and buffed to a mirror finish."></canvas>
+                    <canvas data-craft-gl role="img" aria-label="Rendered film of a motorcycle tank being repaired and painted: the dent is hammered out, filler is sanded smooth, primer, metallic base and candy are sprayed on, a gold pinstripe is pulled by hand, then it is cleared and buffed to a mirror finish."></canvas>
+                    <canvas data-craft-fx aria-hidden="true"></canvas>
+                    <img class="booth-poster" src="images/work/64-640.webp" alt="Candy red and black flake tank with silver pinstripe, finished at the shop" width="640" height="480" loading="lazy">
                     <figcaption class="booth-hud">
-                        <span class="booth-no" data-craft-no>01 / 09</span>
-                        <span class="booth-name" data-craft-name>Damage</span>
-                        <span class="booth-caption" data-craft-caption>Bare steel, one ugly dent.</span>
+                        <span class="booth-step"><span class="booth-no" data-craft-no>01</span><span class="booth-name" data-craft-name>Damage</span></span>
+                        <span class="booth-caption" data-craft-caption>Bare steel and one ugly dent.</span>
                     </figcaption>
-                    <button type="button" class="booth-play" data-craft-play aria-pressed="false" aria-label="Pause the animation">
+                    <span class="booth-time" data-craft-time aria-hidden="true">00:00:00</span>
+                    <button type="button" class="booth-play" data-craft-play aria-pressed="false" aria-label="Pause the film">
                         <svg class="i-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h3v14H7zM14 5h3v14h-3z"/></svg>
                         <svg class="i-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
                     </button>
@@ -288,7 +270,6 @@
             </div>
         </section>
 
-        <div class="divider" aria-hidden="true"><svg class="flourish"><use href="#flourish"/></svg></div>
 
         <!-- ============ SERVICES ============ -->
         <section class="services" id="services" aria-labelledby="services-title" data-ghost="Body">
@@ -330,14 +311,12 @@
             </ul>
         </section>
 
-        <div class="divider" aria-hidden="true"><svg class="flourish"><use href="#flourish"/></svg></div>
 
         <!-- ============ LEGACY ============ -->
         <section class="legacy" id="legacy" aria-labelledby="legacy-title" data-ghost="1975">
             <div class="wrap legacy-grid">
                 <figure class="legacy-photo">
                     <img src="images/work/shop-741.webp" srcset="images/work/shop-480.webp 480w, images/work/shop-741.webp 741w" sizes="(min-width: 900px) 45vw, 100vw" width="741" height="544" alt="Dale's Auto Body, the white block shop building on State Avenue with customer cars in the lot" loading="lazy" decoding="async">
-                    <figcaption>1310 State Avenue · Kansas City, Kansas</figcaption>
                 </figure>
                 <div class="legacy-copy">
                     <p class="eyebrow">Our Story</p>
@@ -345,16 +324,10 @@
                     <!-- Family: this is the place for Dale's own story — how he started, the first car he painted, the bikes he's proudest of. -->
                     <p>Dale opened the doors on State Avenue in 1975, and the shop has been his ever since. No franchise, no call center, no corporate paint schedule — just a guy who loves the work, a booth, and a lot full of neighbors’ cars.</p>
                     <p>Over the years the jobs have ranged from fender-benders on the family sedan to full candy builds on show baggers. The approach has never changed: do it right, tell people the truth, and don’t hand back the keys until it’s something you’d put your name on.</p>
-                    <dl class="stats">
-                        <div><dt>Founded</dt><dd>1975</dd></div>
-                        <div><dt>Years on State Ave</dt><dd data-count data-years-count>50</dd></div>
-                        <div><dt>Owner on site</dt><dd>Every day</dd></div>
-                    </dl>
                 </div>
             </div>
         </section>
 
-        <div class="divider" aria-hidden="true"><svg class="flourish"><use href="#flourish"/></svg></div>
 
         <!-- ============ THE ORIGINAL SIGN: spray it ============ -->
         <section class="sign" id="sign" aria-labelledby="sign-title" data-ghost="KC">
@@ -384,40 +357,33 @@
             </div>
         </section>
 
-        <div class="divider" aria-hidden="true"><svg class="flourish"><use href="#flourish"/></svg></div>
 
         <!-- ============ ESTIMATE + VISIT ============ -->
         <section class="visit" id="visit" aria-labelledby="visit-title" data-ghost="State Ave">
             <div class="wrap section-head">
                 <p class="eyebrow">Come by the shop</p>
                 <h2 id="visit-title">Bring it in. <em>We’ll take a look.</em></h2>
+                <p class="section-lede">No forms, no waiting on an email. Call Dale or pull into the lot on State Avenue.</p>
             </div>
             <div class="wrap visit-grid">
-                <form class="estimate" id="estimate" data-estimate novalidate>
-                    <h3>Request a free estimate</h3>
-                    <p class="form-note">Fill this out and it’ll open a ready-to-send email to the shop. Photos help — attach a few before you hit send.</p>
-                    <div class="field-row">
-                        <label class="field"><span>Your name</span><input name="name" autocomplete="name" required></label>
-                        <label class="field"><span>Phone</span><input name="phone" type="tel" autocomplete="tel" inputmode="tel" required></label>
-                    </div>
-                    <label class="field"><span>Vehicle <small>(year, make, model)</small></span><input name="vehicle" placeholder="2008 Harley Road Glide" required></label>
-                    <fieldset class="field">
-                        <legend>What do you need?</legend>
-                        <div class="pills">
-                            <label><input type="checkbox" name="work" value="Collision repair"><span>Collision</span></label>
-                            <label><input type="checkbox" name="work" value="Custom paint"><span>Custom paint</span></label>
-                            <label><input type="checkbox" name="work" value="Pinstripe / graphics"><span>Pinstripe</span></label>
-                            <label><input type="checkbox" name="work" value="Upholstery"><span>Upholstery</span></label>
-                            <label><input type="checkbox" name="work" value="Rust repair"><span>Rust</span></label>
-                            <label><input type="checkbox" name="work" value="Insurance claim"><span>Insurance</span></label>
-                        </div>
-                    </fieldset>
-                    <label class="field"><span>Tell us about it</span><textarea name="details" rows="4" placeholder="Where's the damage, or what are you dreaming up?"></textarea></label>
-                    <button class="btn btn-paint btn-block" type="submit">Write the email <span aria-hidden="true">→</span></button>
-                    <p class="form-status" data-form-status role="status"></p>
-                </form>
-
-                <div class="visit-info">
+                <div class="visit-contact">
+                    <address class="contact-card">
+                        <a class="contact-line contact-phone" href="tel:+19133716654">
+                            <svg class="contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1A17 17 0 0 1 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
+                            <span class="contact-text"><span class="contact-label">Call the shop</span><span class="contact-value">(913) 371-6654</span></span>
+                            <span class="contact-go" aria-hidden="true">Call</span>
+                        </a>
+                        <a class="contact-line" href="https://www.google.com/maps/dir/?api=1&amp;destination=1310+State+Ave+Kansas+City+KS+66102" target="_blank" rel="noopener">
+                            <svg class="contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>
+                            <span class="contact-text"><span class="contact-label">Come by</span><span class="contact-value">1310 State Avenue, Kansas City, KS 66102</span></span>
+                            <span class="contact-go" aria-hidden="true">Directions</span>
+                        </a>
+                        <a class="contact-line" href="mailto:dalesautobody@gmail.com">
+                            <svg class="contact-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zm2 2v.5l7 4.5 7-4.5V7zm14 2.9-7 4.5-7-4.5V17h14z"/></svg>
+                            <span class="contact-text"><span class="contact-label">Email</span><span class="contact-value">dalesautobody@gmail.com</span></span>
+                            <span class="contact-go" aria-hidden="true">Write</span>
+                        </a>
+                    </address>
                     <div class="hours-card">
                         <div class="hours-head">
                             <h3>Shop hours</h3>
@@ -435,37 +401,19 @@
                                 <tr data-day="0"><th scope="row">Sunday</th><td>By appointment</td></tr>
                             </tbody>
                         </table>
+                        <p class="hours-note">Free estimates: just call or pull in. Towing in? Call ahead.</p>
                     </div>
-                    <address class="contact-card">
-                        <a class="contact-line" href="https://www.google.com/maps/dir/?api=1&amp;destination=1310+State+Ave+Kansas+City+KS+66102" target="_blank" rel="noopener">
-                            <span class="contact-label">Address</span>
-                            <span>1310 State Avenue<br>Kansas City, KS 66102</span>
-                            <span class="contact-go" aria-hidden="true">Directions ↗</span>
-                        </a>
-                        <a class="contact-line" href="tel:+19133716654">
-                            <span class="contact-label">Phone</span>
-                            <span>(913) 371-6654</span>
-                            <span class="contact-go" aria-hidden="true">Call ↗</span>
-                        </a>
-                        <a class="contact-line" href="mailto:dalesautobody@gmail.com">
-                            <span class="contact-label">Email</span>
-                            <span>dalesautobody@gmail.com</span>
-                            <span class="contact-go" aria-hidden="true">Write ↗</span>
-                        </a>
-                    </address>
-                    <div class="map">
-                        <iframe src="https://www.google.com/maps?q=1310+State+Ave,+Kansas+City,+KS+66102&amp;z=16&amp;output=embed" title="Map to Dale’s Auto Body, 1310 State Avenue, Kansas City, KS" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
-                    </div>
+                </div>
+                <div class="map">
+                    <iframe src="https://www.google.com/maps?q=1310+State+Ave,+Kansas+City,+KS+66102&amp;z=16&amp;output=embed" title="Map to Dale’s Auto Body, 1310 State Avenue, Kansas City, KS" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
                 </div>
             </div>
         </section>
     </main>
 
-    <footer class="site-footer">
+    <footer class="site-footer" data-ghost="1975">
         <div class="wrap">
-            <svg class="flourish flourish-footer" aria-hidden="true"><use href="#flourish"/></svg>
             <p class="footer-mark" aria-hidden="true"><em>Dale’s</em></p>
-            <img class="footer-badge" src="images/brand/sign-compact.png" width="1126" height="650" alt="Dale’s Upholstery &amp; Auto Body shop badge" loading="lazy" decoding="async">
             <div class="footer-row">
                 <p>Independent since 1975. Thank you, Kansas City, for keeping the booth warm.</p>
                 <p class="footer-links">
