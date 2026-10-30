@@ -12,10 +12,13 @@ nothing to install to view it.
 | --- | --- |
 | `index.html` | The whole site. Showroom, portfolio and filter markup are generated (see below). |
 | `css/style.css` | All styles. Design tokens live at the top in `:root`. |
-| `js/paint.js` | The hero: a WebGL shader that renders candy paint with metal flake. The cursor is the light. |
-| `js/script.js` | Live shop hours, nav, reveal-on-scroll, the paint-stack scroller, gallery filters, lightbox, estimate form. |
+| `js/paint.js` | The live candy-paint backdrop behind the whole site (WebGL, metal flake). The cursor is the light; the hero's Finish picker repaints it. |
+| `js/craft.js` | "The Craft": a ~25s Canvas film of a tank going from dented steel to show finish. |
+| `js/sign.js` | "The Original Sign": the old truck logo sprayed on live; visitors can spray it too. |
+| `js/script.js` | Live shop hours, nav, reveals, spray-on headings/photos, gallery filters + "see all", lightbox, estimate form. |
 | `tools/work.json` | **The portfolio.** One entry per photo: number, category, alt text, optional showroom title. |
-| `tools/build.py` | Makes WebP renditions in `images/work/` and writes the gallery into `index.html`. |
+| `tools/build.py` | Makes WebP renditions in `images/work/`, the spray-reveal mask, and writes the gallery into `index.html`. |
+| `images/brand/` | The shop's original logo (white, for masking) and the spray mask. Originals in `images/source/brand/`. |
 | `images/source/` | Original photos, untouched. |
 
 ## Adding photos
@@ -25,7 +28,7 @@ nothing to install to view it.
    ```json
    { "n": 78, "cat": "paint", "alt": "Describe what's in the photo for screen readers" }
    ```
-   Add `"feature": "Short title"` to also put it in the Showroom carousel. Order in the file = order on the page.
+   Order in the file = order on the page. The first 16 show before "See all the work".
 3. Rebuild:
    ```bash
    pip install pillow
@@ -52,4 +55,5 @@ no-JS visitors see). Keep them in sync.
 - Without WebGL the hero falls back to a CSS gradient; without JavaScript the whole page still reads.
 - The estimate form opens a prefilled email (no server needed). Swap in Formspree/Netlify Forms later
   if you want submissions to land somewhere else.
-- The Google Map only loads when someone clicks it, which keeps the page fast.
+- The Google Map is a live embed (lazy-loaded as it scrolls into view).
+- Section names in outlined pinstripe lettering come from each section's `data-ghost` attribute.

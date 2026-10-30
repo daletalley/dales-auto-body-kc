@@ -111,8 +111,11 @@
 
     /* ---------- Reveal on scroll ---------- */
     function initReveal() {
-        const targets = $$('.reveal, .section-head, .service, .tile, .show-card, .step, .legacy-photo, .legacy-copy, .estimate, .visit-info, .flourish');
+        const root = document.documentElement;
+        const targets = $$('.reveal, .section-head .eyebrow, .section-head .section-lede, .filters, .service, .legacy-copy p, .stats, .estimate, .visit-info, .flourish, .booth-steps, .sign-tools');
         targets.forEach((el) => el.classList.add('will-reveal'));
+        // Hero text plays immediately (instantly, with reduced motion).
+        requestAnimationFrame(() => root.classList.add('is-loaded'));
         if (reduceMotion() || !('IntersectionObserver' in window)) {
             targets.forEach((el) => el.classList.add('is-in'));
             return;
@@ -125,8 +128,31 @@
             });
         }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
         targets.forEach((el) => io.observe(el));
-        // Hero text plays immediately.
-        requestAnimationFrame(() => document.documentElement.classList.add('is-loaded'));
+    }
+
+    /* ---------- Spray-on: headings and photos get painted in as they arrive ---------- */
+    function initSpray() {
+        const targets = $$('.section-head h2, .tile a, .legacy-photo, .booth, .sign-stage, .footer-mark');
+        if (reduceMotion() || !('IntersectionObserver' in window) || !CSS.supports('(mask-image: none) or (-webkit-mask-image: none)')) return;
+        targets.forEach((el) => el.classList.add('will-spray'));
+        let batch = 0;
+        let batchTimer = 0;
+        const io = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                const el = entry.target;
+                // Photos arriving together get sprayed one after another, like passes.
+                el.style.setProperty('--spray-delay', `${Math.min(batch++, 8) * 90}ms`);
+                clearTimeout(batchTimer);
+                batchTimer = setTimeout(() => { batch = 0; }, 120);
+                el.classList.add('is-sprayed');
+                el.addEventListener('animationend', (e) => {
+                    if (e.animationName === 'spray-in') el.classList.add('spray-done');
+                }, { once: false });
+                io.unobserve(el);
+            });
+        }, { rootMargin: '0px 0px -12% 0px', threshold: 0.15 });
+        targets.forEach((el) => io.observe(el));
     }
 
     /* ---------- Count-up numbers ---------- */
@@ -151,96 +177,38 @@
         els.forEach((el) => io.observe(el));
     }
 
-    /* ---------- Showroom: arrows + drag to scroll ---------- */
-    function initShowroom() {
-        const track = $('[data-show-track]');
-        if (!track) return;
-        const step = () => (track.querySelector('.show-card')?.getBoundingClientRect().width || 400) + 24;
-        $('[data-show-prev]').addEventListener('click', () => track.scrollBy({ left: -step(), behavior: 'smooth' }));
-        $('[data-show-next]').addEventListener('click', () => track.scrollBy({ left: step(), behavior: 'smooth' }));
-        track.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight') { e.preventDefault(); track.scrollBy({ left: step(), behavior: 'smooth' }); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); track.scrollBy({ left: -step(), behavior: 'smooth' }); }
-        });
-
-        // Mouse drag (touch already scrolls natively).
-        let down = null;
-        let dragged = false;
-        track.addEventListener('pointerdown', (e) => {
-            if (e.pointerType !== 'mouse') return;
-            down = { x: e.clientX, left: track.scrollLeft };
-            dragged = false;
-        });
-        window.addEventListener('pointermove', (e) => {
-            if (!down) return;
-            const dx = e.clientX - down.x;
-            if (Math.abs(dx) > 4) { dragged = true; track.classList.add('is-dragging'); }
-            track.scrollLeft = down.left - dx;
-        });
-        window.addEventListener('pointerup', () => { down = null; track.classList.remove('is-dragging'); });
-        // A drag shouldn't count as a click on the photo.
-        track.addEventListener('click', (e) => { if (dragged) { e.preventDefault(); e.stopImmediatePropagation(); dragged = false; } }, true);
-    }
-
-    /* ---------- The Craft: build the paint stack as steps scroll by ---------- */
-    function initCraft() {
-        const stack = $('[data-stack]');
-        const readout = $('[data-stack-step]');
-        const name = $('[data-stack-name]');
-        const layerNames = $$('.layer span', stack).map((s) => s.textContent);
-        const steps = $$('.step');
-        if (!stack || !steps.length) return;
-
-        const setStep = (n) => {
-            stack.dataset.level = String(n);
-            readout.textContent = String(n).padStart(2, '0');
-            if (name) name.textContent = layerNames[n - 1] || '';
-            steps.forEach((s) => s.classList.toggle('is-active', Number(s.dataset.step) === n));
-        };
-        setStep(1);
-
-        // Active step = the last one whose top has crossed the middle of the
-        // viewport. Position-based, so scrolling back up un-builds the stack.
-        let current = 1;
-        let ticking = false;
-        const update = () => {
-            ticking = false;
-            const line = window.innerHeight * 0.55;
-            let n = 1;
-            steps.forEach((s) => { if (s.getBoundingClientRect().top < line) n = Number(s.dataset.step); });
-            if (n !== current) { current = n; setStep(n); }
-        };
-        window.addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } }, { passive: true });
-        update();
-
-        // Tilt the panel with the pointer so the clear catches light.
-        const visual = $('.craft-visual');
-        if (!reduceMotion()) {
-            visual.addEventListener('pointermove', (e) => {
-                const r = visual.getBoundingClientRect();
-                stack.style.setProperty('--rx', `${((e.clientY - r.top) / r.height - 0.5) * -10}deg`);
-                stack.style.setProperty('--ry', `${((e.clientX - r.left) / r.width - 0.5) * 14}deg`);
-            });
-            visual.addEventListener('pointerleave', () => { stack.style.removeProperty('--rx'); stack.style.removeProperty('--ry'); });
-        }
-    }
-
-    /* ---------- Portfolio filters ---------- */
+    /* ---------- Portfolio filters + "see all" ---------- */
     function initFilters() {
         const chips = $$('[data-filter]');
         const tiles = $$('[data-gallery] .tile');
+        const more = $('[data-more]');
+        const LIMIT = 16;
+        let expanded = false;
+        let current = 'all';
         if (!chips.length) return;
 
         const apply = (cat) => {
+            current = cat;
             chips.forEach((c) => c.setAttribute('aria-pressed', String(c.dataset.filter === cat)));
-            tiles.forEach((t) => { t.hidden = cat !== 'all' && t.dataset.cat !== cat; });
+            tiles.forEach((t, i) => {
+                const match = cat === 'all' || t.dataset.cat === cat;
+                t.hidden = !match || (cat === 'all' && !expanded && i >= LIMIT);
+            });
+            if (more) {
+                more.hidden = cat !== 'all' || expanded || tiles.length <= LIMIT;
+                const count = $('[data-more-count]', more);
+                if (count) count.textContent = `(${tiles.length})`;
+            }
         };
+        const run = (fn) => (document.startViewTransition && !reduceMotion() ? document.startViewTransition(fn) : fn());
 
-        chips.forEach((chip) => chip.addEventListener('click', () => {
-            const cat = chip.dataset.filter;
-            if (document.startViewTransition && !reduceMotion()) document.startViewTransition(() => apply(cat));
-            else apply(cat);
-        }));
+        chips.forEach((chip) => chip.addEventListener('click', () => run(() => apply(chip.dataset.filter))));
+        more?.addEventListener('click', () => {
+            expanded = true;
+            run(() => apply(current));
+            tiles[LIMIT]?.querySelector('a')?.focus({ preventScroll: true });
+        });
+        apply('all');
     }
 
     /* ---------- Lightbox (native <dialog>: focus trap + Esc for free) ---------- */
@@ -275,7 +243,7 @@
             e.preventDefault();
             opener = a;
             // Navigate within whichever collection was clicked, skipping filtered-out tiles.
-            const scope = a.closest('[data-gallery], [data-show-track]') || document;
+            const scope = a.closest('[data-gallery]') || document;
             group = $$('[data-lightbox]', scope).filter((el) => !el.closest('[hidden]'));
             dialog.showModal();
             document.body.classList.add('no-scroll');
@@ -343,21 +311,6 @@
         form.addEventListener('input', (e) => { if (e.target.value.trim()) e.target.removeAttribute('aria-invalid'); });
     }
 
-    /* ---------- Map loads on request (keeps Google off the critical path) ---------- */
-    function initMap() {
-        const btn = $('[data-map-load]');
-        if (!btn) return;
-        btn.addEventListener('click', () => {
-            const iframe = document.createElement('iframe');
-            iframe.src = 'https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&output=embed';
-            iframe.title = 'Map to Dale’s Auto Body, 1310 State Avenue, Kansas City, KS';
-            iframe.loading = 'lazy';
-            iframe.referrerPolicy = 'no-referrer-when-downgrade';
-            iframe.allowFullscreen = true;
-            btn.replaceWith(iframe);
-        });
-    }
-
     /* ---------- Small tactile touches ---------- */
     function initTactile() {
         if (reduceMotion() || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
@@ -381,7 +334,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        [initYears, initStatus, initNav, initReveal, initCounters, initShowroom, initCraft, initFilters, initLightbox, initEstimate, initMap, initTactile]
+        [initYears, initStatus, initNav, initReveal, initSpray, initCounters, initFilters, initLightbox, initEstimate, initTactile]
             .forEach((fn) => { try { fn(); } catch (err) { console.error(`[daleskc] ${fn.name} failed`, err); } });
     });
 })();

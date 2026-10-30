@@ -2,7 +2,7 @@
 """Build step for daleskc.com.
 
 Reads tools/work.json, writes responsive WebP renditions of every photo in
-images/source/ to images/work/, then renders the showroom and portfolio
+images/source/ to images/work/, then renders the portfolio
 markup straight into index.html between marker comments. The site stays plain
 static HTML (no JS needed to see the work, good for SEO), and adding a photo is
 one line in work.json plus:
@@ -75,24 +75,37 @@ def figure(item: dict, r: dict, cats: dict) -> str:
     )
 
 
-def showroom_card(i: int, item: dict, r: dict, cats: dict) -> str:
-    alt = html.escape(item["alt"], quote=True)
-    return (
-        f'<li class="show-card" style="--ph:{r["ph"]}">'
-        f'<a class="show-media" href="{r["srcset"][-1][1]}" data-lightbox data-caption="{alt}" data-label="{cats[item["cat"]]}">'
-        f'<img src="{r["srcset"][-1][1]}" srcset="{srcset_attr(r)}" sizes="(min-width: 900px) 40vw, 85vw" '
-        f'width="{r["w"]}" height="{r["h"]}" alt="{alt}" loading="lazy" decoding="async"></a>'
-        f'<div class="show-meta"><span class="show-no">No. {i:02d}</span>'
-        f'<h3>{html.escape(item["feature"])}</h3>'
-        f'<span class="show-cat">{cats[item["cat"]]}</span></div></li>'
-    )
-
-
 def splice(doc: str, name: str, body: str) -> str:
     pattern = re.compile(rf"(<!-- {name}:start -->)(.*?)(\s*<!-- {name}:end -->)", re.S)
     if not pattern.search(doc):
         raise SystemExit(f"Marker '{name}' not found in index.html")
     return pattern.sub(lambda m: f"{m.group(1)}\n{body}{m.group(3)}", doc)
+
+
+def spray_mask() -> None:
+    """The mask that makes headings and photos look sprayed on.
+
+    Three equal bands, left to right: solid, a speckled spray edge, empty.
+    CSS slides it across an element (mask-size: 300%) to reveal it.
+    """
+    import random
+
+    random.seed(1975)
+    W, H = 1800, 360
+    a = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(a)
+    d.rectangle((0, 0, W // 3, H), fill=255)
+    # Droplets thin out across the middle band; bigger ones lead the edge.
+    for _ in range(26000):
+        f = random.random() ** 1.6
+        x = W // 3 + f * (W // 3) + random.gauss(0, 14)
+        y = random.random() * H
+        r = 0.8 + random.random() * (2.2 + 4.0 * f)
+        d.ellipse((x - r, y - r, x + r, y + r), fill=255)
+    a = a.filter(ImageFilter.GaussianBlur(0.7))
+    out = Image.merge("RGBA", (Image.new("L", (W, H), 255),) * 3 + (a,))
+    (ROOT / "images" / "brand").mkdir(parents=True, exist_ok=True)
+    out.save(ROOT / "images" / "brand" / "spray-mask.png", optimize=True)
 
 
 def og_image(shop: Image.Image, hero: Image.Image) -> None:
@@ -126,15 +139,13 @@ def main() -> None:
     data = json.loads((ROOT / "tools" / "work.json").read_text())
     cats, items = data["categories"], data["items"]
 
-    tiles, shows = [], []
+    tiles = []
     rendered = {}
     for item in items:
         im = load(source_for(item["n"]))
         r = render(im, f"{item['n']:02d}")
         rendered[item["n"]] = (im, r)
         tiles.append(figure(item, r, cats))
-    for i, item in enumerate((it for it in items if it.get("feature")), start=1):
-        shows.append(showroom_card(i, item, rendered[item["n"]][1], cats))
 
     shop = load(SRC / "shop-exterior.png")
     render(shop, "shop")
@@ -149,11 +160,11 @@ def main() -> None:
 
     doc = INDEX.read_text()
     indent = "                    "
-    doc = splice(doc, "showroom", "\n".join(indent + s for s in shows))
     doc = splice(doc, "filters", "\n".join(indent + f for f in filters))
     doc = splice(doc, "gallery", "\n".join(indent + t for t in tiles))
     INDEX.write_text(doc)
-    print(f"Built {len(items)} photos, {len(shows)} showroom pieces -> {OUT.relative_to(ROOT)}")
+    spray_mask()
+    print(f"Built {len(items)} photos -> {OUT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
