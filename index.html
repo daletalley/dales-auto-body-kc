@@ -386,6 +386,34 @@
             </div>
         </section>
 
+        <!-- ============ THE ORIGINAL SIGN: spray it ============ -->
+        <section class="sign" id="sign" aria-labelledby="sign-title">
+            <div class="wrap sign-grid">
+                <div class="sign-copy">
+                    <p class="eyebrow">Where it started</p>
+                    <h2 id="sign-title">The original <em>sign.</em></h2>
+                    <p class="section-lede">Before the website there was this: a classic pickup, a guy down on one knee doing the work, and the shop’s name arched over the top. We gave it a fresh coat. Then the gun’s yours.</p>
+                    <div class="sign-tools">
+                        <div class="sign-colors" role="group" aria-label="Paint color">
+                            <button type="button" class="swatch" style="--c:#ff5a1f" data-sign-color="tangerine" aria-pressed="true" aria-label="Candy Tangerine"></button>
+                            <button type="button" class="swatch" style="--c:#c8102e" data-sign-color="apple" aria-pressed="false" aria-label="Candy Apple Red"></button>
+                            <button type="button" class="swatch" style="--c:#0fa3a3" data-sign-color="teal" aria-pressed="false" aria-label="Candy Teal"></button>
+                            <button type="button" class="swatch" style="--c:#285ae6" data-sign-color="cobalt" aria-pressed="false" aria-label="Cobalt Blue"></button>
+                            <button type="button" class="swatch" style="--c:#e2b23c" data-sign-color="gold" aria-pressed="false" aria-label="Gold Leaf"></button>
+                            <button type="button" class="swatch" style="--c:#f0ece4" data-sign-color="pearl" aria-pressed="false" aria-label="Pearl White"></button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-ghost" data-sign-respray>Respray it</button>
+                    </div>
+                    <p class="sign-status" data-sign-status aria-live="polite">Scroll down a little and watch it get painted.</p>
+                </div>
+                <figure class="sign-stage" data-sign="images/brand/sign.png">
+                    <img class="sign-fallback" data-sign-fallback src="images/brand/sign.png" width="1126" height="650" alt="Dale’s Upholstery &amp; Auto Body, Kansas City, KS, (913) 371-6654: the shop’s original logo, a line drawing of a classic pickup with a mechanic kneeling beside it" loading="lazy" decoding="async">
+                    <canvas aria-hidden="true"></canvas>
+                    <figcaption>Hand-drawn shop logo · Kansas City, KS</figcaption>
+                </figure>
+            </div>
+        </section>
+
         <!-- ============ ESTIMATE + VISIT ============ -->
         <section class="visit" id="visit" aria-labelledby="visit-title">
             <div class="wrap section-head">
@@ -468,6 +496,7 @@
         <div class="wrap">
             <svg class="flourish flourish-footer" aria-hidden="true"><use href="#flourish"/></svg>
             <p class="footer-mark" aria-hidden="true"><em>Dale’s</em></p>
+            <img class="footer-badge" src="images/brand/sign-compact.png" width="1126" height="650" alt="Dale’s Upholstery &amp; Auto Body shop badge" loading="lazy" decoding="async">
             <div class="footer-row">
                 <p>Independent since 1975. Thank you, Kansas City, for keeping the booth warm.</p>
                 <p class="footer-links">
@@ -493,5 +522,6 @@
 
     <script src="js/paint.js" defer></script>
     <script src="js/script.js" defer></script>
+    <script src="js/sign.js" defer></script>
 </body>
 </html>
