@@ -4,22 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Dale's Auto Body KC | Since 1975</title>
-    <meta name="description" content="Family-owned auto body and upholstery shop in Kansas City, KS. Old-school craftsmanship from Dale since 1968.">
+    <meta name="description" content="Family-owned auto body and upholstery shop at 1310 State Avenue, Kansas City, KS. Collision and frame repair, paint, and upholstery from Dale since 1975.">
+    <meta name="theme-color" content="#0f2740">
+    <link rel="canonical" href="https://daleskc.com/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://daleskc.com/">
+    <meta property="og:title" content="Dale's Auto Body KC | Since 1975">
+    <meta property="og:description" content="Honest auto body care in Kansas City, KS since 1975. Collision, paint, and upholstery.">
+    <meta property="og:image" content="https://daleskc.com/images/og.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/style.css">
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "AutoBodyShop",
+        "name": "Dale's Auto Body",
+        "url": "https://daleskc.com/",
+        "image": "https://daleskc.com/images/og.jpg",
+        "telephone": "+1-913-371-6654",
+        "email": "dalesautobody@gmail.com",
+        "foundingDate": "1975",
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "1310 State Avenue",
+            "addressLocality": "Kansas City",
+            "addressRegion": "KS",
+            "postalCode": "66102",
+            "addressCountry": "US"
+        },
+        "openingHoursSpecification": [{
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+            "opens": "10:00",
+            "closes": "18:00"
+        }]
+    }
+    </script>
 </head>
 <body>
-    <header class="top-nav">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="top-nav" data-header>
         <div class="container nav-inner">
-            <div class="brand">
+            <a class="brand" href="#about" aria-label="Dale's Auto Body, back to top">
                 <div class="brand-text">
                     <p class="eyebrow">Family owned since 1975</p>
                     <p class="brand-name">DALE'S AUTO BODY</p>
                     <p class="brand-sub">Kansas City, KS</p>
                 </div>
-            </div>
+            </a>
             <nav class="nav-links" aria-label="Main navigation">
                 <a href="#about">About</a>
                 <a href="#services">Services</a>
@@ -29,15 +65,15 @@
         </div>
     </header>
 
-    <main>
+    <main id="main">
         <section class="hero" id="about">
             <div class="container hero-grid">
-                <div class="hero-copy">
+                <div class="hero-copy reveal">
                     <p class="eyebrow">1310 State Avenue, Kansas City, KS • Est. 1975</p>
                     <h1>Honest auto body care since 1975.</h1>
                     <p class="lede">Dale straightens metal, lays down clean paint, and keeps KC cars moving.</p>
                     <div class="cta-row">
-                        <a class="btn solid" href="tel:913-371-6654">Call (913) 371-6654</a>
+                        <a class="btn solid" href="tel:+19133716654">Call (913) 371-6654</a>
                         <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
                     </div>
                     <div class="hero-tags">
@@ -46,53 +82,59 @@
                         <span>Upholstery + interiors</span>
                     </div>
                 </div>
-                <div class="hero-showcase hero-slider">
-                    <button class="hero-arrow" data-hero-prev aria-label="Previous photo">‹</button>
-                    <div class="hero-photo">
-                        <img src="images/Screenshot 2025-12-09 at 10.21.36 PM.png" alt="Auto body work at Dale's shop" data-hero-img>
+                <div class="hero-showcase hero-slider reveal" data-slider aria-roledescription="carousel" aria-label="Photos of Dale's work">
+                    <button class="hero-arrow" type="button" data-hero-prev aria-label="Previous photo">‹</button>
+                    <div class="hero-photo" tabindex="0">
+                        <img src="images/work/shop-741.webp" alt="Dale's Auto Body shop on State Avenue" width="741" height="544" data-hero-img>
+                        <img alt="" aria-hidden="true" data-hero-next-img>
+                        <span class="hero-count" data-hero-count aria-live="polite">1 / 16</span>
                     </div>
-                    <button class="hero-arrow" data-hero-next aria-label="Next photo">›</button>
+                    <button class="hero-arrow" type="button" data-hero-next aria-label="Next photo">›</button>
                 </div>
             </div>
         </section>
 
         <section class="services" id="services">
             <div class="container">
-                <div class="section-header">
+                <div class="section-header reveal">
                     <p class="eyebrow">What we fix</p>
                     <h2>Collision, paint, and upholstery done right.</h2>
                     <p class="lede">Small shop focus with the tools to handle frame work, booth paint, and interior repair.</p>
                 </div>
                 <div class="service-grid">
-                    <article class="card">
-                        <h3>Collision & frame</h3>
+                    <article class="card reveal">
+                        <svg class="card-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M6 30l6-12h20l8 8h2a2 2 0 0 1 2 2v6H6z"/><circle cx="14" cy="34" r="4"/><circle cx="34" cy="34" r="4"/></svg>
+                        <h3>Collision &amp; frame</h3>
                         <p>Structural straightening, panel alignment, weld repair, and rust remediation that keeps you safe.</p>
                     </article>
-                    <article class="card">
-                        <h3>Paint & finish</h3>
+                    <article class="card reveal">
+                        <svg class="card-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M30 6h6v10h-6zM28 16h10v6H28zM33 22v6"/><path d="M33 28c-6 0-10 4-14 4s-7-2-11-2"/><path d="M8 38c4-3 8 1 12-2s8 1 12-2"/></svg>
+                        <h3>Paint &amp; finish</h3>
                         <p>Prep, primer, and booth work with careful color matching and clean tapelines.</p>
                     </article>
-                    <article class="card">
-                        <h3>Upholstery & trim</h3>
+                    <article class="card reveal">
+                        <svg class="card-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M8 30c0-10 6-16 16-16h8c6 0 8 4 8 8v8z"/><path d="M8 30h32v6H8z"/><path d="M16 14l4 16M24 14l2 16M32 14v16"/></svg>
+                        <h3>Upholstery &amp; trim</h3>
                         <p>Seat rebuilds, headliners, carpet kits, and dash refreshes stitched clean and tight.</p>
                     </article>
-                    <article class="card">
+                    <article class="card reveal">
+                        <svg class="card-icon" viewBox="0 0 48 48" aria-hidden="true"><path d="M12 6h18l8 8v28H12z"/><path d="M30 6v8h8M18 22h14M18 28h14M18 34h8"/></svg>
                         <h3>Insurance-friendly</h3>
                         <p>Estimates that speak insurance language without the dealership runaround.</p>
                     </article>
                 </div>
                 <div class="trust-grid">
-                    <article class="card">
+                    <article class="card reveal">
                         <p class="eyebrow">Trusted locally</p>
                         <h3>Owner on site</h3>
                         <p>Dale answers the phone, looks at the car, and signs off every job.</p>
                     </article>
-                    <article class="card">
+                    <article class="card reveal">
                         <p class="eyebrow">Quality first</p>
                         <h3>Checked under bright light</h3>
                         <p>Panels are inspected for straight lines and even clear before they leave.</p>
                     </article>
-                    <article class="card">
+                    <article class="card reveal">
                         <p class="eyebrow">Straight talk</p>
                         <h3>Clear estimates</h3>
                         <p>Plain language on parts, paint, and timeframes.</p>
@@ -103,24 +145,27 @@
 
         <section class="visit" id="visit">
             <div class="container visit-grid">
-                <div class="visit-card card">
+                <div class="visit-card card reveal">
                     <p class="eyebrow">Come by</p>
                     <h2>1310 State Avenue, Kansas City, KS</h2>
                     <p>Pull into the lot off State Avenue and step into the bay. Call ahead if you're towing.</p>
                     <div class="contact-list">
-                        <a href="tel:913-371-6654">Call (913) 371-6654</a>
+                        <a href="tel:+19133716654">Call (913) 371-6654</a>
                         <a href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
+                        <a href="https://www.google.com/maps/dir/?api=1&amp;destination=1310+State+Ave+Kansas+City+KS+66102" target="_blank" rel="noopener">Get directions ↗</a>
                         <span>Weekdays 10a – 6p • Weekends by appointment</span>
+                        <span class="today" data-today></span>
                     </div>
                 </div>
-                <div class="map">
-                    <iframe 
-                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&output=embed" 
-                        width="100%" 
-                        height="100%" 
-                        style="border:0;" 
-                        allowfullscreen="" 
-                        loading="lazy" 
+                <div class="map reveal">
+                    <iframe
+                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&output=embed"
+                        title="Map to Dale's Auto Body, 1310 State Avenue, Kansas City, KS"
+                        width="100%"
+                        height="100%"
+                        style="border:0;"
+                        allowfullscreen=""
+                        loading="lazy"
                         referrerpolicy="no-referrer-when-downgrade">
                     </iframe>
                 </div>
@@ -133,9 +178,10 @@
             <div>
                 <p class="eyebrow">Thank you, Kansas City</p>
                 <p>Independent since 1975—serving neighbors who keep us busy.</p>
+                <p class="fine">© <span data-year>2026</span> Dale's Auto Body · 1310 State Avenue, Kansas City, KS</p>
             </div>
             <div class="footer-cta">
-                <a class="btn solid" href="tel:913-371-6654">Call (913) 371-6654</a>
+                <a class="btn solid" href="tel:+19133716654">Call (913) 371-6654</a>
                 <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
             </div>
         </div>
