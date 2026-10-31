@@ -1211,25 +1211,68 @@
             });
         }
 
+        // A sword striper: a long dagger of squirrel hair bowed as it drags,
+        // loaded with gold toward a fine point, in a crimped ferrule on a slim
+        // lacquered handle. Drawn tip-first; the brush trails off to the right.
         function drawBrush(c, x, y, slope) {
-            contact(c, x + 17, y + 2, 26, 4, 0.25);
+            contact(c, x + 22, y + 2.5, 30, 3.5, 0.3);        // bristles on the panel
+            contact(c, x + 70, y + 9, 46, 5, 0.12);           // the handle, held off it
             tool(c, x, y, () => {
-                // Bristles and handle trail off to the right of the tip.
-                c.rotate(0.08 + Math.atan(slope));
+                c.rotate(Math.atan(slope) - 0.11);
                 c.scale(-1, 1);
-                const br = c.createLinearGradient(-70, 0, 0, 0);
-                br.addColorStop(0, '#2a1c0e'); br.addColorStop(0.7, '#5a3d1c'); br.addColorStop(1, '#d6a440');
-                c.fillStyle = br;
-                c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-30, -2, -70, -10); c.lineTo(-70, -2); c.quadraticCurveTo(-30, 2, 0, 0); c.fill();
-                c.fillStyle = steelGrad(c, 0, -14, 0, 4);
-                c.beginPath(); c.roundRect(-92, -14, 24, 12, 2); c.fill();
-                const wood = c.createLinearGradient(0, -14, 0, -4);
-                wood.addColorStop(0, '#c08a4a'); wood.addColorStop(1, '#6a4320');
-                c.fillStyle = wood;
-                c.beginPath(); c.moveTo(-92, -12); c.lineTo(-250, -30); c.lineTo(-252, -24); c.lineTo(-92, -4); c.closePath(); c.fill();
+                // Bristles: centerline bows down where they drag
+                const bow = (u) => Math.sin(Math.PI * u) * 3.2 * (1 - u * 0.4);
+                const half = (u) => 1.2 + 9 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 0.9 + 0.05)), 0.8) * (0.35 + 0.65 * u);
+                const L = 118;
+                c.beginPath();
+                for (let k = 0; k <= 24; k++) { const u = k / 24; c.lineTo(-u * L, bow(u) - half(u)); }
+                for (let k = 24; k >= 0; k--) { const u = k / 24; c.lineTo(-u * L, bow(u) + half(u)); }
+                c.closePath();
+                const hair = c.createLinearGradient(0, 0, -L, 0);
+                hair.addColorStop(0, '#e9bb55'); hair.addColorStop(0.18, '#c8962f');     // gold-loaded tip
+                hair.addColorStop(0.34, '#4a3216'); hair.addColorStop(0.7, '#2a1c0d'); hair.addColorStop(1, '#3b2915');
+                c.fillStyle = hair;
+                c.fill();
+                c.save();
+                c.clip();
+                // Individual hairs
+                for (let k = 0; k < 18; k++) {
+                    const o = (k / 17 - 0.5) * 2;
+                    c.strokeStyle = k % 3 ? 'rgba(10,6,2,0.35)' : 'rgba(255,220,160,0.18)';
+                    c.lineWidth = 0.7;
+                    c.beginPath();
+                    for (let j = 0; j <= 16; j++) { const u = j / 16; c.lineTo(-u * L, bow(u) + o * half(u) * 0.92); }
+                    c.stroke();
+                }
+                // Wet sheen along the top of the load
+                const sheen = c.createLinearGradient(0, -8, 0, 6);
+                sheen.addColorStop(0, 'rgba(255,245,215,0.45)'); sheen.addColorStop(0.35, 'rgba(255,245,215,0)');
+                c.fillStyle = sheen;
+                c.fillRect(-L, -12, L, 24);
+                c.restore();
+                // Ferrule: crimped metal with rings
+                const fx = -L - 2;
+                const fer = c.createLinearGradient(0, -10, 0, 12);
+                fer.addColorStop(0, '#f4f6f8'); fer.addColorStop(0.35, '#a7aeb6'); fer.addColorStop(0.7, '#5b6168'); fer.addColorStop(1, '#c4c9cf');
+                c.fillStyle = fer;
+                c.beginPath(); c.moveTo(fx + 4, -10.5); c.lineTo(fx - 34, -7.5); c.lineTo(fx - 34, 9.5); c.lineTo(fx + 4, 12.5); c.closePath(); c.fill();
+                c.strokeStyle = 'rgba(40,44,50,0.55)'; c.lineWidth = 1;
+                [-8, -20].forEach((d) => { c.beginPath(); c.moveTo(fx + d, -10 + d * -0.07); c.lineTo(fx + d, 12 + d * 0.07); c.stroke(); });
+                // Handle: slim, tapered, lacquered
+                const hx = fx - 34;
+                const hd = c.createLinearGradient(0, -7, 0, 9);
+                hd.addColorStop(0, '#9b2c22'); hd.addColorStop(0.3, '#d2513f'); hd.addColorStop(0.55, '#7a1d16'); hd.addColorStop(1, '#3d0d0a');
+                c.fillStyle = hd;
+                c.beginPath();
+                c.moveTo(hx, -7.2); c.bezierCurveTo(hx - 60, -6.4, hx - 150, -5.2, hx - 190, -4.6);
+                c.quadraticCurveTo(hx - 198, 1, hx - 190, 6.4);
+                c.bezierCurveTo(hx - 150, 7, hx - 60, 8.2, hx, 9.2); c.closePath(); c.fill();
+                c.strokeStyle = 'rgba(255,230,220,0.55)'; c.lineWidth = 1.2;
+                c.beginPath(); c.moveTo(hx - 4, -4.4); c.bezierCurveTo(hx - 60, -3.9, hx - 140, -3, hx - 184, -2.6); c.stroke();
             });
-            c.fillStyle = 'rgba(255,236,170,0.95)';
-            c.beginPath(); c.arc(x, y, 0.8, 0, Math.PI * 2); c.fill();
+            // A bead of wet gold right where the tip meets the line
+            c.fillStyle = 'rgba(255,226,150,0.95)';
+            c.beginPath(); c.arc(x, y, 0.9, 0, Math.PI * 2); c.fill();
         }
 
         function drawBuffer(c, x, y, t) {
