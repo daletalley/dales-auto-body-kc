@@ -1212,9 +1212,11 @@
         }
 
         function drawBrush(c, x, y, slope) {
-            contact(c, x - 17, y + 2, 26, 4, 0.25);
+            contact(c, x + 17, y + 2, 26, 4, 0.25);
             tool(c, x, y, () => {
-                c.rotate(-0.08 + Math.atan(slope));
+                // Bristles and handle trail off to the right of the tip.
+                c.rotate(0.08 + Math.atan(slope));
+                c.scale(-1, 1);
                 const br = c.createLinearGradient(-70, 0, 0, 0);
                 br.addColorStop(0, '#2a1c0e'); br.addColorStop(0.7, '#5a3d1c'); br.addColorStop(1, '#d6a440');
                 c.fillStyle = br;
@@ -1348,7 +1350,7 @@
                 const sp = stripeProgress(p);
                 const x = lerp(STRIPE_X0, STRIPE_X1, sp);
                 const off = (1 - outCubic(span(p, 0, 0.06))) + inCubic(span(p, 0.9, 1));
-                if (off < 1) drawBrush(c, x - off * 40, stripeY(x) - off * 70, (stripeY(x + 4) - stripeY(x - 4)) / 8);
+                if (off < 1) drawBrush(c, x + off * 40, stripeY(x) - off * 70, (stripeY(x + 4) - stripeY(x - 4)) / 8);
             }
             if (key === 'reveal') {
                 const b = buffer(p);
