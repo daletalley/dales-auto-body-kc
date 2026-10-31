@@ -1,42 +1,44 @@
 /*
- * The Craft: one dented door, start to finish.
+ * The Craft: a '75 Chevelle, one dented door, start to finish.
  *
- * A real-time render of the side of a car in the paint booth, framed between
- * the wheels. The car is procedural (signed distance fields in a WebGL
- * fragment shader), so every edge stays sharp when the camera moves in:
- * body panels with a crisp character line, door gaps, chrome handles, glass,
- * trim, tires and machined wheels, all lit by the booth's ceiling softboxes,
- * whose reflections run down the side of the car the way they do in real
- * paint photography.
+ * A real-time render of a 1975 Chevelle Malibu Colonnade coupe in the paint
+ * booth, in true proportions: long hood, short deck, the Coke-bottle
+ * beltline kicking up over the rear wheel, one long coupe door, frameless
+ * door glass, the thick Colonnade pillar and wedge quarter window, a black
+ * vinyl top, chrome bumpers, drip rail, wheel-opening and rocker moldings,
+ * a bullet mirror, side markers, Rally wheels on whitewalls. The car is
+ * procedural (distance fields in a WebGL fragment shader), so every edge
+ * stays sharp when the camera moves in, and it's lit by the booth's ceiling
+ * softboxes, whose reflections run down the body like real paint photography.
  *
- * The repair is a real collision job: the dent is hammered out, sanded to
- * bare metal (the featheredge "bullseye" painters know), filled and blocked,
- * masked off with paper and tape, primed, sprayed in a color matched to the
- * car, cleared, unmasked, and the pinstripe goes back on down the whole side
- * by hand. Coats are sprayed into coverage maps the shader reads every frame;
- * fresh paint is wet and flashes off; the buffer polishes where it travels.
- * Tools, sparks, dust, spray and masking paper are drawn on a 2D layer above
- * in the same camera, with contact shadows on the panel.
+ * The repair is a real collision job on the door: hammered out, sanded to a
+ * featheredge, filled and blocked, masked with paper and tape, primed,
+ * sprayed in a color matched to the car, cleared, unmasked, and the
+ * pinstripe goes back on down the whole side by hand. Coats are sprayed into
+ * high-resolution coverage maps around the door; fresh paint is wet and
+ * flashes off; the buffer polishes where it travels. Tools, sparks, dust,
+ * spray and masking paper are drawn on a 2D layer in the same camera, at
+ * real-world size, with contact shadows on the panel.
  *
- * The car's color is the site's current Finish (--paint), live. The film
- * renders at 30fps and only while on screen. Reduced motion shows the
- * finished car, paused.
+ * The car's color is the site's current Finish (--paint), live. 30fps, only
+ * while on screen. Reduced motion shows the finished car, paused.
  */
 (() => {
     'use strict';
 
     const VW = 1280, VH = 720, FLOOR = 690;
-    const COV = 0.5;
+    // Repair maps cover only the area around the door, at 2x scene resolution.
+    const REGION = { x: 430, y: 470, w: 400, h: 200, k: 2 };
     const STAGES = [
-        { key: 'damage',     label: 'Damage',       caption: 'One door, one bad day.',                      dur: 3200 },
+        { key: 'damage',     label: 'Damage',       caption: 'A ’75 Chevelle. One door, one bad day.',     dur: 4200 },
         { key: 'straighten', label: 'Straighten',   caption: 'Metal worked back to its true shape.',        dur: 3400 },
         { key: 'sand',       label: 'Sand',         caption: 'Feathered out to bare metal.',                dur: 3400 },
         { key: 'fill',       label: 'Fill & block', caption: 'A skim of filler, blocked flat by hand.',     dur: 3800 },
         { key: 'prime',      label: 'Mask & prime', caption: 'Masked off, primed and sealed.',              dur: 3800 },
         { key: 'color',      label: 'Color match',  caption: 'Tinted to match the car, not the chip.',      dur: 3800 },
         { key: 'clear',      label: 'Clear',        caption: 'Clear coat, then the paper comes off.',       dur: 3600 },
-        { key: 'stripe',     label: 'Pinstripe',    caption: 'The line goes back on, end to end, by hand.', dur: 4200 },
-        { key: 'reveal',     label: 'Showroom',     caption: 'You’d never know.',                           dur: 6200 },
+        { key: 'stripe',     label: 'Pinstripe',    caption: 'The line goes back on, end to end, by hand.', dur: 4600 },
+        { key: 'reveal',     label: 'Showroom',     caption: 'You’d never know.',                           dur: 6600 },
     ];
     const STARTS = STAGES.reduce((a, s, i) => (a.push(i ? a[i - 1] + STAGES[i - 1].dur : 0), a), []);
     const TOTAL = STARTS[STARTS.length - 1] + STAGES[STAGES.length - 1].dur;
@@ -58,12 +60,17 @@
     }
     const drift = (t, s) => Math.sin(t * 0.31 + s) * 0.6 + Math.sin(t * 0.83 + s * 2.1) * 0.3 + Math.sin(t * 1.9 + s * 3.7) * 0.1;
 
-    // The car's geometry (scene px, y down). The shader mirrors these.
-    const beltY = (x) => 304 - 0.012 * (x - 640);
-    const charY = (x) => 376 - 0.018 * (x - 640);
-    const DOOR = { x0: 332, x1: 638, y1: 548 };
-    const DENT = { x: 470, y: 438 };
-    const STRIPE_OFF = [16, 22];
+    // ---- The Chevelle's side profile (scene px, y down, nose to the left) ----
+    // Kept in step with the same functions in the shader.
+    const hoodY = (x) => 516 - 5 * sstep(80, 440, x);
+    const beltY = (x) => 510 - 13 * sstep(760, 960, x);
+    const deckY = (x) => 497 + (x - 1030) * 0.03;
+    const topY = (x) => (x < 440 ? hoodY(x) : x > 1030 ? deckY(x) : beltY(x));
+    const stripeY = (x) => topY(x) + 13;
+    const DOOR = { x0: 470, x1: 762, y1: 648 };
+    const DENT = { x: 612, y: 592 };
+    const TS = 0.42;                       // tool scale: real-world size next to the car
+    const STRIPE_X0 = 96, STRIPE_X1 = 1222;
 
     function cssPaint() {
         const v = getComputedStyle(document.documentElement).getPropertyValue('--paint').trim();
@@ -73,19 +80,18 @@
         return [(n >> 16) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
     }
 
-    // Spray passes over a box, with soft wrist arcs at the turnarounds.
     function gunPath(p, box, passes) {
         const q = clamp(p) * passes;
         const pass = Math.min(passes - 1, Math.floor(q));
         const f = q - pass;
         const dir = pass % 2 ? -1 : 1;
-        const x0 = box.x0 - 70, x1 = box.x1 + 70;
+        const x0 = box.x0 - 34, x1 = box.x1 + 34;
         const k = inOut(f);
         const x = dir > 0 ? lerp(x0, x1, k) : lerp(x1, x0, k);
         const yA = box.y0 + (pass / Math.max(1, passes - 1)) * (box.y1 - box.y0);
         const yB = box.y0 + (Math.min(pass + 1, passes - 1) / Math.max(1, passes - 1)) * (box.y1 - box.y0);
-        const y = lerp(yA, yB, sstep(0.86, 1, f)) - Math.sin(f * Math.PI) * 5;
-        return { x, y, dir, on: x > box.x0 - 30 && x < box.x1 + 30 };
+        const y = lerp(yA, yB, sstep(0.86, 1, f)) - Math.sin(f * Math.PI) * 2;
+        return { x, y, dir, on: x > box.x0 - 14 && x < box.x1 + 14 };
     }
 
     const VERT = 'attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
@@ -95,26 +101,31 @@
         float noise(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);
             return mix(mix(hash(i),hash(i+vec2(1,0)),u.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),u.x),u.y);}
         float fbm(vec2 p){float s=0.,a=.5;for(int i=0;i<4;i++){s+=a*noise(p);p*=2.03;a*=.5;}return s;}
+        float sdBox(vec2 p, vec2 b, float r){vec2 q=abs(p)-b+r;return length(max(q,0.))+min(max(q.x,q.y),0.)-r;}
     `;
 
     const SCENE_FRAG = COMMON + `
         uniform vec2 uRes; uniform vec3 uView; uniform float uTime;
-        uniform sampler2D uSand, uFiller, uPrime, uBase, uWet, uPolish, uStripe;
+        uniform sampler2D uSand, uFiller, uPrime, uBase, uWet, uPolish;
         uniform vec3 uDent;
         uniform vec4 uImpact;
         uniform vec3 uCarCol;
-        uniform float uScratch, uClearDoor, uClearRough, uPeel, uEnvShift, uExposure;
+        uniform float uScratch, uClearDoor, uClearRough, uPeel, uEnvShift, uExposure, uStripeX;
         uniform vec3 uBars;
-        const vec2 SCENE = vec2(1280., 720.);
         const float FLOOR = 690.;
-        const vec2 WF = vec2(150., 572.);
-        const vec2 WR = vec2(1140., 572.);
+        const vec2 WF = vec2(300., 613.);
+        const vec2 WR = vec2(940., 613.);
+        const vec2 RO = vec2(430., 470.);
+        const vec2 RS = vec2(400., 200.);
 
-        float beltY(float x) { return 304.0 - 0.012 * (x - 640.0); }
-        float charY(float x) { return 376.0 - 0.018 * (x - 640.0); }
-        float roofY(float x) { float t = (x - 690.0) / 430.0; return 166.0 + t * t * 74.0; }
+        float hoodY(float x) { return 516.0 - 5.0 * smoothstep(80.0, 440.0, x); }
+        float beltY(float x) { return 510.0 - 13.0 * smoothstep(760.0, 960.0, x); }
+        float deckY(float x) { return 497.0 + (x - 1030.0) * 0.03; }
+        float topY(float x) { return x < 440.0 ? hoodY(x) : (x > 1030.0 ? deckY(x) : beltY(x)); }
+        float charY(float x) { return 566.0 - 8.0 * smoothstep(780.0, 940.0, x); }
+        float botY(float x) { return 648.0 - 8.0 * (smoothstep(380.0, 150.0, x) + smoothstep(1030.0, 1210.0, x)); }
+        float roofY(float x) { float t = (x - 770.0) / 260.0; return 392.0 + t * t * 22.0; }
 
-        // The booth as seen in a reflection direction R (y down).
         vec3 env(vec3 R, float rough) {
             float w = 0.012 + rough * 0.55;
             float peak = 1.0 / (1.0 + rough * 16.0);
@@ -131,7 +142,6 @@
             float sx = R.x + uEnvShift * 0.35;
             c += vec3(0.82, 0.88, 1.0) * 3.0 * peak * smoothstep(0.80 - w, 0.80 + w, sx) * (1.0 - smoothstep(0.92 - w, 0.92 + w, sx)) * smoothstep(-0.5, 0.25, up);
             c += vec3(1.0, 0.88, 0.76) * 1.2 * peak * smoothstep(-0.95 - w, -0.95 + w, R.x) * (1.0 - smoothstep(-0.87 - w, -0.87 + w, R.x)) * smoothstep(-0.3, 0.4, up);
-            // A long low strip light gives the lower body its line.
             c += vec3(0.9, 0.92, 1.0) * 1.6 * peak * (1.0 - smoothstep(0.0, 0.06 + w, abs(up + 0.28))) * smoothstep(0.9, 0.3, abs(R.x));
             c = mix(c, vec3(0.008), smoothstep(-0.05, -0.45, up) * 0.75);
             return c;
@@ -149,18 +159,22 @@
             float Fc = 0.04 + 0.96 * pow(1.0 - NdV, 5.0);
             return c * (1.0 - Fc * clear) + env(R, clearRough) * Fc * clear;
         }
+        vec3 chrome(vec3 N, float lit) { return shade(N, vec3(0.92), 1.0, 0.04, 0.0, 0.02, lit); }
 
         vec3 booth(vec2 p, float lit) {
             vec3 c;
             if (p.y < FLOOR) {
-                c = mix(vec3(0.032, 0.03, 0.036), vec3(0.011, 0.010, 0.013), smoothstep(30.0, FLOOR, p.y)) * (0.35 + 0.65 * lit);
+                c = mix(vec3(0.032, 0.03, 0.036), vec3(0.011, 0.010, 0.013), smoothstep(240.0, FLOOR, p.y)) * (0.35 + 0.65 * lit);
                 float seam = smoothstep(1.4, 0.0, abs(mod(p.x + 80.0, 160.0) - 80.0) - 78.6);
                 c += vec3(0.012) * seam * lit;
                 for (int i = 0; i < 3; i++) {
                     float fi = float(i);
                     float k = i == 0 ? uBars.x : (i == 1 ? uBars.y : uBars.z);
-                    vec2 q = (p - vec2(300.0 + fi * 340.0, 40.0)) / vec2(280.0, 260.0);
-                    c += vec3(0.055, 0.053, 0.05) * k * exp(-dot(q, q) * 1.6);
+                    float x0 = 300.0 + fi * 340.0;
+                    vec2 q = (p - vec2(x0, 250.0)) / vec2(300.0, 230.0);
+                    c += vec3(0.05, 0.048, 0.046) * k * exp(-dot(q, q) * 1.6);
+                    float fx = step(abs(p.x - x0), 110.0) * step(abs(p.y - 236.0), 4.0);
+                    c += vec3(1.5, 1.46, 1.4) * fx * k;
                 }
             } else {
                 float z = (p.y - FLOOR) / 120.0;
@@ -168,10 +182,44 @@
                 float gx = abs(fract((p.x - 640.0) / (60.0 + z * 160.0)) - 0.5);
                 float gy = abs(fract(pow(max(z, 0.0), 0.62) * 9.0) - 0.5);
                 c += vec3(0.010) * (smoothstep(0.47, 0.5, gx) + smoothstep(0.45, 0.5, gy)) * lit;
-                vec2 sh = (p - vec2(645.0, FLOOR + 4.0)) / vec2(620.0, 22.0);
-                c *= 1.0 - 0.75 * exp(-dot(sh, sh) * 1.4);
+                vec2 sh = (p - vec2(650.0, FLOOR + 3.0)) / vec2(600.0, 16.0);
+                c *= 1.0 - 0.8 * exp(-dot(sh, sh) * 1.4);
+                for (int i = 0; i < 2; i++) {
+                    vec2 tq = (p - vec2(i == 0 ? 300.0 : 940.0, FLOOR + 1.0)) / vec2(70.0, 6.0);
+                    c *= 1.0 - 0.6 * exp(-dot(tq, tq));
+                }
             }
             return c;
+        }
+
+        float region(sampler2D s, vec2 p) {
+            vec2 q = (p - RO) / RS;
+            if (q.x < 0.0 || q.x > 1.0 || q.y < 0.0 || q.y > 1.0) return 0.0;
+            return texture2D(s, q).a;
+        }
+
+        vec3 wheel(vec2 wq, float wr, float aa, float lit) {
+            float a = atan(wq.y, wq.x);
+            vec3 Nt = normalize(vec3(wq / 77.0 * 0.55, 1.0));
+            vec3 tire = shade(Nt, vec3(0.022), 0.0, 0.6, 0.0, 0.1, lit) * (0.6 + 0.4 * smoothstep(77.0, 60.0, wr));
+            float ww = smoothstep(59.0 - aa, 59.0 + aa, wr) * (1.0 - smoothstep(66.0 - aa, 66.0 + aa, wr));
+            tire = mix(tire, shade(Nt, vec3(0.82, 0.8, 0.76), 0.0, 0.5, 0.0, 0.1, lit), ww);
+            float rimM = 1.0 - smoothstep(52.0 - aa, 52.0 + aa, wr);
+            float ring = smoothstep(43.0, 44.0, wr);
+            vec3 Nr = normalize(vec3(wq / 52.0 * 0.8 * ring, 1.0));
+            vec3 face = shade(normalize(vec3(wq / 44.0 * 0.25, 1.0)), vec3(0.42, 0.43, 0.45), 0.7, 0.3, 0.3, 0.05, lit);
+            float slot = smoothstep(0.80, 0.86, cos(5.0 * (a + 0.2))) * smoothstep(26.0, 28.0, wr) * (1.0 - smoothstep(37.0, 39.0, wr));
+            face = mix(face, vec3(0.01), slot);
+            float lug = 0.0;
+            for (int i = 0; i < 5; i++) {
+                float la = float(i) * 1.2566 + 0.83;
+                lug = max(lug, 1.0 - smoothstep(2.0, 3.0, length(wq - vec2(cos(la), sin(la)) * 21.0)));
+            }
+            float cap = 1.0 - smoothstep(15.0 - aa, 15.0 + aa, wr);
+            vec3 w = mix(face, chrome(Nr, lit), ring);
+            w = mix(w, chrome(normalize(vec3(0.0, -0.3, 1.0)), lit), lug);
+            w = mix(w, chrome(normalize(vec3(wq / 15.0 * 0.7, 1.0)), lit), cap);
+            return mix(tire, w, rimM);
         }
 
         void main() {
@@ -180,171 +228,174 @@
             float aa = 1.2 / uView.x;
             float lit = (uBars.x + uBars.y + uBars.z) / 3.0;
             vec3 col = booth(p, lit);
-            vec2 uv = p / SCENE;
-            vec3 carCol = uCarCol;
+            vec3 paint = pow(uCarCol, vec3(1.35));
 
-            float belt = beltY(p.x);
-            float crease = charY(p.x);
+            float top = topY(p.x);
+            float bot = botY(p.x);
             float roof = roofY(p.x);
 
-            // Wheels and arches
-            vec2 wc = p.x < 645.0 ? WF : WR;
+            vec2 wc = p.x < 620.0 ? WF : WR;
             vec2 wq = p - wc;
             float wr = length(wq);
-            float tireM = 1.0 - smoothstep(116.0 - aa, 116.0 + aa, wr);
-            vec2 ac = vec2(wc.x, wc.y - 6.0);
+            float tireM = 1.0 - smoothstep(77.0 - aa, 77.0 + aa, wr);
+            vec2 ac = wc - vec2(0.0, 7.0);
             float archR = length(p - ac);
-            float inArch = (1.0 - smoothstep(138.0 - aa, 138.0 + aa, archR)) * step(p.y, 566.0 + 140.0);
+            float inArch = 1.0 - smoothstep(92.0 - aa, 92.0 + aa, archR);
 
-            // Greenhouse: glass, pillars, frames
-            float aBase = 252.0, aTopX = 430.0, cBase = 1092.0, cTopX = 930.0;
-            float yA0 = beltY(aBase), yA1 = roofY(aTopX), yC0 = beltY(cBase), yC1 = roofY(cTopX);
-            float xA = mix(aBase, aTopX, clamp((yA0 - p.y) / (yA0 - yA1), 0.0, 1.0));
-            float xC = mix(cBase, cTopX, clamp((yC0 - p.y) / (yC0 - yC1), 0.0, 1.0));
-            float gd = min(min(p.y - roof, belt - p.y), min((p.x - xA) * 0.72, (xC - p.x) * 0.76));
-            float green = smoothstep(-aa, aa, gd);
+            float xA = mix(440.0, 642.0, clamp((510.0 - p.y) / 112.7, 0.0, 1.0));
+            float xC = mix(1030.0, 902.0, clamp((497.0 - p.y) / 99.3, 0.0, 1.0));
+            float gd = min(min(p.y - roof, top - p.y), min((p.x - xA) * 0.66, (xC - p.x) * 0.77));
+            float green = smoothstep(-aa, aa, gd) * step(440.0, p.x) * step(p.x, 1030.0);
 
-            // Body side
-            float body = smoothstep(belt - aa, belt + aa, p.y) * (1.0 - smoothstep(566.0 - aa, 566.0 + aa, p.y)) * (1.0 - inArch);
-            float car = max(body, green);
+            float nose = 72.0 + (p.y - 516.0) * 0.06;
+            float tail = 1232.0 - (p.y - 497.0) * 0.04;
+            float body = smoothstep(top - aa, top + aa, p.y) * (1.0 - smoothstep(bot - aa, bot + aa, p.y))
+                       * smoothstep(nose - aa, nose + aa, p.x) * (1.0 - smoothstep(tail - aa, tail + aa, p.x))
+                       * (1.0 - inArch);
+
+            float fb = sdBox(p - vec2(80.0, 594.0), vec2(26.0, 15.0), 8.0);
+            float rb = sdBox(p - vec2(1238.0, 586.0), vec2(26.0, 14.0), 8.0);
+            float bump = 1.0 - smoothstep(-aa, aa, min(fb, rb));
+
+            float car = max(max(body, green), bump);
 
             if (car > 0.002 || tireM > 0.002 || inArch > 0.002) {
-                vec3 c = vec3(0.006) * (1.0 - smoothstep(60.0, 138.0, archR) * 0.5);   // wheel well
-                if (tireM > 0.0) {
-                    float a = atan(wq.y, wq.x);
-                    vec3 Nt = normalize(vec3(wq / 116.0 * 0.55, 1.0));
-                    vec3 tire = shade(Nt, vec3(0.025), 0.0, 0.62, 0.0, 0.1, lit) * (0.6 + 0.4 * smoothstep(116.0, 92.0, wr));
-                    // Sidewall lettering ring, just a hint
-                    tire += vec3(0.02) * smoothstep(1.2, 0.0, abs(wr - 100.0)) * step(0.3, fract(a * 6.0));
-                    float rimM = 1.0 - smoothstep(78.0 - aa, 78.0 + aa, wr);
-                    float spoke = smoothstep(0.55, 0.62, cos(5.0 * (a + 0.3)) * 0.5 + 0.5 + (1.0 - wr / 78.0) * 0.4);
-                    float lip = smoothstep(70.0, 72.0, wr) * rimM;
-                    float face = max(spoke * smoothstep(74.0, 70.0, wr) * smoothstep(20.0, 26.0, wr), max(lip, 1.0 - smoothstep(24.0, 26.0, wr)));
-                    vec3 Nr = normalize(vec3(wq / 78.0 * 0.9 * (lip + 0.25), 1.0));
-                    vec3 rim = shade(Nr, vec3(0.80, 0.81, 0.83), 1.0, mix(0.22, 0.12, lip), 0.6, 0.03, lit);
-                    vec3 wheel = mix(tire, mix(vec3(0.012), rim, face), rimM);
-                    c = mix(c, wheel, tireM);
-                }
+                vec3 c = vec3(0.005) * (1.0 - smoothstep(40.0, 92.0, archR) * 0.5);
+                if (tireM > 0.0) c = mix(c, wheel(wq, wr, aa, lit), tireM);
 
                 if (car > 0.0) {
                     vec3 bc;
-                    if (green > 0.5) {
-                        float bp = 1.0 - smoothstep(9.0, 11.0, abs(p.x - 648.0));
-                        float trim = max(1.0 - smoothstep(11.0, 13.0, gd), bp);
-                        vec3 Ng = normalize(vec3(0.03 + (p.x - 640.0) / 4000.0, -0.17 - 0.12 * smoothstep(80.0, 0.0, gd), 1.0));
-                        vec3 glass = shade(Ng, vec3(0.012, 0.014, 0.016), 0.0, 0.03, 1.0, 0.02, lit);
-                        glass += vec3(0.01, 0.011, 0.012) * smoothstep(0.0, 120.0, gd);
-                        vec3 black = shade(normalize(vec3(0.0, -0.25, 1.0)), vec3(0.01), 0.0, 0.08, 1.0, 0.03, lit);
-                        bc = mix(glass, black, trim);
+                    if (bump > 0.5) {
+                        float by = p.x < 640.0 ? 594.0 : 586.0;
+                        vec3 Nb = normalize(vec3(p.x < 640.0 ? -0.25 : 0.25, clamp((p.y - by) / 15.0, -1.0, 1.0) * 0.95, 1.0));
+                        bc = chrome(Nb, lit) * (0.6 + 0.4 * smoothstep(0.0, 2.0, abs(p.y - by - 4.0)));
+                    } else if (green > 0.5) {
+                        float xQ = mix(974.0, 902.0, clamp((500.0 - p.y) / 95.0, 0.0, 1.0));
+                        float dg = min(gd - 8.0, 759.0 - p.x);
+                        float qg = min(min(gd - 8.0, p.x - 784.0), xQ - p.x);
+                        float wd = max(dg, qg);
+                        float glassM = smoothstep(-aa, aa, wd);
+                        float chromeM = smoothstep(-3.6 - aa, -3.6 + aa, wd) * (1.0 - glassM);
+                        float drip = (1.0 - smoothstep(2.4 - aa, 2.4 + aa, p.y - roof)) * step(630.0, p.x) * step(p.x, 930.0);
+                        vec3 Ng = normalize(vec3((p.x - 700.0) / 3000.0, -0.11 - 0.08 * smoothstep(60.0, 0.0, gd), 1.0));
+                        vec3 glass = shade(Ng, vec3(0.012, 0.014, 0.016), 0.0, 0.03, 1.0, 0.02, lit) + vec3(0.008) * smoothstep(0.0, 60.0, wd);
+                        float grain = noise(p * 2.3) * 0.5 + noise(p * 6.1) * 0.5;
+                        vec3 Nv = normalize(vec3((grain - 0.5) * 0.25, -0.3 + (grain - 0.5) * 0.25, 1.0));
+                        vec3 vinyl = shade(Nv, vec3(0.018), 0.0, 0.55, 0.0, 0.1, lit);
+                        bc = mix(vinyl, glass, glassM);
+                        bc = mix(bc, chrome(normalize(vec3(0.0, wd < -1.8 ? -0.5 : 0.4, 1.0)), lit), max(chromeM, drip));
                     } else {
-                        // Tumblehome above the character line, tuck-under below it.
-                        float above = smoothstep(crease + 1.6, crease - 1.6, p.y);
-                        float tUp = clamp((crease - p.y) / max(crease - belt, 1.0), 0.0, 1.0);
-                        float tDn = clamp((p.y - crease) / (566.0 - crease), 0.0, 1.0);
-                        float ny = mix(0.04 + 0.62 * tDn * tDn - 0.08 * exp(-tDn * 18.0), -0.10 - 0.16 * tUp * tUp, above);
-                        float nx = (p.x - 640.0) / 2600.0;
-                        ny -= 0.6 * smoothstep(belt + 7.0, belt, p.y);
-                        ny += 0.55 * smoothstep(552.0, 566.0, p.y);
-                        vec3 N = vec3(nx, ny, 1.0);
-                        // Arch lips flare out
-                        N.xy += normalize(p - ac) * 0.55 * smoothstep(26.0, 0.0, archR - 138.0);
-                        // Panel edges roll into the shut lines
-                        float g1 = p.x - 332.0, g2 = p.x - 638.0, g3 = p.x - 932.0;
-                        float gn = abs(g1) < abs(g2) ? (abs(g1) < abs(g3) ? g1 : g3) : (abs(g2) < abs(g3) ? g2 : g3);
-                        float gap = abs(gn);
-                        N.x += 0.7 * smoothstep(5.0, 0.6, gap) * sign(gn);
+                        float crease = charY(p.x);
+                        float above = smoothstep(crease + 1.4, crease - 1.4, p.y);
+                        float tUp = clamp((crease - p.y) / max(crease - top, 1.0), 0.0, 1.0);
+                        float tDn = clamp((p.y - crease) / max(bot - crease, 1.0), 0.0, 1.0);
+                        float ny = mix(0.04 + 0.6 * tDn * tDn - 0.08 * exp(-tDn * 16.0), -0.08 - 0.16 * tUp * tUp, above);
+                        ny -= 0.62 * smoothstep(top + 5.0, top, p.y);
+                        ny += 0.5 * smoothstep(bot - 8.0, bot, p.y);
+                        vec3 N = vec3((p.x - 650.0) / 3000.0, ny, 1.0);
+                        // Coke-bottle hips: the body swells over each wheel
+                        vec2 hq = (p - vec2(940.0, 540.0)) / vec2(1.35, 1.0);
+                        N.xy += normalize(hq) * 0.22 * smoothstep(250.0, 140.0, length(hq)) * smoothstep(92.0, 130.0, archR);
+                        vec2 fq = (p - vec2(300.0, 548.0)) / vec2(1.3, 1.0);
+                        N.xy += normalize(fq) * 0.14 * smoothstep(210.0, 120.0, length(fq)) * smoothstep(92.0, 120.0, archR);
+                        N.xy += normalize(p - ac) * 0.5 * smoothstep(14.0, 0.0, archR - 92.0);
+                        N.x -= 0.9 * smoothstep(nose + 26.0, nose, p.x);
+                        N.x += 0.9 * smoothstep(tail - 22.0, tail, p.x);
+                        float g1 = p.x - 470.0, g2 = p.x - 762.0;
+                        float gn = abs(g1) < abs(g2) ? g1 : g2;
+                        float gap = abs(gn) + step(p.y, top + 1.0) * 10.0;
+                        N.x += 0.7 * smoothstep(4.0, 0.5, gap) * sign(gn);
 
-                        // Dent, creases, and the ripple from each hammer blow
-                        vec2 dd = (p - uDent.xy) / vec2(46.0, 34.0);
+                        vec2 dd = (p - uDent.xy) / vec2(22.0, 15.0);
                         float g = exp(-dot(dd, dd));
-                        N.xy += uDent.z * (2.0 * dd / vec2(46.0, 34.0) * g * 13.0 + vec2(fbm(p * 0.12) - 0.5, 0.5 - fbm(p * 0.12 + 3.0)) * g * 0.8);
+                        N.xy += uDent.z * (2.0 * dd / vec2(22.0, 15.0) * g * 3.8 + vec2(fbm(p * 0.25) - 0.5, 0.5 - fbm(p * 0.25 + 3.0)) * g * 0.8);
                         if (uImpact.z >= 0.0 && uImpact.z < 1.4) {
                             vec2 rp = p - uImpact.xy;
                             float r = length(rp);
-                            float fr = uImpact.z * 360.0;
-                            float wv = sin((r - fr) * 0.17) * exp(-uImpact.z * 3.4) * exp(-abs(r - fr) * 0.02);
+                            float fr = uImpact.z * 170.0;
+                            float wv = sin((r - fr) * 0.36) * exp(-uImpact.z * 3.4) * exp(-abs(r - fr) * 0.045);
                             N.xy += rp / (r + 1.0) * wv * 0.3 * uImpact.w;
                         }
 
-                        float sand = texture2D(uSand, uv).a;
-                        float fil = texture2D(uFiller, uv).a;
-                        float pr = texture2D(uPrime, uv).a;
-                        float bs = texture2D(uBase, uv).a;
-                        float wet = texture2D(uWet, uv).a;
-                        float pol = texture2D(uPolish, uv).a;
-                        float onDoor = step(332.0, p.x) * step(p.x, 638.0);
+                        float sand = region(uSand, p);
+                        float fil = region(uFiller, p);
+                        float pr = region(uPrime, p);
+                        float bs = region(uBase, p);
+                        float wet = region(uWet, p);
+                        float pol = region(uPolish, p);
+                        float onDoor = step(470.0, p.x) * step(p.x, 762.0);
 
-                        N.xy += (vec2(noise(p * 0.8), noise(p * 0.8 + 7.3)) - 0.5) * uPeel * bs * onDoor * (1.0 - pol);
-                        float swirl = sin(length(p - uDent.xy) * 1.7 + noise(p * 0.3) * 6.0) * 0.5 + 0.5;
+                        N.xy += (vec2(noise(p * 1.6), noise(p * 1.6 + 7.3)) - 0.5) * uPeel * bs * onDoor * (1.0 - pol);
+                        float swirl = sin(length(p - uDent.xy) * 3.5 + noise(p * 0.6) * 6.0) * 0.5 + 0.5;
                         float bare = smoothstep(0.6, 0.78, sand);
                         N.xy += vec2(swirl - 0.5) * 0.08 * bare * (1.0 - max(fil, max(pr, bs)));
                         N = normalize(N);
 
-                        // Original paint, with the old pinstripe
-                        vec3 alb = pow(carCol, vec3(1.35));
+                        vec3 alb = paint;
                         float metal = 0.3, rough = 0.3, clear = 1.0;
-                        float s1 = 1.0 - smoothstep(0.9 - aa, 0.9 + aa, abs(p.y - (crease + 16.0)));
-                        float s2 = 1.0 - smoothstep(0.55 - aa, 0.55 + aa, abs(p.y - (crease + 22.0)));
-                        float oldStripe = max(s1, s2) * smoothstep(1.0, 4.0, gap);
-                        alb = mix(alb, vec3(0.86, 0.66, 0.30), oldStripe); metal = mix(metal, 0.6, oldStripe);
+                        float sy1 = top + 13.0, sy2 = top + 18.0;
+                        float stripeRun = step(96.0, p.x) * step(p.x, 1222.0) * smoothstep(1.0, 3.5, gap);
+                        float lines = max(1.0 - smoothstep(0.75 - aa, 0.75 + aa, abs(p.y - sy1)), 1.0 - smoothstep(0.45 - aa, 0.45 + aa, abs(p.y - sy2))) * stripeRun;
+                        alb = mix(alb, vec3(0.86, 0.66, 0.30), lines); metal = mix(metal, 0.6, lines);
 
-                        // Scrapes: paint gouged through to primer
                         vec2 sq = p - uDent.xy;
-                        float scr = smoothstep(0.82, 0.95, noise(vec2(sq.x * 0.02 + sq.y * 0.12, sq.y * 0.9 - sq.x * 0.08)));
-                        scr *= smoothstep(120.0, 30.0, length(sq * vec2(0.7, 1.4))) * uScratch;
+                        float scr = smoothstep(0.82, 0.95, noise(vec2(sq.x * 0.05 + sq.y * 0.25, sq.y * 1.9 - sq.x * 0.16)));
+                        scr *= smoothstep(56.0, 12.0, length(sq * vec2(0.7, 1.4))) * uScratch;
                         alb = mix(alb, vec3(0.62, 0.62, 0.6), scr); rough = mix(rough, 0.7, scr); clear *= 1.0 - scr;
 
-                        // Featheredge: scuffed paint, then old primer, then bare steel
                         float scuff = smoothstep(0.06, 0.24, sand);
                         float ring = smoothstep(0.34, 0.5, sand);
                         rough = mix(rough, 0.62, scuff); clear *= 1.0 - scuff;
                         alb = mix(alb, vec3(0.56, 0.56, 0.55), ring * 0.85); metal = mix(metal, 0.0, ring);
                         alb = mix(alb, vec3(0.60, 0.62, 0.65) * (0.85 + 0.25 * swirl), bare); metal = mix(metal, 1.0, bare); rough = mix(rough, 0.42, bare);
 
-                        alb = mix(alb, vec3(0.80, 0.72, 0.62) * (0.94 + 0.1 * noise(p * 0.9)), fil);
+                        alb = mix(alb, vec3(0.80, 0.72, 0.62) * (0.94 + 0.1 * noise(p * 1.8)), fil);
                         metal = mix(metal, 0.0, fil); rough = mix(rough, 0.8, fil);
 
                         alb = mix(alb, vec3(0.30, 0.31, 0.33), pr); metal = mix(metal, 0.0, pr); rough = mix(rough, mix(0.72, 0.18, wet), pr);
-                        alb = mix(alb, pow(carCol, vec3(1.35)), bs); metal = mix(metal, 0.3, bs); rough = mix(rough, mix(0.38, 0.16, wet), bs);
+                        alb = mix(alb, paint, bs); metal = mix(metal, 0.3, bs); rough = mix(rough, mix(0.38, 0.16, wet), bs);
                         float newClear = uClearDoor * bs * onDoor;
                         clear = max(clear * (1.0 - max(pr, bs) * onDoor), newClear);
                         float cr = mix(0.02, mix(uClearRough, 0.016, pol), newClear);
 
-                        vec4 sp = texture2D(uStripe, uv);
-                        alb = mix(alb, sp.rgb, sp.a); metal = mix(metal, 0.6, sp.a);
+                        // The new pinstripe, laid by hand up to uStripeX
+                        float newS = lines * step(p.x, uStripeX);
+                        alb = mix(alb, vec3(0.86, 0.66, 0.30), newS); metal = mix(metal, 0.6, newS);
 
                         bc = shade(N, alb, metal, rough, clear, cr, lit);
 
-                        // Metallic flake in the paint
-                        vec2 fc = floor(p / 0.8);
+                        vec2 fc = floor(p / 0.5);
                         float h1 = hash(fc), h2 = hash(fc + 3.1), h3 = hash(fc + 9.7);
                         vec3 fN = normalize(N + vec3(h1 - 0.5, h2 - 0.5, 0.0) * 1.2);
                         vec3 fR = vec3(2.0 * fN.z * fN.x, 2.0 * fN.z * fN.y, 2.0 * fN.z * fN.z - 1.0);
                         float paintK = clamp((1.0 - ring) * (1.0 - fil) * (1.0 - pr) + bs, 0.0, 1.0);
-                        bc += env(fR, 0.04) * 0.012 * step(0.72, h3) * paintK * (carCol * 1.2 + 0.2);
+                        bc += env(fR, 0.04) * 0.012 * step(0.72, h3) * paintK * (uCarCol * 1.2 + 0.2);
 
-                        // Chrome handles in their recesses
-                        for (int k = 0; k < 2; k++) {
-                            vec2 hc = k == 0 ? vec2(560.0, 344.0) : vec2(866.0, 340.0);
-                            vec2 hq = abs(p - hc) - vec2(34.0, 5.0);
-                            float hd = length(max(hq, 0.0)) + min(max(hq.x, hq.y), 0.0) - 4.0;
-                            vec2 rq = abs(p - hc - vec2(0.0, 3.0)) - vec2(30.0, 7.0);
-                            float rd = length(max(rq, 0.0)) + min(max(rq.x, rq.y), 0.0) - 5.0;
-                            bc *= 1.0 - 0.55 * (1.0 - smoothstep(-2.0, 2.0, rd));
-                            float hm = 1.0 - smoothstep(-aa, aa, hd);
-                            vec3 Nh = normalize(vec3(0.0, clamp((p.y - hc.y) / 8.0, -1.0, 1.0) * 0.9, 1.0));
-                            bc = mix(bc, shade(Nh, vec3(0.9), 1.0, 0.05, 0.0, 0.02, lit), hm);
-                        }
-                        bc *= 0.15 + 0.85 * smoothstep(0.4, 1.4, gap);
-                        float seal = smoothstep(belt + 5.0 + aa, belt + 5.0 - aa, p.y);
-                        bc = mix(bc, shade(normalize(vec3(0.0, -0.5, 1.0)), vec3(0.01), 0.0, 0.2, 0.6, 0.05, lit), seal);
-                        float rocker = smoothstep(548.0 - aa, 548.0 + aa, p.y);
-                        bc = mix(bc, shade(normalize(vec3(0.0, 0.25 + 0.8 * smoothstep(548.0, 566.0, p.y), 1.0)), vec3(0.02), 0.0, 0.5, 0.0, 0.1, lit), rocker);
-                        bc *= mix(0.55, 1.0, smoothstep(0.0, 40.0, archR - 138.0));
+                        // Chrome: wheel-opening moldings, rocker molding, flush door handle
+                        float wm = (1.0 - smoothstep(1.6 - aa, 1.6 + aa, abs(archR - 93.6))) * step(p.y, ac.y + 40.0);
+                        float rk = (1.0 - smoothstep(1.8 - aa, 1.8 + aa, abs(p.y - (bot - 7.0)))) * step(392.0, p.x) * step(p.x, 848.0);
+                        float hm = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(736.0, 532.0), vec2(14.0, 2.6), 2.0));
+                        bc *= 1.0 - 0.5 * (1.0 - smoothstep(-1.0, 1.5, sdBox(p - vec2(736.0, 534.0), vec2(15.0, 4.0), 3.0)));
+                        bc = mix(bc, chrome(normalize(vec3(0.0, (p.y - ac.y) / 120.0 - 0.2, 1.0)), lit), wm);
+                        bc = mix(bc, chrome(normalize(vec3(0.0, (p.y - (bot - 7.0)) * 0.5, 1.0)), lit), rk);
+                        bc = mix(bc, chrome(normalize(vec3(0.0, clamp((p.y - 532.0) / 3.0, -1.0, 1.0) * 0.8, 1.0)), lit), hm);
+                        // Side marker lamps
+                        float fm = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(118.0, 566.0), vec2(10.0, 3.2), 2.5));
+                        float rm = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(1204.0, 556.0), vec2(9.0, 3.0), 2.5));
+                        bc = mix(bc, shade(N, vec3(0.9, 0.42, 0.04), 0.0, 0.1, 1.0, 0.02, lit) + vec3(0.06, 0.02, 0.0), fm);
+                        bc = mix(bc, shade(N, vec3(0.75, 0.04, 0.04), 0.0, 0.1, 1.0, 0.02, lit) + vec3(0.05, 0.0, 0.0), rm);
+
+                        bc *= 0.15 + 0.85 * smoothstep(0.4, 1.3, gap);
+                        bc *= mix(0.55, 1.0, smoothstep(0.0, 26.0, archR - 92.0));
                     }
+                    // Bullet mirror on the door
+                    vec2 mq = (p - vec2(488.0, 500.0)) / vec2(13.0, 6.5);
+                    float mir = 1.0 - smoothstep(1.0 - aa / 6.0, 1.0 + aa / 6.0, length(mq));
+                    float stalk = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(494.0, 507.0), vec2(2.5, 5.0), 1.0));
+                    bc = mix(bc, chrome(normalize(vec3(mq * 0.8, 1.0)), lit), max(mir, stalk));
                     c = mix(c, bc, car);
                 }
-                col = mix(col, c, clamp(max(car, max(tireM, inArch)), 0.0, 1.0));
+                col = mix(col, c, clamp(max(car, max(tireM, inArch * step(p.y, ac.y + 92.0))), 0.0, 1.0));
             }
 
             col = aces(col * uExposure);
@@ -436,7 +487,7 @@
         let P;
         try {
             P = {
-                scene: program(SCENE_FRAG, ['uRes', 'uView', 'uTime', 'uSand', 'uFiller', 'uPrime', 'uBase', 'uWet', 'uPolish', 'uStripe', 'uDent', 'uImpact', 'uCarCol', 'uScratch', 'uClearDoor', 'uClearRough', 'uPeel', 'uEnvShift', 'uExposure', 'uBars']),
+                scene: program(SCENE_FRAG, ['uRes', 'uView', 'uTime', 'uSand', 'uFiller', 'uPrime', 'uBase', 'uWet', 'uPolish', 'uDent', 'uImpact', 'uCarCol', 'uScratch', 'uClearDoor', 'uClearRough', 'uPeel', 'uEnvShift', 'uExposure', 'uStripeX', 'uBars']),
                 bright: program(BRIGHT_FRAG, ['uTex', 'uTexel']),
                 blur: program(BLUR_FRAG, ['uTex', 'uDir', 'uRes']),
                 comp: program(COMPOSITE_FRAG, ['uScene', 'uBloom', 'uRes', 'uFloorY', 'uTime', 'uFade']),
@@ -474,28 +525,25 @@
         const mk = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
         const maps = {};
         ['sand', 'filler', 'prime', 'base', 'wet', 'polish'].forEach((k) => {
-            const c = mk(VW * COV, VH * COV);
+            const c = mk(REGION.w * REGION.k, REGION.h * REGION.k);
             const g = c.getContext('2d');
-            g.setTransform(COV, 0, 0, COV, 0, 0);
+            g.setTransform(REGION.k, 0, 0, REGION.k, -REGION.x * REGION.k, -REGION.y * REGION.k);
             maps[k] = { c, g, tex: makeTex(), dirty: true };
         });
-        const stripe = { c: mk(VW, VH), tex: makeTex(), dirty: true, p: -1 };
-        stripe.g = stripe.c.getContext('2d');
         const upload = (m) => {
             gl.bindTexture(gl.TEXTURE_2D, m.tex);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, m.c);
             m.dirty = false;
         };
 
-        // Masking paper texture, made once.
         const paper = (() => {
-            const c = mk(256, 256);
+            const c = mk(128, 128);
             const g = c.getContext('2d');
             g.fillStyle = '#e8e1d2';
-            g.fillRect(0, 0, 256, 256);
-            for (let i = 0; i < 2200; i++) {
+            g.fillRect(0, 0, 128, 128);
+            for (let i = 0; i < 900; i++) {
                 g.fillStyle = `rgba(${Math.random() < 0.5 ? '255,255,255' : '120,105,80'},${Math.random() * 0.05})`;
-                g.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 2, 1 + Math.random() * 2);
+                g.fillRect(Math.random() * 128, Math.random() * 128, 1, 1);
             }
             return f2.createPattern(c, 'repeat');
         })();
@@ -503,7 +551,7 @@
         let RT = null;
         const st = {
             t: 0, last: 0, playing: !reduceMotion, visible: false, raf: 0, stage: -1,
-            cam: { x: 640, y: 432, z: 1, vx: 0, vy: 0, vz: 0 }, shake: 0,
+            cam: { x: 650, y: 540, z: 1, vx: 0, vy: 0, vz: 0 }, shake: 0,
             view: { base: 1, s: 1, ox: 0, oy: 0 }, dpr: 1,
             particles: [], mist: [], strikes: 0, impact: { x: 0, y: 0, t: -1e9, k: 0 },
             car: cssPaint(),
@@ -519,14 +567,14 @@
             glCanvas.width = W; glCanvas.height = H;
             fx.width = W; fx.height = H;
             st.dpr = W / r.width;
-            const narrow = W / H < 1.5;
-            st.view.base = narrow ? Math.min(W / (VW * 0.8), H / (VH * 0.62)) : Math.min(W / (VW * 0.98), H / (VH * 0.66));
+            // The whole car (about 1200 scene px long) fits the frame at z = 1.
+            st.view.base = Math.min(W / 1290, H / 440);
             RT = { scene: target(W, H), a: target(Math.ceil(W / 4), Math.ceil(H / 4)), b: target(Math.ceil(W / 4), Math.ceil(H / 4)) };
             render();
         }
 
-        // ---- Painting into the maps ----
-        const doorClip = (g) => { g.beginPath(); g.rect(DOOR.x0 + 1, beltY(DOOR.x1) + 4, DOOR.x1 - DOOR.x0 - 2, DOOR.y1 - beltY(DOOR.x1) - 4); g.clip(); };
+        // ---- Painting into the repair maps ----
+        const doorClip = (g) => { g.beginPath(); g.rect(DOOR.x0 + 0.8, topY(DOOR.x0) + 2, DOOR.x1 - DOOR.x0 - 1.6, DOOR.y1 - topY(DOOR.x0) - 2); g.clip(); };
         function droplets(m, x, y, radius, n, alpha, clip) {
             const g = m.g;
             g.save();
@@ -534,7 +582,7 @@
             for (let i = 0; i < n; i++) {
                 g.fillStyle = `rgba(255,255,255,${alpha[0] + Math.random() * (alpha[1] - alpha[0])})`;
                 g.beginPath();
-                g.arc(x + gauss() * radius * 0.42, y + gauss() * radius * 0.42, 1.6 + Math.random() * 3.4, 0, Math.PI * 2);
+                g.arc(x + gauss() * radius * 0.42, y + gauss() * radius * 0.42, 0.7 + Math.random() * 1.5, 0, Math.PI * 2);
                 g.fill();
             }
             g.restore();
@@ -554,28 +602,26 @@
         }
         const clearMap = (m) => { m.g.save(); m.g.setTransform(1, 0, 0, 1, 0, 0); m.g.clearRect(0, 0, m.c.width, m.c.height); m.g.restore(); m.dirty = true; };
 
-        const REPAIR = { x0: DENT.x - 110, x1: DENT.x + 110, y0: DENT.y - 80, y1: DENT.y + 80 };
-        const DOORBOX = { x0: DOOR.x0 + 10, x1: DOOR.x1 - 10, y0: beltY(DOOR.x1) + 22, y1: DOOR.y1 - 14 };
+        const REPAIR = { x0: DENT.x - 46, x1: DENT.x + 46, y0: DENT.y - 26, y1: DENT.y + 26 };
+        const DOORBOX = { x0: DOOR.x0 + 8, x1: DOOR.x1 - 8, y0: topY(DOOR.x0) + 8, y1: DOOR.y1 - 8 };
         const COATS = {
-            prime: { map: 'prime', box: REPAIR, passes: 5, alpha: [0.3, 0.55], n: 22000, rgb: () => [150, 152, 158], clip: (g) => { g.beginPath(); g.ellipse(DENT.x, DENT.y, 140, 104, 0, 0, Math.PI * 2); g.clip(); } },
-            color: { map: 'base', box: DOORBOX, passes: 7, alpha: [0.3, 0.55], n: 52000, rgb: () => st.car.map((v) => v * 255), clip: doorClip },
+            prime: { map: 'prime', box: REPAIR, passes: 4, alpha: [0.3, 0.55], n: 9000, rgb: () => [150, 152, 158], clip: (g) => { g.beginPath(); g.ellipse(DENT.x, DENT.y, 60, 40, 0, 0, Math.PI * 2); g.clip(); } },
+            color: { map: 'base', box: DOORBOX, passes: 5, alpha: [0.3, 0.55], n: 26000, rgb: () => st.car.map((v) => v * 255), clip: doorClip },
         };
         const SPRAY_END = 0.86;
-        const PRIME_START = 0.28;   // masking goes up first
+        const PRIME_START = 0.28;
 
-        // A finished coat is a full, even film (inside its masking).
         function solidCoat(key) {
             const coat = COATS[key];
             const g = maps[coat.map].g;
             g.save();
             coat.clip(g);
             g.fillStyle = '#fff';
-            g.fillRect(0, 0, VW, VH);
+            g.fillRect(REGION.x, REGION.y, REGION.w, REGION.h);
             g.restore();
             maps[coat.map].dirty = true;
         }
-
-        function coatP(key, p) { return key === 'prime' ? span(p, PRIME_START, 1) : p; }
+        const coatP = (key, p) => (key === 'prime' ? span(p, PRIME_START, 1) : p);
         function sprayInterval(key, p0, p1, live) {
             const coat = COATS[key];
             p0 = coatP(key, p0); p1 = coatP(key, p1);
@@ -586,16 +632,16 @@
                 const g = gunPath(p / SPRAY_END, coat.box, coat.passes);
                 if (!g.on) continue;
                 const n = Math.max(1, Math.round(coat.n * (p1 - p0) / steps));
-                droplets(maps[coat.map], g.x, g.y, 60, n, coat.alpha, coat.clip);
-                droplets(maps.wet, g.x, g.y, 60, Math.ceil(n / 3), [0.3, 0.6], coat.clip);
+                droplets(maps[coat.map], g.x, g.y, 26, n, coat.alpha, coat.clip);
+                droplets(maps.wet, g.x, g.y, 26, Math.ceil(n / 3), [0.3, 0.6], coat.clip);
                 if (live && i === steps) emitSpray(g, coat.rgb());
             }
         }
 
         const sanderAt = (q, wide) => {
             const a = q * Math.PI * 2 * (wide ? 5 : 7);
-            const rx = wide ? 70 : 42, ry = wide ? 44 : 28;
-            return { x: DENT.x + Math.cos(a) * rx + Math.sin(q * 9) * 14, y: DENT.y + Math.sin(a) * ry + Math.cos(q * 7) * 8 };
+            const rx = wide ? 30 : 18, ry = wide ? 18 : 11;
+            return { x: DENT.x + Math.cos(a) * rx + Math.sin(q * 9) * 6, y: DENT.y + Math.sin(a) * ry + Math.cos(q * 7) * 3 };
         };
         function sandTo(p0, p1) {
             const steps = Math.max(1, Math.ceil((p1 - p0) * 300));
@@ -603,7 +649,7 @@
                 const q = span(lerp(p0, p1, k / steps), 0.06, 0.92);
                 if (q <= 0 || q >= 1) continue;
                 const s = sanderAt(q, false);
-                blob(maps.sand, s.x, s.y, 74, 0.05);
+                blob(maps.sand, s.x, s.y, 31, 0.05);
             }
         }
         function fillTo(p0, p1) {
@@ -612,98 +658,77 @@
                 const p = lerp(p0, p1, k / steps);
                 if (p < 0.36) {
                     if (p < 0.04) continue;
-                    const x = DENT.x - 80 + 160 * outCubic(span(p, 0.04, 0.34));
-                    for (let j = -3; j <= 3; j++) blob(maps.filler, x, DENT.y + j * 12, 46, 0.22);
+                    const x = DENT.x - 34 + 68 * outCubic(span(p, 0.04, 0.34));
+                    for (let j = -3; j <= 3; j++) blob(maps.filler, x, DENT.y + j * 5, 20, 0.22);
                 } else if (p < 0.94) {
                     const s = sanderAt(span(p, 0.36, 0.94), true);
                     const g = maps.filler.g;
                     g.save();
                     g.globalCompositeOperation = 'destination-out';
-                    const rg = g.createRadialGradient(s.x, s.y, 10, s.x, s.y, 60);
+                    const rg = g.createRadialGradient(s.x, s.y, 4, s.x, s.y, 26);
                     rg.addColorStop(0, 'rgba(0,0,0,0)');
                     rg.addColorStop(1, 'rgba(0,0,0,0.05)');
                     g.fillStyle = rg;
-                    g.beginPath(); g.arc(s.x, s.y, 60, 0, Math.PI * 2); g.fill();
+                    g.beginPath(); g.arc(s.x, s.y, 26, 0, Math.PI * 2); g.fill();
                     g.restore();
                     maps.filler.dirty = true;
                 }
             }
         }
         const buffer = (p) => {
-            const q = span(p, 0.0, 0.3);
-            return { q, x: lerp(DOOR.x0 + 50, DOOR.x1 - 50, inOut(q)), y: 420 + Math.sin(q * Math.PI * 4) * 60 };
+            const q = span(p, 0.0, 0.28);
+            return { q, x: lerp(DOOR.x0 + 24, DOOR.x1 - 24, inOut(q)), y: 578 + Math.sin(q * Math.PI * 4) * 34 };
         };
         function polishTo(p0, p1) {
             const steps = Math.max(1, Math.ceil((p1 - p0) * 200));
             for (let k = 1; k <= steps; k++) {
                 const b = buffer(lerp(p0, p1, k / steps));
                 if (b.q <= 0 || b.q >= 1) continue;
-                blob(maps.polish, b.x, b.y, 90, 0.18);
+                blob(maps.polish, b.x, b.y, 40, 0.18);
             }
         }
 
         const stripeProgress = (p) => inOut(span(p, 0.05, 0.9));
-        const STRIPE_X0 = -60, STRIPE_X1 = 1340;
-        function drawStripe(p) {
-            const g = stripe.g;
-            g.clearRect(0, 0, VW, VH);
-            if (p > 0) {
-                const xEnd = lerp(STRIPE_X0, STRIPE_X1, p);
-                const line = (off, w) => {
-                    g.strokeStyle = 'rgb(220,170,78)'; g.lineWidth = w; g.lineCap = 'round';
-                    g.beginPath();
-                    for (let x = STRIPE_X0; x <= xEnd; x += 6) {
-                        const y = charY(x) + off;
-                        x === STRIPE_X0 ? g.moveTo(x, y) : g.lineTo(x, y);
-                    }
-                    g.stroke();
-                };
-                line(STRIPE_OFF[0], 2.0);
-                line(STRIPE_OFF[1], 1.2);
-            }
-            stripe.dirty = true;
-            stripe.p = p;
-        }
 
         // ---- Particles ----
         function sparks(x, y, k) {
-            for (let i = 0; i < 60 * k; i++) {
-                const a = -Math.PI / 2 + gauss() * 1.1, v = 3 + Math.random() * 10;
-                st.particles.push({ kind: 'spark', x, y, vx: Math.cos(a) * v + 1.2, vy: Math.sin(a) * v, life: 0, max: 280 + Math.random() * 560, w: 0.7 + Math.random() * 1.2 });
+            for (let i = 0; i < 50 * k; i++) {
+                const a = -Math.PI / 2 + gauss() * 1.1, v = 1.5 + Math.random() * 5;
+                st.particles.push({ kind: 'spark', x, y, vx: Math.cos(a) * v + 0.6, vy: Math.sin(a) * v, life: 0, max: 260 + Math.random() * 520, w: 0.4 + Math.random() * 0.6 });
             }
             st.particles.push({ kind: 'flash', x, y, life: 0, max: 130 });
-            st.shake = 8 * k;
+            st.shake = 6 * k;
         }
-        function dust(x, y, n, spread = 40) {
+        function dust(x, y, n, spread = 18) {
             for (let i = 0; i < n; i++) {
-                const a = Math.random() * Math.PI * 2, v = 0.4 + Math.random() * 1.6;
-                st.particles.push({ kind: 'dust', x: x + Math.cos(a) * spread * 0.6, y: y + Math.sin(a) * spread * 0.4, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6 - 0.1, life: 0, max: 1000 + Math.random() * 1400, r: 0.7 + Math.random() * 1.8 });
+                const a = Math.random() * Math.PI * 2, v = 0.2 + Math.random() * 0.8;
+                st.particles.push({ kind: 'dust', x: x + Math.cos(a) * spread * 0.6, y: y + Math.sin(a) * spread * 0.4, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6 - 0.05, life: 0, max: 1000 + Math.random() * 1400, r: 0.3 + Math.random() * 0.8 });
             }
         }
         function emitSpray(g, rgb) {
-            const nx = g.x + 74, ny = g.y - 128;
-            for (let i = 0; i < 16; i++) {
-                const tx = g.x + gauss() * 20, ty = g.y + gauss() * 12;
-                const T = 110 + Math.random() * 80;
-                st.particles.push({ kind: 'drop', x: nx + gauss() * 2, y: ny + gauss() * 2, vx: (tx - nx) / (T / 16.7), vy: (ty - ny) / (T / 16.7), life: 0, max: T, rgb });
+            const nx = g.x + 74 * TS, ny = g.y - 128 * TS;
+            for (let i = 0; i < 14; i++) {
+                const tx = g.x + gauss() * 9, ty = g.y + gauss() * 5;
+                const T = 100 + Math.random() * 70;
+                st.particles.push({ kind: 'drop', x: nx + gauss(), y: ny + gauss(), vx: (tx - nx) / (T / 16.7), vy: (ty - ny) / (T / 16.7), life: 0, max: T, rgb });
             }
-            if (Math.random() < 0.6) st.mist.push({ x: g.x + gauss() * 30, y: g.y + gauss() * 20, vx: gauss() * 0.25 - g.dir * 0.2, vy: -0.2 - Math.random() * 0.3, r: 30 + Math.random() * 46, life: 0, max: 2000 + Math.random() * 1600, rgb });
+            if (Math.random() < 0.6) st.mist.push({ x: g.x + gauss() * 14, y: g.y + gauss() * 9, vx: gauss() * 0.12 - g.dir * 0.1, vy: -0.1 - Math.random() * 0.15, r: 14 + Math.random() * 20, life: 0, max: 2000 + Math.random() * 1600, rgb });
         }
         function stepParticles(dt) {
             const k = dt / 16.7;
             st.particles = st.particles.filter((p) => {
                 p.life += dt;
                 if (p.kind === 'spark') {
-                    p.vy += 0.38 * k; p.vx *= Math.pow(0.99, k);
+                    p.vy += 0.2 * k; p.vx *= Math.pow(0.99, k);
                     p.x += p.vx * k; p.y += p.vy * k;
                     if (p.y > FLOOR) { p.y = FLOOR; p.vy *= -0.3; p.vx *= 0.7; }
                 } else if (p.kind !== 'flash') {
                     p.x += p.vx * k; p.y += p.vy * k;
-                    if (p.kind === 'dust') { p.vx *= 0.985; p.vy = p.vy * 0.985 + 0.01; }
+                    if (p.kind === 'dust') { p.vx *= 0.985; p.vy = p.vy * 0.985 + 0.005; }
                 }
                 return p.life < p.max;
             });
-            st.mist = st.mist.filter((m) => { m.life += dt; m.x += m.vx * k; m.y += m.vy * k; m.r += 0.12 * k; return m.life < m.max; });
+            st.mist = st.mist.filter((m) => { m.life += dt; m.x += m.vx * k; m.y += m.vy * k; m.r += 0.06 * k; return m.life < m.max; });
             if (st.mist.length > 70) st.mist.splice(0, st.mist.length - 70);
             if (st.particles.length > 1000) st.particles.splice(0, st.particles.length - 1000);
         }
@@ -726,7 +751,6 @@
             });
             if (i > IDX.color) clearMap(maps.wet);
             if (i === IDX.reveal) polishTo(0, p);
-            drawStripe(i > IDX.stripe ? 1 : i === IDX.stripe ? stripeProgress(p) : 0);
             st.strikes = i > IDX.straighten ? 3 : i === IDX.straighten ? STRIKES.filter((s) => p > s).length : 0;
         }
 
@@ -745,32 +769,28 @@
                         const k = n === 2 ? 0.7 : 1;
                         st.strikes = n + 1;
                         st.impact = { x: DENT.x, y: DENT.y, t: t1, k };
-                        sparks(DENT.x - 4, DENT.y + 4, k);
+                        sparks(DENT.x - 2, DENT.y + 2, k);
                     }
                 });
             }
             if (key === 'sand') {
                 sandTo(p0, p);
                 const q = span(p, 0.06, 0.92);
-                if (q > 0 && q < 1) { const s = sanderAt(q, false); dust(s.x, s.y, 3, 70); }
+                if (q > 0 && q < 1) { const s = sanderAt(q, false); dust(s.x, s.y, 3, 30); }
             }
             if (key === 'fill') {
                 fillTo(p0, p);
-                if (p > 0.36 && p < 0.94) { const s = sanderAt(span(p, 0.36, 0.94), true); dust(s.x, s.y, 2, 60); }
+                if (p > 0.36 && p < 0.94) { const s = sanderAt(span(p, 0.36, 0.94), true); dust(s.x, s.y, 2, 26); }
             }
             if (COATS[key]) sprayInterval(key, p0, p, true);
             if (key === 'clear' && p < 0.62) {
-                const g = gunPath(p / 0.62, DOORBOX, 6);
-                if (g.on) { droplets(maps.wet, g.x, g.y, 60, 40, [0.3, 0.6], doorClip); emitSpray(g, [235, 240, 248]); }
-            }
-            if (key === 'stripe') {
-                const sp = stripeProgress(p);
-                if (Math.abs(sp - stripe.p) > 0.001) drawStripe(sp);
+                const g = gunPath(p / 0.62, DOORBOX, 5);
+                if (g.on) { droplets(maps.wet, g.x, g.y, 26, 40, [0.3, 0.6], doorClip); emitSpray(g, [235, 240, 248]); }
             }
             if (key === 'reveal') {
                 polishTo(p0, p);
                 const b = buffer(p);
-                if (b.q > 0 && b.q < 1 && Math.random() < 0.4) dust(b.x, b.y, 1, 70);
+                if (b.q > 0 && b.q < 1 && Math.random() < 0.4) dust(b.x, b.y, 1, 30);
             }
             const w = maps.wet.g;
             w.save();
@@ -814,32 +834,35 @@
                 envShift: key === 'reveal' ? lerp(-0.75, 0.6, inOut(span(p, 0.3, 0.95))) : Math.sin(t / 5200) * 0.05,
                 exposure: key === 'reveal' ? 1.04 : 1.0,
                 impact: [st.impact.x, st.impact.y, key === 'straighten' && age >= 0 ? age : -1, st.impact.k],
+                // Before the stripe stage the old line is intact; the door's new
+                // paint covers it, and the new line is laid back over everything.
+                stripeX: key === 'stripe' ? lerp(STRIPE_X0, STRIPE_X1, stripeProgress(p)) : i > IDX.stripe ? 9999 : -1,
             };
         }
 
         function cameraTarget(t) {
             const { key, p } = local(t);
-            const WIDE = { x: 640, y: 432, z: 1 };
-            const ON_DENT = { x: DENT.x + 10, y: DENT.y - 8 };
-            const ON_DOOR = { x: (DOOR.x0 + DOOR.x1) / 2 + 20, y: 420, z: 1.55 };
+            const WIDE = { x: 650, y: 540, z: 1 };
+            const ON_DENT = { x: DENT.x + 4, y: DENT.y - 4 };
+            const ON_DOOR = { x: 616, y: 578, z: 2.0 };
             switch (key) {
-                case 'damage': { const k = inOut(span(p, 0.3, 1)); return { x: lerp(WIDE.x, ON_DENT.x, k), y: lerp(WIDE.y, ON_DENT.y, k), z: lerp(1, 2.1, k) }; }
-                case 'straighten': return { ...ON_DENT, z: 2.3 };
-                case 'sand': return { ...ON_DENT, z: 2.15 };
-                case 'fill': return { ...ON_DENT, z: lerp(2.15, 2.0, p) };
-                case 'prime': return p < PRIME_START ? ON_DOOR : { ...ON_DENT, z: 1.9 };
+                case 'damage': { const k = inOut(span(p, 0.42, 1)); return { x: lerp(WIDE.x, ON_DENT.x, k), y: lerp(WIDE.y, ON_DENT.y, k), z: lerp(1, 3.4, k) }; }
+                case 'straighten': return { ...ON_DENT, z: 3.6 };
+                case 'sand': return { ...ON_DENT, z: 3.4 };
+                case 'fill': return { ...ON_DENT, z: lerp(3.4, 3.2, p) };
+                case 'prime': return p < PRIME_START ? ON_DOOR : { ...ON_DENT, z: 3.0 };
                 case 'color': case 'clear': return ON_DOOR;
-                case 'stripe': { const x = lerp(STRIPE_X0, STRIPE_X1, stripeProgress(p)); return { x: clamp(x, 300, 980), y: 400, z: 1.7 }; }
+                case 'stripe': { const x = lerp(STRIPE_X0, STRIPE_X1, stripeProgress(p)); return { x: clamp(x, 300, 1000), y: 528, z: 2.4 }; }
                 case 'reveal': {
-                    if (p < 0.3) return { x: lerp(ON_DOOR.x, 560, span(p, 0, 0.3)), y: 420, z: 1.5 };
-                    const k = inOut(span(p, 0.3, 0.75));
-                    return { x: lerp(560, 640, k), y: lerp(420, 436, k), z: lerp(1.5, 1.0, k) };
+                    if (p < 0.3) return { x: lerp(ON_DOOR.x, 600, span(p, 0, 0.3)), y: 578, z: 2.0 };
+                    const k = inOut(span(p, 0.3, 0.78));
+                    return { x: lerp(600, 650, k), y: lerp(578, 540, k), z: lerp(2.0, 1.0, k) };
                 }
                 default: return WIDE;
             }
         }
 
-        // ---- 2D layer: tools with contact shadows ----
+        // ---- 2D layer: tools at real-world size, with contact shadows ----
         const toScreen = (c) => { const v = st.view; c.setTransform(v.s, 0, 0, v.s, v.ox, v.oy); };
         function contact(c, x, y, rx, ry, a) {
             const rg = c.createRadialGradient(x, y, 0, x, y, rx);
@@ -854,14 +877,25 @@
             g.addColorStop(0, '#5b6168'); g.addColorStop(0.3, '#c9ced4'); g.addColorStop(0.48, '#f7f9fb'); g.addColorStop(0.62, '#9aa1a9'); g.addColorStop(1, '#4b5056');
             return g;
         };
+        // Draw a tool in its own full-size units, scaled down around an anchor.
+        const tool = (c, x, y, fn) => { c.save(); c.translate(x, y); c.scale(TS, TS); fn(); c.restore(); };
+
+        function drawScripts(c) {
+            c.save();
+            const g = c.createLinearGradient(0, 530, 0, 550);
+            g.addColorStop(0, '#f4f6f8'); g.addColorStop(0.5, '#8e949c'); g.addColorStop(1, '#dfe3e8');
+            c.fillStyle = g;
+            c.font = 'italic 600 11px Fraunces, Georgia, serif';
+            c.fillText('Chevelle', 398, 548);
+            c.font = 'italic 600 9px Fraunces, Georgia, serif';
+            c.fillText('Malibu', 1076, 532);
+            c.restore();
+        }
 
         function drawHammer(c, ang, blur) {
-            // Body hammer swung in from off-frame right: long neck, round face.
-            const pivot = { x: DENT.x + 168, y: DENT.y + 66 };
-            const one = (a, alpha) => {
-                c.save();
+            const px = DENT.x + 168 * TS, py = DENT.y + 66 * TS;
+            const one = (a, alpha) => tool(c, px, py, () => {
                 c.globalAlpha = alpha;
-                c.translate(pivot.x, pivot.y);
                 c.rotate(a + 0.32);
                 c.scale(0.78, 0.78);
                 const h = c.createLinearGradient(0, -6, 0, 6);
@@ -873,174 +907,162 @@
                 c.beginPath(); c.roundRect(-242, -40, 24, 46, 3); c.fill();
                 c.beginPath(); c.ellipse(-230, 10, 15, 8, 0, 0, Math.PI * 2); c.fill();
                 c.beginPath(); c.moveTo(-240, -40); c.lineTo(-234, -84); c.lineTo(-226, -84); c.lineTo(-220, -40); c.closePath(); c.fill();
-                c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = 0.8;
-                c.beginPath(); c.moveTo(-236, -82); c.lineTo(-238, -38); c.stroke();
-                c.restore();
-            };
+            });
             if (blur) for (let k = 4; k >= 1; k--) one(ang + k * 0.035, 0.08);
             one(ang, 1);
         }
 
         function drawSander(c, x, y, t) {
-            // Dual-action sander from behind: housing, spinning pad edge, hose.
-            contact(c, x + 10, y + 12, 96, 70, 0.45);
-            c.save();
-            c.translate(x, y);
-            const spin = t / 12;
-            c.strokeStyle = 'rgba(40,40,46,0.9)'; c.lineWidth = 7;
-            c.beginPath(); c.arc(0, 0, 70, 0, Math.PI * 2); c.stroke();
-            c.strokeStyle = 'rgba(200,190,160,0.35)'; c.lineWidth = 2;
-            for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(0, 0, 70, spin + k * 2.1, spin + k * 2.1 + 0.9); c.stroke(); }
-            const hg = c.createRadialGradient(-18, -22, 6, 0, 0, 62);
-            hg.addColorStop(0, '#4a4b54'); hg.addColorStop(0.7, '#202127'); hg.addColorStop(1, '#141418');
-            c.fillStyle = hg; c.beginPath(); c.arc(0, 0, 60, 0, Math.PI * 2); c.fill();
-            c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = 1.2;
-            c.beginPath(); c.arc(0, 0, 58, Math.PI * 1.05, Math.PI * 1.75); c.stroke();
-            c.fillStyle = '#0c0c0f';
-            for (let k = 0; k < 8; k++) { c.save(); c.rotate(k * Math.PI / 4); c.beginPath(); c.roundRect(24, -3, 18, 6, 3); c.fill(); c.restore(); }
-            const cap = c.createRadialGradient(-6, -6, 2, 0, 0, 20);
-            cap.addColorStop(0, '#d9dde2'); cap.addColorStop(1, '#6b7078');
-            c.fillStyle = cap; c.beginPath(); c.arc(0, 0, 16, 0, Math.PI * 2); c.fill();
-            const bg = c.createLinearGradient(30, 20, 60, 60);
-            bg.addColorStop(0, '#2c2d34'); bg.addColorStop(1, '#16161a');
-            c.fillStyle = bg;
-            c.beginPath(); c.moveTo(36, 28); c.lineTo(200, 160); c.lineTo(178, 190); c.lineTo(14, 52); c.closePath(); c.fill();
-            c.fillStyle = '#c62828';
-            c.beginPath(); c.moveTo(70, 66); c.lineTo(96, 88); c.lineTo(88, 98); c.lineTo(62, 76); c.closePath(); c.fill();
-            c.restore();
-            c.strokeStyle = '#111114'; c.lineWidth = 9; c.lineCap = 'round';
-            c.beginPath(); c.moveTo(x + 190, y + 176); c.bezierCurveTo(x + 260, y + 240, x + 360, y + 200, x + 520, y + 300); c.stroke();
+            contact(c, x + 4, y + 5, 40, 30, 0.45);
+            tool(c, x, y, () => {
+                const spin = t / 12;
+                c.strokeStyle = 'rgba(40,40,46,0.9)'; c.lineWidth = 7;
+                c.beginPath(); c.arc(0, 0, 70, 0, Math.PI * 2); c.stroke();
+                c.strokeStyle = 'rgba(200,190,160,0.35)'; c.lineWidth = 2;
+                for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(0, 0, 70, spin + k * 2.1, spin + k * 2.1 + 0.9); c.stroke(); }
+                const hg = c.createRadialGradient(-18, -22, 6, 0, 0, 62);
+                hg.addColorStop(0, '#4a4b54'); hg.addColorStop(0.7, '#202127'); hg.addColorStop(1, '#141418');
+                c.fillStyle = hg; c.beginPath(); c.arc(0, 0, 60, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = 1.2;
+                c.beginPath(); c.arc(0, 0, 58, Math.PI * 1.05, Math.PI * 1.75); c.stroke();
+                c.fillStyle = '#0c0c0f';
+                for (let k = 0; k < 8; k++) { c.save(); c.rotate(k * Math.PI / 4); c.beginPath(); c.roundRect(24, -3, 18, 6, 3); c.fill(); c.restore(); }
+                const cap = c.createRadialGradient(-6, -6, 2, 0, 0, 20);
+                cap.addColorStop(0, '#d9dde2'); cap.addColorStop(1, '#6b7078');
+                c.fillStyle = cap; c.beginPath(); c.arc(0, 0, 16, 0, Math.PI * 2); c.fill();
+                const bg = c.createLinearGradient(30, 20, 60, 60);
+                bg.addColorStop(0, '#2c2d34'); bg.addColorStop(1, '#16161a');
+                c.fillStyle = bg;
+                c.beginPath(); c.moveTo(36, 28); c.lineTo(200, 160); c.lineTo(178, 190); c.lineTo(14, 52); c.closePath(); c.fill();
+                c.fillStyle = '#c62828';
+                c.beginPath(); c.moveTo(70, 66); c.lineTo(96, 88); c.lineTo(88, 98); c.lineTo(62, 76); c.closePath(); c.fill();
+                c.strokeStyle = '#111114'; c.lineWidth = 9; c.lineCap = 'round';
+                c.beginPath(); c.moveTo(190, 176); c.bezierCurveTo(260, 240, 360, 200, 520, 300); c.stroke();
+            });
         }
 
         function drawSpreader(c, x, y, p) {
-            contact(c, x + 6, y + 8, 60, 40, 0.3);
-            c.save();
-            c.translate(x, y);
-            c.rotate(-0.35 + Math.sin(p * 30) * 0.03);
-            const g = c.createLinearGradient(-40, 0, 40, 0);
-            g.addColorStop(0, 'rgba(236,242,248,0.75)'); g.addColorStop(0.5, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(210,220,230,0.7)');
-            c.fillStyle = g;
-            c.beginPath(); c.moveTo(-60, 0); c.lineTo(60, 0); c.lineTo(40, -64); c.lineTo(-40, -64); c.closePath(); c.fill();
-            c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1;
-            c.beginPath(); c.moveTo(-60, 0); c.lineTo(60, 0); c.stroke();
-            c.fillStyle = 'rgba(206,186,164,0.95)';
-            c.beginPath(); c.moveTo(-58, 0); c.lineTo(58, 0); c.lineTo(52, -9); c.lineTo(-52, -9); c.closePath(); c.fill();
-            c.restore();
+            contact(c, x + 3, y + 3, 26, 17, 0.3);
+            tool(c, x, y, () => {
+                c.rotate(-0.35 + Math.sin(p * 30) * 0.03);
+                const g = c.createLinearGradient(-40, 0, 40, 0);
+                g.addColorStop(0, 'rgba(236,242,248,0.75)'); g.addColorStop(0.5, 'rgba(255,255,255,0.9)'); g.addColorStop(1, 'rgba(210,220,230,0.7)');
+                c.fillStyle = g;
+                c.beginPath(); c.moveTo(-60, 0); c.lineTo(60, 0); c.lineTo(40, -64); c.lineTo(-40, -64); c.closePath(); c.fill();
+                c.fillStyle = 'rgba(206,186,164,0.95)';
+                c.beginPath(); c.moveTo(-58, 0); c.lineTo(58, 0); c.lineTo(52, -9); c.lineTo(-52, -9); c.closePath(); c.fill();
+            });
         }
 
         function drawGun(c, g, rgb) {
-            const nx = g.x + 74, ny = g.y - 128;
+            const nx = g.x + 74 * TS, ny = g.y - 128 * TS;
             c.save();
             c.globalCompositeOperation = 'lighter';
             const cone = c.createLinearGradient(nx, ny, g.x, g.y);
             cone.addColorStop(0, `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},0.2)`);
             cone.addColorStop(1, `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},0.02)`);
             c.fillStyle = cone;
-            c.beginPath(); c.moveTo(nx - 3, ny); c.quadraticCurveTo(g.x - 30, g.y - 60, g.x - 60, g.y + 6); c.lineTo(g.x + 56, g.y - 4); c.quadraticCurveTo(g.x + 34, g.y - 70, nx + 3, ny); c.closePath(); c.fill();
+            c.beginPath(); c.moveTo(nx - 1, ny); c.quadraticCurveTo(g.x - 13, g.y - 25, g.x - 26, g.y + 3); c.lineTo(g.x + 24, g.y - 2); c.quadraticCurveTo(g.x + 14, g.y - 30, nx + 1, ny); c.closePath(); c.fill();
             c.restore();
-            contact(c, g.x + 6, g.y + 4, 70, 26, 0.12);
-            c.strokeStyle = '#111114'; c.lineWidth = 7; c.lineCap = 'round';
-            c.beginPath(); c.moveTo(nx + 96, ny + 82); c.bezierCurveTo(nx + 130, ny + 210, nx + 300, ny + 140, nx + 440, ny + 290); c.stroke();
-            c.save();
-            c.translate(nx, ny);
-            c.rotate(-0.62 + g.dir * 0.05);
-            c.fillStyle = steelGrad(c, 0, -12, 0, 12);
-            c.beginPath(); c.roundRect(-20, -11, 22, 22, 5); c.fill();
-            c.beginPath(); c.roundRect(-26, -17, 8, 10, 2); c.fill();
-            c.beginPath(); c.roundRect(-26, 7, 8, 10, 2); c.fill();
-            c.fillStyle = steelGrad(c, 0, -15, 0, 14);
-            c.beginPath(); c.moveTo(0, -13); c.bezierCurveTo(40, -16, 80, -18, 104, -12); c.quadraticCurveTo(114, -4, 108, 8); c.lineTo(0, 11); c.closePath(); c.fill();
-            c.fillStyle = '#1b1b20';
-            c.beginPath(); c.roundRect(104, -9, 16, 9, 3); c.fill();
-            c.beginPath(); c.roundRect(100, 2, 14, 8, 3); c.fill();
-            c.fillStyle = steelGrad(c, 70, 0, 104, 0);
-            c.beginPath(); c.moveTo(72, 8); c.lineTo(100, 8); c.quadraticCurveTo(108, 50, 104, 92); c.quadraticCurveTo(90, 100, 78, 92); c.quadraticCurveTo(76, 50, 72, 8); c.fill();
-            c.fillStyle = 'rgba(20,20,24,0.9)';
-            c.beginPath(); c.roundRect(80, 40, 22, 50, 8); c.fill();
-            c.strokeStyle = steelGrad(c, 20, 0, 60, 0); c.lineWidth = 5; c.lineCap = 'round';
-            c.beginPath(); c.moveTo(24, 8); c.quadraticCurveTo(40, 40, 58, 62); c.stroke();
-            c.fillStyle = 'rgba(225,232,240,0.28)';
-            c.beginPath(); c.moveTo(30, -14); c.lineTo(22, -82); c.quadraticCurveTo(46, -92, 72, -82); c.lineTo(62, -14); c.closePath(); c.fill();
-            c.fillStyle = `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},0.9)`;
-            c.beginPath(); c.moveTo(31, -16); c.lineTo(26, -54); c.quadraticCurveTo(46, -60, 68, -54); c.lineTo(61, -16); c.closePath(); c.fill();
-            c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(31, -78, 2.5, 60);
-            c.fillStyle = '#1b1b20'; c.beginPath(); c.roundRect(18, -92, 58, 10, 3); c.fill();
-            c.restore();
+            contact(c, g.x + 3, g.y + 2, 30, 11, 0.12);
+            tool(c, nx, ny, () => {
+                c.strokeStyle = '#111114'; c.lineWidth = 7; c.lineCap = 'round';
+                c.beginPath(); c.moveTo(96, 82); c.bezierCurveTo(130, 210, 300, 140, 440, 290); c.stroke();
+                c.rotate(-0.62 + g.dir * 0.05);
+                c.fillStyle = steelGrad(c, 0, -12, 0, 12);
+                c.beginPath(); c.roundRect(-20, -11, 22, 22, 5); c.fill();
+                c.beginPath(); c.roundRect(-26, -17, 8, 10, 2); c.fill();
+                c.beginPath(); c.roundRect(-26, 7, 8, 10, 2); c.fill();
+                c.fillStyle = steelGrad(c, 0, -15, 0, 14);
+                c.beginPath(); c.moveTo(0, -13); c.bezierCurveTo(40, -16, 80, -18, 104, -12); c.quadraticCurveTo(114, -4, 108, 8); c.lineTo(0, 11); c.closePath(); c.fill();
+                c.fillStyle = '#1b1b20';
+                c.beginPath(); c.roundRect(104, -9, 16, 9, 3); c.fill();
+                c.beginPath(); c.roundRect(100, 2, 14, 8, 3); c.fill();
+                c.fillStyle = steelGrad(c, 70, 0, 104, 0);
+                c.beginPath(); c.moveTo(72, 8); c.lineTo(100, 8); c.quadraticCurveTo(108, 50, 104, 92); c.quadraticCurveTo(90, 100, 78, 92); c.quadraticCurveTo(76, 50, 72, 8); c.fill();
+                c.fillStyle = 'rgba(20,20,24,0.9)';
+                c.beginPath(); c.roundRect(80, 40, 22, 50, 8); c.fill();
+                c.strokeStyle = steelGrad(c, 20, 0, 60, 0); c.lineWidth = 5;
+                c.beginPath(); c.moveTo(24, 8); c.quadraticCurveTo(40, 40, 58, 62); c.stroke();
+                c.fillStyle = 'rgba(225,232,240,0.28)';
+                c.beginPath(); c.moveTo(30, -14); c.lineTo(22, -82); c.quadraticCurveTo(46, -92, 72, -82); c.lineTo(62, -14); c.closePath(); c.fill();
+                c.fillStyle = `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},0.9)`;
+                c.beginPath(); c.moveTo(31, -16); c.lineTo(26, -54); c.quadraticCurveTo(46, -60, 68, -54); c.lineTo(61, -16); c.closePath(); c.fill();
+                c.fillStyle = 'rgba(255,255,255,0.45)'; c.fillRect(31, -78, 2.5, 60);
+                c.fillStyle = '#1b1b20'; c.beginPath(); c.roundRect(18, -92, 58, 10, 3); c.fill();
+            });
         }
 
-        function drawBrush(c, x, y) {
-            // Sword striper laid along the line, pulled left to right.
-            contact(c, x - 40, y + 4, 60, 8, 0.25);
-            c.save();
-            c.translate(x, y);
-            c.rotate(-0.08);
-            const br = c.createLinearGradient(-70, 0, 0, 0);
-            br.addColorStop(0, '#2a1c0e'); br.addColorStop(0.7, '#5a3d1c'); br.addColorStop(1, '#d6a440');
-            c.fillStyle = br;
-            c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-30, -2, -70, -10); c.lineTo(-70, -2); c.quadraticCurveTo(-30, 2, 0, 0); c.fill();
-            c.fillStyle = steelGrad(c, 0, -14, 0, 4);
-            c.beginPath(); c.roundRect(-92, -14, 24, 12, 2); c.fill();
-            const wood = c.createLinearGradient(0, -14, 0, -4);
-            wood.addColorStop(0, '#c08a4a'); wood.addColorStop(1, '#6a4320');
-            c.fillStyle = wood;
-            c.beginPath(); c.moveTo(-92, -12); c.lineTo(-250, -30); c.lineTo(-252, -24); c.lineTo(-92, -4); c.closePath(); c.fill();
-            c.restore();
+        function drawBrush(c, x, y, slope) {
+            contact(c, x - 17, y + 2, 26, 4, 0.25);
+            tool(c, x, y, () => {
+                c.rotate(-0.08 + Math.atan(slope));
+                const br = c.createLinearGradient(-70, 0, 0, 0);
+                br.addColorStop(0, '#2a1c0e'); br.addColorStop(0.7, '#5a3d1c'); br.addColorStop(1, '#d6a440');
+                c.fillStyle = br;
+                c.beginPath(); c.moveTo(0, 0); c.quadraticCurveTo(-30, -2, -70, -10); c.lineTo(-70, -2); c.quadraticCurveTo(-30, 2, 0, 0); c.fill();
+                c.fillStyle = steelGrad(c, 0, -14, 0, 4);
+                c.beginPath(); c.roundRect(-92, -14, 24, 12, 2); c.fill();
+                const wood = c.createLinearGradient(0, -14, 0, -4);
+                wood.addColorStop(0, '#c08a4a'); wood.addColorStop(1, '#6a4320');
+                c.fillStyle = wood;
+                c.beginPath(); c.moveTo(-92, -12); c.lineTo(-250, -30); c.lineTo(-252, -24); c.lineTo(-92, -4); c.closePath(); c.fill();
+            });
             c.fillStyle = 'rgba(255,236,170,0.95)';
-            c.beginPath(); c.arc(x, y, 1.8, 0, Math.PI * 2); c.fill();
+            c.beginPath(); c.arc(x, y, 0.8, 0, Math.PI * 2); c.fill();
         }
 
         function drawBuffer(c, x, y, t) {
-            contact(c, x + 8, y + 10, 110, 80, 0.4);
-            c.save();
-            c.translate(x, y);
-            const pad = c.createRadialGradient(-20, -20, 10, 0, 0, 84);
-            pad.addColorStop(0, '#f6f1e6'); pad.addColorStop(1, '#cfc6b4');
-            c.fillStyle = pad; c.beginPath(); c.arc(0, 0, 82, 0, Math.PI * 2); c.fill();
-            c.strokeStyle = 'rgba(120,110,95,0.3)'; c.lineWidth = 1;
-            for (let k = 0; k < 7; k++) { const a = t / 18 + k * 0.9; c.beginPath(); c.arc(0, 0, 30 + k * 7, a, a + 1.3); c.stroke(); }
-            const hg = c.createRadialGradient(-12, -14, 4, 0, 0, 46);
-            hg.addColorStop(0, '#4a4b54'); hg.addColorStop(1, '#16161a');
-            c.fillStyle = hg; c.beginPath(); c.arc(0, 0, 44, 0, Math.PI * 2); c.fill();
-            c.fillStyle = '#1d1d22';
-            c.beginPath(); c.moveTo(30, -20); c.lineTo(230, -110); c.lineTo(244, -84); c.lineTo(40, 6); c.closePath(); c.fill();
-            c.fillStyle = '#c62828'; c.beginPath(); c.arc(0, 0, 9, 0, Math.PI * 2); c.fill();
-            c.restore();
+            contact(c, x + 3, y + 4, 46, 34, 0.4);
+            tool(c, x, y, () => {
+                const pad = c.createRadialGradient(-20, -20, 10, 0, 0, 84);
+                pad.addColorStop(0, '#f6f1e6'); pad.addColorStop(1, '#cfc6b4');
+                c.fillStyle = pad; c.beginPath(); c.arc(0, 0, 82, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = 'rgba(120,110,95,0.3)'; c.lineWidth = 1;
+                for (let k = 0; k < 7; k++) { const a = t / 18 + k * 0.9; c.beginPath(); c.arc(0, 0, 30 + k * 7, a, a + 1.3); c.stroke(); }
+                const hg = c.createRadialGradient(-12, -14, 4, 0, 0, 46);
+                hg.addColorStop(0, '#4a4b54'); hg.addColorStop(1, '#16161a');
+                c.fillStyle = hg; c.beginPath(); c.arc(0, 0, 44, 0, Math.PI * 2); c.fill();
+                c.fillStyle = '#1d1d22';
+                c.beginPath(); c.moveTo(30, -20); c.lineTo(230, -110); c.lineTo(244, -84); c.lineTo(40, 6); c.closePath(); c.fill();
+                c.fillStyle = '#c62828'; c.beginPath(); c.arc(0, 0, 9, 0, Math.PI * 2); c.fill();
+            });
         }
 
         function drawMasking(c, k, peel) {
             if (k <= 0 || peel >= 1) return;
-            const top = beltY(DOOR.x1) + 3;
+            const top = topY(DOOR.x0) + 1;
             const sheets = [
-                { x: -300, y: 40, w: DOOR.x0 - 2 + 300, h: 700, from: -1 },
-                { x: DOOR.x1 + 2, y: 40, w: 1000, h: 700, from: 1 },
-                { x: DOOR.x0 - 2, y: 40, w: DOOR.x1 - DOOR.x0 + 4, h: top - 40, from: 0 },
+                { x: -300, y: 300, w: DOOR.x0 - 1 + 300, h: 400, from: -1 },
+                { x: DOOR.x1 + 1, y: 300, w: 900, h: 400, from: 1 },
+                { x: DOOR.x0 - 1, y: 300, w: DOOR.x1 - DOOR.x0 + 2, h: top - 300, from: 0 },
             ];
             sheets.forEach((s) => {
-                const slide = (1 - outCubic(k)) * s.from * 360;
-                const lift = s.from ? 0 : -(1 - outCubic(k)) * 240;
-                const off = peel * (s.from ? s.from * 460 : -300);
+                const slide = (1 - outCubic(k)) * s.from * 200;
+                const lift = s.from ? 0 : -(1 - outCubic(k)) * 120;
+                const off = peel * (s.from ? s.from * 260 : -160);
                 c.save();
                 c.globalAlpha = Math.min(1, k * 1.6) * (1 - peel);
                 c.translate(slide + (s.from ? off : 0), lift + (s.from ? 0 : off));
                 c.fillStyle = paper;
                 c.fillRect(s.x, s.y, s.w, s.h);
                 const fold = c.createLinearGradient(s.x, 0, s.x + s.w, 0);
-                for (let f = 0; f <= 8; f++) fold.addColorStop(f / 8, f % 2 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)');
+                for (let f = 0; f <= 10; f++) fold.addColorStop(f / 10, f % 2 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.05)');
                 c.fillStyle = fold; c.fillRect(s.x, s.y, s.w, s.h);
                 const light = c.createLinearGradient(0, s.y, 0, s.y + s.h);
                 light.addColorStop(0, 'rgba(255,255,255,0.06)'); light.addColorStop(1, 'rgba(0,0,0,0.3)');
                 c.fillStyle = light; c.fillRect(s.x, s.y, s.w, s.h);
                 c.fillStyle = 'rgba(214,190,120,0.96)';
-                if (s.from === -1) c.fillRect(s.x + s.w - 14, s.y, 14, s.h);
-                if (s.from === 1) c.fillRect(s.x, s.y, 14, s.h);
-                if (s.from === 0) c.fillRect(s.x, s.y + s.h - 12, s.w, 12);
+                if (s.from === -1) c.fillRect(s.x + s.w - 6, s.y, 6, s.h);
+                if (s.from === 1) c.fillRect(s.x, s.y, 6, s.h);
+                if (s.from === 0) c.fillRect(s.x, s.y + s.h - 5, s.w, 5);
                 c.restore();
             });
             c.save();
             c.globalAlpha = (1 - peel) * Math.min(1, k * 2) * 0.35;
-            const sg = c.createLinearGradient(DOOR.x0, 0, DOOR.x0 + 20, 0);
+            const sg = c.createLinearGradient(DOOR.x0, 0, DOOR.x0 + 9, 0);
             sg.addColorStop(0, 'rgba(0,0,0,0.8)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
-            c.fillStyle = sg; c.fillRect(DOOR.x0, top, 20, DOOR.y1 + 20 - top);
+            c.fillStyle = sg; c.fillRect(DOOR.x0, top, 9, DOOR.y1 + 8 - top);
             c.restore();
         }
 
@@ -1051,6 +1073,7 @@
             toScreen(c);
             const { i, key, p } = local(t);
 
+            drawScripts(c);
             const maskK = key === 'prime' ? span(p, 0, PRIME_START * 0.9) : (i > IDX.prime && i <= IDX.clear) ? 1 : 0;
             const peel = key === 'clear' ? inCubic(span(p, 0.7, 1)) : 0;
             drawMasking(c, maskK, peel);
@@ -1065,7 +1088,6 @@
             }
 
             if (key === 'straighten') {
-                // Anticipation, a fast drop, a held impact, recoil with overshoot.
                 let a = 0.7, blur = false;
                 for (const at of STRIKES) {
                     const d = p - at;
@@ -1076,21 +1098,21 @@
                     } else if (d > 0 && d < 0.012) a = 0;
                     else if (d >= 0.012 && d < 0.14) a = lerp(0, 0.7, outBack((d - 0.012) / 0.128));
                 }
-                if (a < 0.08) contact(c, DENT.x, DENT.y + 6, 30, 14, 0.5);
+                if (a < 0.08) contact(c, DENT.x, DENT.y + 3, 13, 6, 0.5);
                 drawHammer(c, -a, blur);
             }
             if (key === 'sand') {
                 const q = span(p, 0.06, 0.92);
                 const enter = outCubic(span(p, 0, 0.08)), leave = inCubic(span(p, 0.92, 1));
                 const s = sanderAt(Math.max(q, 0.001), false);
-                drawSander(c, s.x + (1 - enter) * 300 + leave * 320, s.y + (1 - enter) * 200 + leave * 220, t);
+                drawSander(c, s.x + (1 - enter) * 130 + leave * 140, s.y + (1 - enter) * 90 + leave * 100, t);
             }
             if (key === 'fill') {
-                if (p < 0.36) drawSpreader(c, DENT.x - 80 + 160 * outCubic(span(p, 0.04, 0.34)), DENT.y + 40, p);
+                if (p < 0.36) drawSpreader(c, DENT.x - 34 + 68 * outCubic(span(p, 0.04, 0.34)), DENT.y + 17, p);
                 else if (p < 0.98) {
                     const s = sanderAt(span(p, 0.36, 0.94), true);
                     const leave = inCubic(span(p, 0.92, 0.98));
-                    drawSander(c, s.x + leave * 320, s.y + leave * 220, t);
+                    drawSander(c, s.x + leave * 140, s.y + leave * 100, t);
                 }
             }
             const coat = COATS[key];
@@ -1098,16 +1120,19 @@
                 const cp = coatP(key, p);
                 if (cp > 0 && cp < SPRAY_END) drawGun(c, gunPath(cp / SPRAY_END, coat.box, coat.passes), coat.rgb());
             }
-            if (key === 'clear' && p < 0.62) drawGun(c, gunPath(p / 0.62, DOORBOX, 6), [235, 240, 248]);
+            if (key === 'clear' && p < 0.62) drawGun(c, gunPath(p / 0.62, DOORBOX, 5), [235, 240, 248]);
             if (key === 'stripe') {
                 const sp = stripeProgress(p);
-                if (sp > 0 && sp < 1) { const x = lerp(STRIPE_X0, STRIPE_X1, sp); drawBrush(c, x, charY(x) + STRIPE_OFF[0]); }
+                if (sp > 0 && sp < 1) {
+                    const x = lerp(STRIPE_X0, STRIPE_X1, sp);
+                    drawBrush(c, x, stripeY(x), (stripeY(x + 4) - stripeY(x - 4)) / 8);
+                }
             }
             if (key === 'reveal') {
                 const b = buffer(p);
                 if (b.q > 0 && b.q < 1) {
                     const enter = outCubic(span(b.q, 0, 0.1)), leave = inCubic(span(b.q, 0.9, 1));
-                    drawBuffer(c, b.x + (1 - enter) * 300 + leave * 340, b.y + (1 - enter) * 220 + leave * 260, t);
+                    drawBuffer(c, b.x + (1 - enter) * 130 + leave * 150, b.y + (1 - enter) * 100 + leave * 110, t);
                 }
             }
 
@@ -1122,14 +1147,14 @@
                     c.beginPath(); c.moveTo(pt.x, pt.y); c.lineTo(pt.x - pt.vx * 2.2, pt.y - pt.vy * 2.2); c.stroke();
                 } else if (pt.kind === 'flash') {
                     const a = Math.pow(1 - k, 2);
-                    const rg = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, 110);
+                    const rg = c.createRadialGradient(pt.x, pt.y, 0, pt.x, pt.y, 46);
                     rg.addColorStop(0, `rgba(255,244,220,${0.85 * a})`);
                     rg.addColorStop(0.25, `rgba(255,200,140,${0.3 * a})`);
                     rg.addColorStop(1, 'rgba(255,180,120,0)');
-                    c.fillStyle = rg; c.beginPath(); c.arc(pt.x, pt.y, 110, 0, Math.PI * 2); c.fill();
+                    c.fillStyle = rg; c.beginPath(); c.arc(pt.x, pt.y, 46, 0, Math.PI * 2); c.fill();
                 } else if (pt.kind === 'drop') {
                     c.fillStyle = `rgba(${pt.rgb[0] | 0},${pt.rgb[1] | 0},${pt.rgb[2] | 0},${0.35 * (1 - k)})`;
-                    c.fillRect(pt.x, pt.y, 1.5, 1.5);
+                    c.fillRect(pt.x, pt.y, 0.7, 0.7);
                 }
             }
             c.restore();
@@ -1147,15 +1172,14 @@
             const W = glCanvas.width, H = glCanvas.height;
             const u = look(t);
             Object.values(maps).forEach((m) => { if (m.dirty) upload(m); });
-            if (stripe.dirty) upload(stripe);
 
             const s = st.view.base * st.cam.z;
             const tt = t / 1000;
             const hand = st.playing ? 1 : 0;
             const sx = st.shake ? gauss() * st.shake : 0, sy = st.shake ? gauss() * st.shake : 0;
             st.view.s = s;
-            st.view.ox = W / 2 - (st.cam.x + drift(tt, 1) * 2.5 * hand) * s + sx * st.dpr;
-            st.view.oy = H / 2 - (st.cam.y + drift(tt, 5) * 1.6 * hand) * s + sy * st.dpr;
+            st.view.ox = W / 2 - (st.cam.x + drift(tt, 1) * 1.2 * hand) * s + sx * st.dpr;
+            st.view.oy = H / 2 - (st.cam.y + drift(tt, 5) * 0.8 * hand) * s + sy * st.dpr;
 
             gl.bindFramebuffer(gl.FRAMEBUFFER, RT.scene.fb);
             gl.viewport(0, 0, W, H);
@@ -1168,7 +1192,6 @@
             bind(3, maps.base.tex, S.u.uBase);
             bind(4, maps.wet.tex, S.u.uWet);
             bind(5, maps.polish.tex, S.u.uPolish);
-            bind(6, stripe.tex, S.u.uStripe);
             gl.uniform2f(S.u.uRes, W, H);
             gl.uniform3f(S.u.uView, s, st.view.ox, st.view.oy);
             gl.uniform1f(S.u.uTime, tt);
@@ -1181,6 +1204,7 @@
             gl.uniform1f(S.u.uPeel, u.peel);
             gl.uniform1f(S.u.uEnvShift, u.envShift);
             gl.uniform1f(S.u.uExposure, u.exposure);
+            gl.uniform1f(S.u.uStripeX, u.stripeX);
             gl.uniform3f(S.u.uBars, ...u.bars);
             gl.drawArrays(gl.TRIANGLES, 0, 3);
 
@@ -1227,7 +1251,6 @@
             }
         }
 
-        // 30fps is plenty for a film and keeps laptops cool.
         const FRAME = 1000 / 30;
         function frame(now) {
             st.raf = 0;
@@ -1249,7 +1272,7 @@
                 st.cam[a] += st.cam[v] * k;
             });
             st.shake *= Math.pow(0.00005, k);
-            if (st.shake < 0.25) st.shake = 0;
+            if (st.shake < 0.2) st.shake = 0;
             stepParticles(dt);
             const target = cssPaint();
             st.car = st.car.map((v, n) => lerp(v, target[n], 0.12));
@@ -1282,7 +1305,7 @@
         document.documentElement.addEventListener('paintchange', () => { if (!st.playing) { st.car = cssPaint(); render(); } });
 
         resize();
-        if (reduceMotion) { jump(IDX.reveal, 0.85); setPlaying(false); }
+        if (reduceMotion) { jump(IDX.reveal, 0.9); setPlaying(false); }
         else { settle(0); onStage(0); setPlaying(true); }
         root.craft = { jump, setPlaying, get t() { return st.t; } };
     }

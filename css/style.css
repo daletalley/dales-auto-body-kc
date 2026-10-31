@@ -296,7 +296,6 @@ section { padding-block: clamp(5rem, 10vw, 9rem); position: relative; }
     min-height: 100svh;
     display: grid; align-items: center;
     padding-block: calc(var(--header-h) + clamp(1rem, 3vh, 2.5rem)) clamp(2.5rem, 6vh, 4.5rem);
-    overflow: clip;
 }
 .hero-shade {
     position: absolute; inset: 0; z-index: -1; pointer-events: none;
@@ -383,6 +382,7 @@ section { padding-block: clamp(5rem, 10vw, 9rem); position: relative; }
    MARQUEE
    ========================================================================== */
 .marquee {
+    position: relative; z-index: 1;
     border-block: 1px solid var(--line);
     background: rgba(17, 15, 19, 0.72);
     overflow: hidden;
@@ -404,7 +404,9 @@ section { padding-block: clamp(5rem, 10vw, 9rem); position: relative; }
 /* ==========================================================================
    PINSTRIPE LETTERING — js/script.js initGhosts builds these
    ========================================================================== */
-.has-ghosts { position: relative; isolation: isolate; overflow: clip; }
+/* Lettering may drift past its section's top and bottom, never its sides. */
+.has-ghosts { position: relative; isolation: isolate; overflow-x: clip; overflow-y: visible; }
+.site-footer.has-ghosts { overflow: clip; }
 .ghosts { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
 .ghost {
     position: absolute;
@@ -591,7 +593,7 @@ section { padding-block: clamp(5rem, 10vw, 9rem); position: relative; }
 /* ==========================================================================
    LEGACY
    ========================================================================== */
-.legacy { background: rgba(17, 15, 19, 0.55); }
+.legacy { background: none; }
 .legacy-grid { display: grid; grid-template-columns: 1fr 1.05fr; gap: clamp(2.5rem, 6vw, 6rem); align-items: center; position: relative; }
 .legacy-photo { margin: 0; position: relative; }
 .legacy-photo img {
@@ -676,6 +678,21 @@ section { padding-block: clamp(5rem, 10vw, 9rem); position: relative; }
 .sign-head { text-align: center; display: grid; justify-items: center; }
 .sign-head .eyebrow::after { content: ''; width: 28px; height: 1px; background: currentColor; }
 .sign-head .section-lede { margin-inline: auto; text-wrap: balance; }
+.sign-title { font-size: clamp(2.6rem, 1.2rem + 5.4vw, 6.4rem); text-wrap: balance; }
+.sign-title .swash { position: relative; display: inline-block; white-space: nowrap; }
+/* A loaded brush pulls one stroke under the italic, in the current paint. */
+.swash-line {
+    position: absolute; left: -2%; right: -2%; bottom: -0.16em;
+    width: 104%; height: 0.32em; overflow: visible;
+    fill: none; stroke: var(--red-hot); stroke-width: 4; stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 1400; stroke-dashoffset: 1400;
+    transition: stroke-dashoffset 1.4s cubic-bezier(0.6, 0, 0.2, 1) 0.9s;
+    filter: drop-shadow(0 0 10px color-mix(in srgb, var(--paint) 55%, transparent));
+}
+.sign-title.is-sprayed .swash-line, html:not(.js) .swash-line { stroke-dashoffset: 0; }
+@media (prefers-reduced-motion: reduce) { .swash-line { stroke-dashoffset: 0; } }
+@media (max-width: 560px) { .sign-title .swash { white-space: normal; } }
 .sign-stage {
     position: relative;
     width: min(100% - 2 * var(--gutter), 1040px);
