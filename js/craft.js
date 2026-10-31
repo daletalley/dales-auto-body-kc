@@ -1222,15 +1222,17 @@
                 c.scale(-1, 1);
                 // Bristles: centerline bows down where they drag
                 const bow = (u) => Math.sin(Math.PI * u) * 3.2 * (1 - u * 0.4);
-                const half = (u) => 1.2 + 9 * Math.pow(Math.sin(Math.PI * Math.min(1, u * 0.9 + 0.05)), 0.8) * (0.35 + 0.65 * u);
+                // Tapers to a true point at the tip, swells to a belly, narrows into the ferrule.
+                const half = (u) => 0.12 + 8.6 * Math.pow(sstep(0, 0.72, u), 0.8) * (1 - 0.22 * sstep(0.78, 1, u));
                 const L = 118;
                 c.beginPath();
                 for (let k = 0; k <= 24; k++) { const u = k / 24; c.lineTo(-u * L, bow(u) - half(u)); }
                 for (let k = 24; k >= 0; k--) { const u = k / 24; c.lineTo(-u * L, bow(u) + half(u)); }
                 c.closePath();
                 const hair = c.createLinearGradient(0, 0, -L, 0);
-                hair.addColorStop(0, '#e9bb55'); hair.addColorStop(0.18, '#c8962f');     // gold-loaded tip
-                hair.addColorStop(0.34, '#4a3216'); hair.addColorStop(0.7, '#2a1c0d'); hair.addColorStop(1, '#3b2915');
+                // Gold load fading up into the dark hair, no hard line between them.
+                hair.addColorStop(0, '#c99a3c'); hair.addColorStop(0.12, '#a87b2e'); hair.addColorStop(0.28, '#6e4c20');
+                hair.addColorStop(0.46, '#3d2a13'); hair.addColorStop(0.75, '#2a1c0d'); hair.addColorStop(1, '#3b2915');
                 c.fillStyle = hair;
                 c.fill();
                 c.save();
@@ -1270,9 +1272,9 @@
                 c.strokeStyle = 'rgba(255,230,220,0.55)'; c.lineWidth = 1.2;
                 c.beginPath(); c.moveTo(hx - 4, -4.4); c.bezierCurveTo(hx - 60, -3.9, hx - 140, -3, hx - 184, -2.6); c.stroke();
             });
-            // A bead of wet gold right where the tip meets the line
-            c.fillStyle = 'rgba(255,226,150,0.95)';
-            c.beginPath(); c.arc(x, y, 0.9, 0, Math.PI * 2); c.fill();
+            // The point just touching the line, in the line's own gold.
+            c.fillStyle = 'rgba(220,170,78,0.9)';
+            c.beginPath(); c.arc(x, y, 0.35, 0, Math.PI * 2); c.fill();
         }
 
         function drawBuffer(c, x, y, t) {
