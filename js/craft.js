@@ -30,7 +30,7 @@
     // Repair maps cover only the area around the door, at 2x scene resolution.
     const REGION = { x: 450, y: 450, w: 400, h: 200, k: 2 };
     const STAGES = [
-        { key: 'damage',     label: 'Damage',       caption: 'A ’75 Chevelle, sideswiped right through the pinstripe.', dur: 4200 },
+        { key: 'damage',     label: 'Damage',       caption: 'Sideswiped right through the pinstripe.', dur: 4200 },
         { key: 'straighten', label: 'Straighten',   caption: 'Metal worked back to its true shape.',        dur: 3400 },
         { key: 'sand',       label: 'Sand',         caption: 'Feathered out to bare metal.',                dur: 3400 },
         { key: 'fill',       label: 'Fill & block', caption: 'A skim of filler, blocked flat by hand.',     dur: 3800 },
