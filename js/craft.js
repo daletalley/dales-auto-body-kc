@@ -30,14 +30,14 @@
     // Repair maps cover only the area around the door, at 2x scene resolution.
     const REGION = { x: 430, y: 470, w: 400, h: 200, k: 2 };
     const STAGES = [
-        { key: 'damage',     label: 'Damage',       caption: 'A ’75 Chevelle. One door, one bad day.',     dur: 4200 },
+        { key: 'damage',     label: 'Damage',       caption: 'A ’75 Chevelle, sideswiped right through the pinstripe.', dur: 4200 },
         { key: 'straighten', label: 'Straighten',   caption: 'Metal worked back to its true shape.',        dur: 3400 },
         { key: 'sand',       label: 'Sand',         caption: 'Feathered out to bare metal.',                dur: 3400 },
         { key: 'fill',       label: 'Fill & block', caption: 'A skim of filler, blocked flat by hand.',     dur: 3800 },
         { key: 'prime',      label: 'Mask & prime', caption: 'Masked off, primed and sealed.',              dur: 3800 },
         { key: 'color',      label: 'Color match',  caption: 'Tinted to match the car, not the chip.',      dur: 3800 },
         { key: 'clear',      label: 'Clear',        caption: 'Clear coat, then the paper comes off.',       dur: 3600 },
-        { key: 'stripe',     label: 'Pinstripe',    caption: 'The line goes back on, end to end, by hand.', dur: 4600 },
+        { key: 'stripe',     label: 'Pinstripe',    caption: 'The line filled back in by hand, true to the original.', dur: 4400 },
         { key: 'reveal',     label: 'Showroom',     caption: 'You’d never know.',                           dur: 6600 },
     ];
     const STARTS = STAGES.reduce((a, s, i) => (a.push(i ? a[i - 1] + STAGES[i - 1].dur : 0), a), []);
@@ -68,9 +68,10 @@
     const topY = (x) => (x < 440 ? hoodY(x) : x > 1030 ? deckY(x) : beltY(x));
     const stripeY = (x) => topY(x) + 13;
     const DOOR = { x0: 470, x1: 762, y1: 648 };
-    const DENT = { x: 612, y: 592 };
+    const DENT = { x: 606, y: 534 };
     const TS = 0.42;                       // tool scale: real-world size next to the car
-    const STRIPE_X0 = 96, STRIPE_X1 = 1222;
+    // The pinstripe is filled back in across the repainted door only.
+    const STRIPE_X0 = 466, STRIPE_X1 = 766;
 
     function cssPaint() {
         const v = getComputedStyle(document.documentElement).getPropertyValue('--paint').trim();
@@ -198,27 +199,69 @@
             return texture2D(s, q).a;
         }
 
+        float smax(float a, float b, float k) { float h = clamp(0.5 - 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) + k * h * (1.0 - h); }
+        float smin(float a, float b, float k) { float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
+
+        // The body side as a signed distance (negative inside), every corner rounded.
+        float bodySD(vec2 p) {
+            float top = topY(p.x), bot = botY(p.x);
+            float nose = 72.0 + (p.y - 516.0) * 0.06;
+            float tail = 1232.0 - (p.y - 497.0) * 0.04;
+            float d = smax(smax(top - p.y, p.y - bot, 8.0), smax(nose - p.x, p.x - tail, 8.0), 16.0);
+            vec2 wc = p.x < 620.0 ? vec2(300.0, 606.0) : vec2(940.0, 606.0);
+            return smax(d, 92.0 - length(p - wc), 5.0);
+        }
+        // The greenhouse: a curved windshield flowing up out of the cowl, a crowned
+        // roof, and the long Colonnade C-pillar sweeping down into the deck.
+        float greenTop(float x) {
+            float belt = topY(x);
+            float roof = 392.0 + pow((x - 790.0) / 300.0, 2.0) * 16.0;
+            float rise = smoothstep(436.0, 700.0, x);
+            rise = rise * rise * (3.0 - 2.0 * rise);
+            float fall = smoothstep(1046.0, 850.0, x);
+            return mix(belt, roof, rise * fall);
+        }
+        float greenSD(vec2 p) {
+            float gt = greenTop(p.x);
+            float s = (greenTop(p.x + 1.0) - greenTop(p.x - 1.0)) * 0.5;
+            float dTop = (gt - p.y) / sqrt(1.0 + s * s);
+            return max(dTop, p.y - topY(p.x) - 0.5);
+        }
+
         vec3 wheel(vec2 wq, float wr, float aa, float lit) {
             float a = atan(wq.y, wq.x);
-            vec3 Nt = normalize(vec3(wq / 77.0 * 0.55, 1.0));
-            vec3 tire = shade(Nt, vec3(0.022), 0.0, 0.6, 0.0, 0.1, lit) * (0.6 + 0.4 * smoothstep(77.0, 60.0, wr));
-            float ww = smoothstep(59.0 - aa, 59.0 + aa, wr) * (1.0 - smoothstep(66.0 - aa, 66.0 + aa, wr));
-            tire = mix(tire, shade(Nt, vec3(0.82, 0.8, 0.76), 0.0, 0.5, 0.0, 0.1, lit), ww);
-            float rimM = 1.0 - smoothstep(52.0 - aa, 52.0 + aa, wr);
-            float ring = smoothstep(43.0, 44.0, wr);
-            vec3 Nr = normalize(vec3(wq / 52.0 * 0.8 * ring, 1.0));
-            vec3 face = shade(normalize(vec3(wq / 44.0 * 0.25, 1.0)), vec3(0.42, 0.43, 0.45), 0.7, 0.3, 0.3, 0.05, lit);
-            float slot = smoothstep(0.80, 0.86, cos(5.0 * (a + 0.2))) * smoothstep(26.0, 28.0, wr) * (1.0 - smoothstep(37.0, 39.0, wr));
-            face = mix(face, vec3(0.01), slot);
+            // Tire: a bulging sidewall that catches a soft line of light
+            float sw = clamp((wr - 52.0) / 25.0, 0.0, 1.0);
+            vec3 Nt = normalize(vec3(wq / max(wr, 1.0) * (sw - 0.45) * 1.4, 1.0));
+            vec3 tire = shade(Nt, vec3(0.02), 0.0, 0.5, 0.0, 0.1, lit);
+            float ww = smoothstep(58.5 - aa, 59.5 + aa, wr) * (1.0 - smoothstep(65.5 - aa, 66.5 + aa, wr));
+            tire = mix(tire, shade(Nt, vec3(0.80, 0.78, 0.74), 0.0, 0.45, 0.0, 0.1, lit), ww);
+            // Rally wheel
+            float rimM = 1.0 - smoothstep(52.5 - aa, 52.5 + aa, wr);
+            float rt = clamp((wr - 43.0) / 9.5, 0.0, 1.0);                 // trim ring: a polished torus
+            vec3 Nr = normalize(vec3(wq / max(wr, 1.0) * (rt - 0.5) * 2.2, 1.0));
+            float ringM = smoothstep(42.5, 43.5, wr);
+            vec3 Nf = normalize(vec3(-wq / 44.0 * 0.32, 1.0));               // dished center
+            vec3 face = shade(Nf, vec3(0.50, 0.51, 0.53), 0.75, 0.32, 0.4, 0.06, lit);
+            // Five rounded slots, open to the dark drum behind
+            float slot = 0.0;
+            for (int i = 0; i < 5; i++) {
+                float sa = float(i) * 1.25664 + 0.6;
+                vec2 dir = vec2(cos(sa), sin(sa));
+                vec2 q = vec2(dot(wq, dir) - 31.0, dot(wq, vec2(-dir.y, dir.x)));
+                slot = max(slot, 1.0 - smoothstep(-aa, aa, sdBox(q, vec2(6.0, 3.6), 3.2)));
+            }
+            face = mix(face, vec3(0.006), slot);
             float lug = 0.0;
             for (int i = 0; i < 5; i++) {
-                float la = float(i) * 1.2566 + 0.83;
-                lug = max(lug, 1.0 - smoothstep(2.0, 3.0, length(wq - vec2(cos(la), sin(la)) * 21.0)));
+                float la = float(i) * 1.25664;
+                lug = max(lug, 1.0 - smoothstep(1.6, 2.6, length(wq - vec2(cos(la), sin(la)) * 19.0)));
             }
-            float cap = 1.0 - smoothstep(15.0 - aa, 15.0 + aa, wr);
-            vec3 w = mix(face, chrome(Nr, lit), ring);
-            w = mix(w, chrome(normalize(vec3(0.0, -0.3, 1.0)), lit), lug);
-            w = mix(w, chrome(normalize(vec3(wq / 15.0 * 0.7, 1.0)), lit), cap);
+            float capR = 12.5;
+            float cap = 1.0 - smoothstep(capR - aa, capR + aa, wr);
+            vec3 w = mix(face, chrome(Nr, lit), ringM);
+            w = mix(w, chrome(normalize(vec3(0.0, -0.4, 1.0)), lit), lug);
+            w = mix(w, chrome(normalize(vec3(wq / capR * 0.75, 1.0)), lit), cap);
             return mix(tire, w, rimM);
         }
 
@@ -232,7 +275,6 @@
 
             float top = topY(p.x);
             float bot = botY(p.x);
-            float roof = roofY(p.x);
 
             vec2 wc = p.x < 620.0 ? WF : WR;
             vec2 wq = p - wc;
@@ -240,75 +282,90 @@
             float tireM = 1.0 - smoothstep(77.0 - aa, 77.0 + aa, wr);
             vec2 ac = wc - vec2(0.0, 7.0);
             float archR = length(p - ac);
-            float inArch = 1.0 - smoothstep(92.0 - aa, 92.0 + aa, archR);
+            float inArch = (1.0 - smoothstep(92.0 - aa, 92.0 + aa, archR)) * step(p.y, ac.y + 80.0);
 
-            float xA = mix(440.0, 642.0, clamp((510.0 - p.y) / 112.7, 0.0, 1.0));
-            float xC = mix(1030.0, 902.0, clamp((497.0 - p.y) / 99.3, 0.0, 1.0));
-            float gd = min(min(p.y - roof, top - p.y), min((p.x - xA) * 0.66, (xC - p.x) * 0.77));
-            float green = smoothstep(-aa, aa, gd) * step(440.0, p.x) * step(p.x, 1030.0);
+            float bd = bodySD(p);
+            float body = 1.0 - smoothstep(-aa, aa, bd);
+            float gs = greenSD(p);
+            float green = (1.0 - smoothstep(-aa, aa, gs)) * (1.0 - body);
 
-            float nose = 72.0 + (p.y - 516.0) * 0.06;
-            float tail = 1232.0 - (p.y - 497.0) * 0.04;
-            float body = smoothstep(top - aa, top + aa, p.y) * (1.0 - smoothstep(bot - aa, bot + aa, p.y))
-                       * smoothstep(nose - aa, nose + aa, p.x) * (1.0 - smoothstep(tail - aa, tail + aa, p.x))
-                       * (1.0 - inArch);
-
-            float fb = sdBox(p - vec2(80.0, 594.0), vec2(26.0, 15.0), 8.0);
-            float rb = sdBox(p - vec2(1238.0, 586.0), vec2(26.0, 14.0), 8.0);
-            float bump = 1.0 - smoothstep(-aa, aa, min(fb, rb));
+            float fb = sdBox(p - vec2(76.0, 594.0), vec2(26.0, 14.0), 11.0);
+            float rb = sdBox(p - vec2(1240.0, 586.0), vec2(24.0, 13.0), 11.0);
+            float bdist = min(fb, rb);
+            float bump = 1.0 - smoothstep(-aa, aa, bdist);
 
             float car = max(max(body, green), bump);
 
             if (car > 0.002 || tireM > 0.002 || inArch > 0.002) {
-                vec3 c = vec3(0.005) * (1.0 - smoothstep(40.0, 92.0, archR) * 0.5);
-                if (tireM > 0.0) c = mix(c, wheel(wq, wr, aa, lit), tireM);
+                vec3 c = vec3(0.004) * (1.0 - smoothstep(30.0, 92.0, archR) * 0.6);
+                if (tireM > 0.0) {
+                    vec3 wcol = wheel(wq, wr, aa, lit);
+                    // The fender shades the top of the wheel
+                    wcol *= mix(0.35, 1.0, smoothstep(wc.y - 80.0, wc.y + 10.0, p.y));
+                    c = mix(c, wcol, tireM);
+                }
 
                 if (car > 0.0) {
                     vec3 bc;
-                    if (bump > 0.5) {
+                    if (bump > 0.5 && body < 0.5) {
+                        // Wraparound chrome bumper: rounded in every direction
                         float by = p.x < 640.0 ? 594.0 : 586.0;
-                        vec3 Nb = normalize(vec3(p.x < 640.0 ? -0.25 : 0.25, clamp((p.y - by) / 15.0, -1.0, 1.0) * 0.95, 1.0));
-                        bc = chrome(Nb, lit) * (0.6 + 0.4 * smoothstep(0.0, 2.0, abs(p.y - by - 4.0)));
+                        vec2 e = vec2(0.8, 0.0);
+                        vec2 gb = normalize(vec2(min(sdBox(p + e - vec2(76.0, 594.0), vec2(26.0, 14.0), 11.0), sdBox(p + e - vec2(1240.0, 586.0), vec2(24.0, 13.0), 11.0)) - min(sdBox(p - e - vec2(76.0, 594.0), vec2(26.0, 14.0), 11.0), sdBox(p - e - vec2(1240.0, 586.0), vec2(24.0, 13.0), 11.0)),
+                                             min(sdBox(p + e.yx - vec2(76.0, 594.0), vec2(26.0, 14.0), 11.0), sdBox(p + e.yx - vec2(1240.0, 586.0), vec2(24.0, 13.0), 11.0)) - min(sdBox(p - e.yx - vec2(76.0, 594.0), vec2(26.0, 14.0), 11.0), sdBox(p - e.yx - vec2(1240.0, 586.0), vec2(24.0, 13.0), 11.0))) + 1e-5);
+                        float rollB = pow(smoothstep(-12.0, 0.0, bdist), 1.5);
+                        vec3 Nb = normalize(vec3(gb * rollB * 1.8 + vec2(0.0, (p.y - by) / 16.0 * 0.5), 1.0));
+                        bc = chrome(Nb, lit);
+                        bc *= 0.55 + 0.45 * smoothstep(0.0, 2.2, abs(p.y - by - 3.0));
                     } else if (green > 0.5) {
-                        float xQ = mix(974.0, 902.0, clamp((500.0 - p.y) / 95.0, 0.0, 1.0));
-                        float dg = min(gd - 8.0, 759.0 - p.x);
-                        float qg = min(min(gd - 8.0, p.x - 784.0), xQ - p.x);
+                        float inset = -gs;
+                        float xQ = mix(976.0, 912.0, clamp((500.0 - p.y) / 92.0, 0.0, 1.0));
+                        float dg = smin(inset - 7.0, 758.0 - p.x, 7.0);
+                        float qg = smin(smin(inset - 7.0, p.x - 786.0, 6.0), xQ - p.x, 10.0);
                         float wd = max(dg, qg);
                         float glassM = smoothstep(-aa, aa, wd);
-                        float chromeM = smoothstep(-3.6 - aa, -3.6 + aa, wd) * (1.0 - glassM);
-                        float drip = (1.0 - smoothstep(2.4 - aa, 2.4 + aa, p.y - roof)) * step(630.0, p.x) * step(p.x, 930.0);
-                        vec3 Ng = normalize(vec3((p.x - 700.0) / 3000.0, -0.11 - 0.08 * smoothstep(60.0, 0.0, gd), 1.0));
-                        vec3 glass = shade(Ng, vec3(0.012, 0.014, 0.016), 0.0, 0.03, 1.0, 0.02, lit) + vec3(0.008) * smoothstep(0.0, 60.0, wd);
+                        float rev = smoothstep(-2.4 - aa, -2.4 + aa, wd) * (1.0 - glassM);
+                        float drip = (1.0 - smoothstep(1.4 - aa, 1.4 + aa, inset)) * smoothstep(560.0, 640.0, p.x) * smoothstep(1010.0, 940.0, p.x);
+                        // Glass leans in toward the roof and reflects the booth faintly.
+                        float lean = smoothstep(80.0, 0.0, inset);
+                        vec3 Ng = normalize(vec3((p.x - 760.0) / 2200.0, -0.24 - 0.22 * lean, 1.0));
+                        vec3 glass = shade(Ng, vec3(0.01, 0.012, 0.014), 0.0, 0.05, 0.0, 0.05, lit);
+                        glass += vec3(0.012, 0.013, 0.015) * smoothstep(0.0, 50.0, wd);    // a hint of cabin
                         float grain = noise(p * 2.3) * 0.5 + noise(p * 6.1) * 0.5;
-                        vec3 Nv = normalize(vec3((grain - 0.5) * 0.25, -0.3 + (grain - 0.5) * 0.25, 1.0));
-                        vec3 vinyl = shade(Nv, vec3(0.018), 0.0, 0.55, 0.0, 0.1, lit);
+                        float roll = pow(smoothstep(14.0, 0.0, inset), 2.0);
+                        vec3 Nv = normalize(vec3((grain - 0.5) * 0.2, -0.25 - 0.9 * roll + (grain - 0.5) * 0.2, 1.0));
+                        vec3 vinyl = shade(Nv, vec3(0.016), 0.0, 0.5, 0.0, 0.1, lit);
                         bc = mix(vinyl, glass, glassM);
-                        bc = mix(bc, chrome(normalize(vec3(0.0, wd < -1.8 ? -0.5 : 0.4, 1.0)), lit), max(chromeM, drip));
+                        bc = mix(bc, chrome(normalize(vec3(0.0, wd < -1.2 ? -0.6 : 0.5, 1.0)), lit) * 0.85, rev);
+                        bc = mix(bc, chrome(normalize(vec3(0.0, -0.7, 1.0)), lit), drip);
                     } else {
+                        // ---- Body: curvature, rolled edges, Coke-bottle hips ----
                         float crease = charY(p.x);
-                        float above = smoothstep(crease + 1.4, crease - 1.4, p.y);
+                        float above = smoothstep(crease + 1.6, crease - 1.6, p.y);
                         float tUp = clamp((crease - p.y) / max(crease - top, 1.0), 0.0, 1.0);
                         float tDn = clamp((p.y - crease) / max(bot - crease, 1.0), 0.0, 1.0);
-                        float ny = mix(0.04 + 0.6 * tDn * tDn - 0.08 * exp(-tDn * 16.0), -0.08 - 0.16 * tUp * tUp, above);
-                        ny -= 0.62 * smoothstep(top + 5.0, top, p.y);
-                        ny += 0.5 * smoothstep(bot - 8.0, bot, p.y);
-                        vec3 N = vec3((p.x - 650.0) / 3000.0, ny, 1.0);
-                        // Coke-bottle hips: the body swells over each wheel
+                        float ny = mix(0.03 + 0.55 * tDn * tDn - 0.07 * exp(-tDn * 14.0), -0.06 - 0.18 * tUp * tUp, above);
+                        vec3 N = vec3((p.x - 650.0) / 1700.0, ny, 1.0);
                         vec2 hq = (p - vec2(940.0, 540.0)) / vec2(1.35, 1.0);
-                        N.xy += normalize(hq) * 0.22 * smoothstep(250.0, 140.0, length(hq)) * smoothstep(92.0, 130.0, archR);
+                        N.xy += normalize(hq) * 0.15 * smoothstep(250.0, 140.0, length(hq)) * smoothstep(92.0, 130.0, archR);
                         vec2 fq = (p - vec2(300.0, 548.0)) / vec2(1.3, 1.0);
                         N.xy += normalize(fq) * 0.14 * smoothstep(210.0, 120.0, length(fq)) * smoothstep(92.0, 120.0, archR);
-                        N.xy += normalize(p - ac) * 0.5 * smoothstep(14.0, 0.0, archR - 92.0);
-                        N.x -= 0.9 * smoothstep(nose + 26.0, nose, p.x);
-                        N.x += 0.9 * smoothstep(tail - 22.0, tail, p.x);
+                        // Every silhouette edge rolls away: this is what makes it read as solid metal.
+                        vec2 e = vec2(0.75, 0.0);
+                        vec2 gb = vec2(bodySD(p + e) - bodySD(p - e), bodySD(p + e.yx) - bodySD(p - e.yx));
+                        gb /= max(length(gb), 1e-4);
+                        float roll = smoothstep(-18.0, 0.0, bd);
+                        N.xy += gb * roll * roll * 2.2;
+                        // Door shut lines
                         float g1 = p.x - 470.0, g2 = p.x - 762.0;
                         float gn = abs(g1) < abs(g2) ? g1 : g2;
                         float gap = abs(gn) + step(p.y, top + 1.0) * 10.0;
                         N.x += 0.7 * smoothstep(4.0, 0.5, gap) * sign(gn);
 
-                        vec2 dd = (p - uDent.xy) / vec2(22.0, 15.0);
+                        // The hit: a dent, and long sideswipe scrapes straight through the pinstripe
+                        vec2 dd = (p - uDent.xy) / vec2(26.0, 13.0);
                         float g = exp(-dot(dd, dd));
-                        N.xy += uDent.z * (2.0 * dd / vec2(22.0, 15.0) * g * 3.8 + vec2(fbm(p * 0.25) - 0.5, 0.5 - fbm(p * 0.25 + 3.0)) * g * 0.8);
+                        N.xy += uDent.z * (2.0 * dd / vec2(26.0, 13.0) * g * 3.4 + vec2(fbm(p * 0.25) - 0.5, 0.5 - fbm(p * 0.25 + 3.0)) * g * 0.7);
                         if (uImpact.z >= 0.0 && uImpact.z < 1.4) {
                             vec2 rp = p - uImpact.xy;
                             float r = length(rp);
@@ -320,7 +377,7 @@
                         float sand = region(uSand, p);
                         float fil = region(uFiller, p);
                         float pr = region(uPrime, p);
-                        float bs = region(uBase, p);
+                        float bs = smoothstep(0.0, 0.55, region(uBase, p));
                         float wet = region(uWet, p);
                         float pol = region(uPolish, p);
                         float onDoor = step(470.0, p.x) * step(p.x, 762.0);
@@ -338,10 +395,11 @@
                         float lines = max(1.0 - smoothstep(0.75 - aa, 0.75 + aa, abs(p.y - sy1)), 1.0 - smoothstep(0.45 - aa, 0.45 + aa, abs(p.y - sy2))) * stripeRun;
                         alb = mix(alb, vec3(0.86, 0.66, 0.30), lines); metal = mix(metal, 0.6, lines);
 
-                        vec2 sq = p - uDent.xy;
-                        float scr = smoothstep(0.82, 0.95, noise(vec2(sq.x * 0.05 + sq.y * 0.25, sq.y * 1.9 - sq.x * 0.16)));
-                        scr *= smoothstep(56.0, 12.0, length(sq * vec2(0.7, 1.4))) * uScratch;
-                        alb = mix(alb, vec3(0.62, 0.62, 0.6), scr); rough = mix(rough, 0.7, scr); clear *= 1.0 - scr;
+                        vec2 sq = p - uDent.xy - vec2(0.0, -4.0);
+                        float streak = smoothstep(0.7, 0.92, noise(vec2(sq.x * 0.012, sq.y * 1.1)) * 0.6 + noise(vec2(sq.x * 0.05, sq.y * 2.3)) * 0.4);
+                        float scr = streak * smoothstep(1.0, 0.45, length(sq / vec2(118.0, 20.0))) * uScratch;
+                        alb = mix(alb, mix(vec3(0.66, 0.66, 0.64), vec3(0.32, 0.33, 0.34), noise(p * 0.7)), scr);
+                        rough = mix(rough, 0.7, scr); clear *= 1.0 - scr; metal = mix(metal, 0.2, scr);
 
                         float scuff = smoothstep(0.06, 0.24, sand);
                         float ring = smoothstep(0.34, 0.5, sand);
@@ -352,15 +410,15 @@
                         alb = mix(alb, vec3(0.80, 0.72, 0.62) * (0.94 + 0.1 * noise(p * 1.8)), fil);
                         metal = mix(metal, 0.0, fil); rough = mix(rough, 0.8, fil);
 
-                        alb = mix(alb, vec3(0.30, 0.31, 0.33), pr); metal = mix(metal, 0.0, pr); rough = mix(rough, mix(0.72, 0.18, wet), pr);
-                        alb = mix(alb, paint, bs); metal = mix(metal, 0.3, bs); rough = mix(rough, mix(0.38, 0.16, wet), bs);
+                        alb = mix(alb, vec3(0.36, 0.37, 0.38), pr); metal = mix(metal, 0.0, pr); rough = mix(rough, mix(0.66, 0.2, wet), pr);
+                        alb = mix(alb, paint, bs); metal = mix(metal, 0.3, bs); rough = mix(rough, mix(0.4, 0.14, wet), bs);
                         float newClear = uClearDoor * bs * onDoor;
                         clear = max(clear * (1.0 - max(pr, bs) * onDoor), newClear);
                         float cr = mix(0.02, mix(uClearRough, 0.016, pol), newClear);
 
-                        // The new pinstripe, laid by hand up to uStripeX
-                        float newS = lines * step(p.x, uStripeX);
-                        alb = mix(alb, vec3(0.86, 0.66, 0.30), newS); metal = mix(metal, 0.6, newS);
+                        // The pinstripe filled back in across the repainted door
+                        float newS = lines * onDoor * step(p.x, uStripeX);
+                        alb = mix(alb, vec3(0.86, 0.66, 0.30), newS); metal = mix(metal, 0.6, newS); clear = max(clear, newS * uClearDoor);
 
                         bc = shade(N, alb, metal, rough, clear, cr, lit);
 
@@ -369,33 +427,34 @@
                         vec3 fN = normalize(N + vec3(h1 - 0.5, h2 - 0.5, 0.0) * 1.2);
                         vec3 fR = vec3(2.0 * fN.z * fN.x, 2.0 * fN.z * fN.y, 2.0 * fN.z * fN.z - 1.0);
                         float paintK = clamp((1.0 - ring) * (1.0 - fil) * (1.0 - pr) + bs, 0.0, 1.0);
-                        bc += env(fR, 0.04) * 0.012 * step(0.72, h3) * paintK * (uCarCol * 1.2 + 0.2);
+                        bc += env(fR, 0.04) * 0.01 * step(0.74, h3) * paintK * (uCarCol * 1.2 + 0.2);
 
-                        // Chrome: wheel-opening moldings, rocker molding, flush door handle
-                        float wm = (1.0 - smoothstep(1.6 - aa, 1.6 + aa, abs(archR - 93.6))) * step(p.y, ac.y + 40.0);
-                        float rk = (1.0 - smoothstep(1.8 - aa, 1.8 + aa, abs(p.y - (bot - 7.0)))) * step(392.0, p.x) * step(p.x, 848.0);
+                        // Chrome: wheel-opening moldings, rocker molding, flush handle
+                        float wm = (1.0 - smoothstep(1.4 - aa, 1.4 + aa, abs(archR - 93.6))) * step(p.y, ac.y + 40.0);
+                        float rk = (1.0 - smoothstep(1.5 - aa, 1.5 + aa, abs(p.y - (bot - 7.0)))) * step(394.0, p.x) * step(p.x, 846.0);
                         float hm = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(736.0, 532.0), vec2(14.0, 2.6), 2.0));
                         bc *= 1.0 - 0.5 * (1.0 - smoothstep(-1.0, 1.5, sdBox(p - vec2(736.0, 534.0), vec2(15.0, 4.0), 3.0)));
-                        bc = mix(bc, chrome(normalize(vec3(0.0, (p.y - ac.y) / 120.0 - 0.2, 1.0)), lit), wm);
-                        bc = mix(bc, chrome(normalize(vec3(0.0, (p.y - (bot - 7.0)) * 0.5, 1.0)), lit), rk);
+                        bc = mix(bc, chrome(normalize(vec3(normalize(p - ac) * 0.6, 1.0)), lit), wm);
+                        bc = mix(bc, chrome(normalize(vec3(0.0, (p.y - (bot - 7.0)) * 0.6, 1.0)), lit), rk);
                         bc = mix(bc, chrome(normalize(vec3(0.0, clamp((p.y - 532.0) / 3.0, -1.0, 1.0) * 0.8, 1.0)), lit), hm);
-                        // Side marker lamps
                         float fm = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(118.0, 566.0), vec2(10.0, 3.2), 2.5));
                         float rm = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(1204.0, 556.0), vec2(9.0, 3.0), 2.5));
-                        bc = mix(bc, shade(N, vec3(0.9, 0.42, 0.04), 0.0, 0.1, 1.0, 0.02, lit) + vec3(0.06, 0.02, 0.0), fm);
-                        bc = mix(bc, shade(N, vec3(0.75, 0.04, 0.04), 0.0, 0.1, 1.0, 0.02, lit) + vec3(0.05, 0.0, 0.0), rm);
+                        bc = mix(bc, shade(N, vec3(0.9, 0.42, 0.04), 0.0, 0.1, 1.0, 0.02, lit) + vec3(0.05, 0.02, 0.0), fm);
+                        bc = mix(bc, shade(N, vec3(0.75, 0.04, 0.04), 0.0, 0.1, 1.0, 0.02, lit) + vec3(0.04, 0.0, 0.0), rm);
 
+                        // Soft occlusion: shut lines, under the belt seal, near arches and the rocker
                         bc *= 0.15 + 0.85 * smoothstep(0.4, 1.3, gap);
-                        bc *= mix(0.55, 1.0, smoothstep(0.0, 26.0, archR - 92.0));
+                        bc *= mix(0.6, 1.0, smoothstep(0.0, 4.0, p.y - top));
+                        bc *= mix(0.5, 1.0, smoothstep(0.0, 22.0, archR - 92.0));
                     }
-                    // Bullet mirror on the door
+                    // Bullet mirror
                     vec2 mq = (p - vec2(488.0, 500.0)) / vec2(13.0, 6.5);
                     float mir = 1.0 - smoothstep(1.0 - aa / 6.0, 1.0 + aa / 6.0, length(mq));
-                    float stalk = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(494.0, 507.0), vec2(2.5, 5.0), 1.0));
+                    float stalk = 1.0 - smoothstep(-aa, aa, sdBox(p - vec2(494.0, 507.0), vec2(2.2, 5.0), 1.0));
                     bc = mix(bc, chrome(normalize(vec3(mq * 0.8, 1.0)), lit), max(mir, stalk));
                     c = mix(c, bc, car);
                 }
-                col = mix(col, c, clamp(max(car, max(tireM, inArch * step(p.y, ac.y + 92.0))), 0.0, 1.0));
+                col = mix(col, c, clamp(max(car, max(tireM, inArch)), 0.0, 1.0));
             }
 
             col = aces(col * uExposure);
@@ -602,26 +661,32 @@
         }
         const clearMap = (m) => { m.g.save(); m.g.setTransform(1, 0, 0, 1, 0, 0); m.g.clearRect(0, 0, m.c.width, m.c.height); m.g.restore(); m.dirty = true; };
 
-        const REPAIR = { x0: DENT.x - 46, x1: DENT.x + 46, y0: DENT.y - 26, y1: DENT.y + 26 };
-        const DOORBOX = { x0: DOOR.x0 + 8, x1: DOOR.x1 - 8, y0: topY(DOOR.x0) + 8, y1: DOOR.y1 - 8 };
+        const REPAIR = { x0: DENT.x - 40, x1: DENT.x + 40, y0: DENT.y - 18, y1: DENT.y + 20 };
+        const DOORBOX = { x0: DOOR.x0 + 8, x1: DOOR.x1 - 8, y0: topY(DOOR.x0) + 4, y1: DOOR.y1 - 6 };
         const COATS = {
-            prime: { map: 'prime', box: REPAIR, passes: 4, alpha: [0.3, 0.55], n: 9000, rgb: () => [150, 152, 158], clip: (g) => { g.beginPath(); g.ellipse(DENT.x, DENT.y, 60, 40, 0, 0, Math.PI * 2); g.clip(); } },
-            color: { map: 'base', box: DOORBOX, passes: 5, alpha: [0.3, 0.55], n: 26000, rgb: () => st.car.map((v) => v * 255), clip: doorClip },
+            // Primer is reverse-masked: a soft-edged patch over the repair only.
+            prime: { map: 'prime', box: REPAIR, passes: 4, r: 24, a: 0.07, rgb: () => [150, 152, 158], clip: (g) => { g.beginPath(); g.ellipse(DENT.x, DENT.y + 2, 70, 44, 0, 0, Math.PI * 2); g.clip(); } },
+            color: { map: 'base', box: DOORBOX, passes: 6, r: 28, a: 0.08, rgb: () => st.car.map((v) => v * 255), clip: doorClip },
         };
         const SPRAY_END = 0.86;
         const PRIME_START = 0.28;
 
+        // Finish a coat: complete the remaining passes in one go, so it stays
+        // exactly the shape the gun was making.
         function solidCoat(key) {
-            const coat = COATS[key];
-            const g = maps[coat.map].g;
-            g.save();
-            coat.clip(g);
-            g.fillStyle = '#fff';
-            g.fillRect(REGION.x, REGION.y, REGION.w, REGION.h);
-            g.restore();
-            maps[coat.map].dirty = true;
+            if (key === 'color') {
+                // Color covers the whole door, edge to edge, inside its masking.
+                const g = maps.base.g;
+                g.save(); doorClip(g); g.fillStyle = '#fff'; g.fillRect(REGION.x, REGION.y, REGION.w, REGION.h); g.restore();
+                maps.base.dirty = true;
+                return;
+            }
+            sprayInterval(key, PRIME_START, 1, false);
+            sprayInterval(key, PRIME_START, 1, false);
         }
         const coatP = (key, p) => (key === 'prime' ? span(p, PRIME_START, 1) : p);
+        // Each step of a pass lays a soft, even film; overlapping passes build
+        // a smooth coat with a feathered edge, the way a gun really lays paint.
         function sprayInterval(key, p0, p1, live) {
             const coat = COATS[key];
             p0 = coatP(key, p0); p1 = coatP(key, p1);
@@ -631,11 +696,23 @@
                 if (p > SPRAY_END || p <= 0) continue;
                 const g = gunPath(p / SPRAY_END, coat.box, coat.passes);
                 if (!g.on) continue;
-                const n = Math.max(1, Math.round(coat.n * (p1 - p0) / steps));
-                droplets(maps[coat.map], g.x, g.y, 26, n, coat.alpha, coat.clip);
-                droplets(maps.wet, g.x, g.y, 26, Math.ceil(n / 3), [0.3, 0.6], coat.clip);
+                stamp(maps[coat.map], g.x, g.y, coat.r, coat.a, coat.clip);
+                stamp(maps.wet, g.x, g.y, coat.r, 0.07, coat.clip);
                 if (live && i === steps) emitSpray(g, coat.rgb());
             }
+        }
+        function stamp(m, x, y, r, a, clip) {
+            const g = m.g;
+            g.save();
+            if (clip) clip(g);
+            const rg = g.createRadialGradient(x, y, 0, x, y, r);
+            rg.addColorStop(0, `rgba(255,255,255,${a})`);
+            rg.addColorStop(0.55, `rgba(255,255,255,${a * 0.7})`);
+            rg.addColorStop(1, 'rgba(255,255,255,0)');
+            g.fillStyle = rg;
+            g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+            g.restore();
+            m.dirty = true;
         }
 
         const sanderAt = (q, wide) => {
@@ -785,7 +862,7 @@
             if (COATS[key]) sprayInterval(key, p0, p, true);
             if (key === 'clear' && p < 0.62) {
                 const g = gunPath(p / 0.62, DOORBOX, 5);
-                if (g.on) { droplets(maps.wet, g.x, g.y, 26, 40, [0.3, 0.6], doorClip); emitSpray(g, [235, 240, 248]); }
+                if (g.on) { stamp(maps.wet, g.x, g.y, 26, 0.09, doorClip); emitSpray(g, [235, 240, 248]); }
             }
             if (key === 'reveal') {
                 polishTo(p0, p);
@@ -852,7 +929,7 @@
                 case 'fill': return { ...ON_DENT, z: lerp(3.4, 3.2, p) };
                 case 'prime': return p < PRIME_START ? ON_DOOR : { ...ON_DENT, z: 3.0 };
                 case 'color': case 'clear': return ON_DOOR;
-                case 'stripe': { const x = lerp(STRIPE_X0, STRIPE_X1, stripeProgress(p)); return { x: clamp(x, 300, 1000), y: 528, z: 2.4 }; }
+                case 'stripe': { const x = lerp(STRIPE_X0, STRIPE_X1, stripeProgress(p)); return { x: clamp(x, 520, 712), y: 528, z: 3.3 }; }
                 case 'reveal': {
                     if (p < 0.3) return { x: lerp(ON_DOOR.x, 600, span(p, 0, 0.3)), y: 578, z: 2.0 };
                     const k = inOut(span(p, 0.3, 0.78));
@@ -879,18 +956,6 @@
         };
         // Draw a tool in its own full-size units, scaled down around an anchor.
         const tool = (c, x, y, fn) => { c.save(); c.translate(x, y); c.scale(TS, TS); fn(); c.restore(); };
-
-        function drawScripts(c) {
-            c.save();
-            const g = c.createLinearGradient(0, 530, 0, 550);
-            g.addColorStop(0, '#f4f6f8'); g.addColorStop(0.5, '#8e949c'); g.addColorStop(1, '#dfe3e8');
-            c.fillStyle = g;
-            c.font = 'italic 600 11px Fraunces, Georgia, serif';
-            c.fillText('Chevelle', 398, 548);
-            c.font = 'italic 600 9px Fraunces, Georgia, serif';
-            c.fillText('Malibu', 1076, 532);
-            c.restore();
-        }
 
         function drawHammer(c, ang, blur) {
             const px = DENT.x + 168 * TS, py = DENT.y + 66 * TS;
@@ -1073,7 +1138,6 @@
             toScreen(c);
             const { i, key, p } = local(t);
 
-            drawScripts(c);
             const maskK = key === 'prime' ? span(p, 0, PRIME_START * 0.9) : (i > IDX.prime && i <= IDX.clear) ? 1 : 0;
             const peel = key === 'clear' ? inCubic(span(p, 0.7, 1)) : 0;
             drawMasking(c, maskK, peel);
