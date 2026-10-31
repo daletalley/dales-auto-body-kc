@@ -813,7 +813,7 @@
         // ---- Timeline ----
         const stageAt = (t) => { let i = 0; while (i < STAGES.length - 1 && t >= STARTS[i + 1]) i++; return i; };
         const local = (t) => { const i = stageAt(t); return { i, key: STAGES[i].key, p: clamp((t - STARTS[i]) / STAGES[i].dur) }; };
-        const STRIKES = [0.24, 0.52, 0.78];
+        const STRIKES = [0.32, 0.52, 0.72];
 
         function settle(t) {
             Object.values(maps).forEach(clearMap);
@@ -879,10 +879,18 @@
             maps.wet.dirty = true;
         }
 
+        const hud = root.querySelector('.booth-hud');
+        let hudTimer = 0;
         function onStage(i) {
-            if (hudNo) hudNo.textContent = String(i + 1).padStart(2, '0');
-            if (hudName) hudName.textContent = STAGES[i].label;
-            if (hudCaption) hudCaption.textContent = STAGES[i].caption;
+            // Captions crossfade instead of snapping.
+            const write = () => {
+                if (hudNo) hudNo.textContent = String(i + 1).padStart(2, '0');
+                if (hudName) hudName.textContent = STAGES[i].label;
+                if (hudCaption) hudCaption.textContent = STAGES[i].caption;
+                hud?.classList.remove('is-swapping');
+            };
+            clearTimeout(hudTimer);
+            if (hud && st.playing) { hud.classList.add('is-swapping'); hudTimer = setTimeout(write, 280); } else write();
             root.dataset.stage = STAGES[i].key;
             chips.forEach((c, n) => {
                 c.classList.toggle('is-done', n < i);
@@ -917,26 +925,73 @@
             };
         }
 
+        // One continuous camera move through the whole film: a Catmull-Rom
+        // spline through framing keys, so it never stops and starts per step.
+        const D = STAGES.map((x) => x.dur);
+        const at = (i, f) => STARTS[i] + D[i] * f;
+        const CAM_KEYS = [
+            [0, 662, 530, 1.0],
+            [at(0, 0.36), 662, 530, 1.0],
+            [at(1, 0.02), 634, 512, 3.3],
+            [at(1, 0.6), 630, 510, 3.55],
+            [at(2, 0.5), 632, 512, 3.4],
+            [at(3, 0.6), 630, 512, 3.2],
+            [at(4, 0.12), 632, 556, 2.0],
+            [at(4, 0.6), 630, 516, 2.85],
+            [at(5, 0.3), 630, 562, 2.0],
+            [at(6, 0.6), 632, 560, 1.9],
+            [at(7, 0.08), 548, 506, 3.2],
+            [at(7, 0.9), 716, 506, 3.2],
+            [at(8, 0.22), 640, 556, 2.1],
+            [at(8, 0.8), 662, 530, 1.0],
+            [TOTAL, 662, 530, 1.0],
+        ];
         function cameraTarget(t) {
+            let i = 0;
+            while (i < CAM_KEYS.length - 2 && t > CAM_KEYS[i + 1][0]) i++;
+            const k0 = CAM_KEYS[Math.max(0, i - 1)], k1 = CAM_KEYS[i], k2 = CAM_KEYS[i + 1], k3 = CAM_KEYS[Math.min(CAM_KEYS.length - 1, i + 2)];
+            const u = clamp((t - k1[0]) / Math.max(1, k2[0] - k1[0]));
+            const cr = (a, b, c2, d) => 0.5 * ((2 * b) + (-a + c2) * u + (2 * a - 5 * b + 4 * c2 - d) * u * u + (-a + 3 * b - 3 * c2 + d) * u * u * u);
+            const cam = { x: cr(k0[1], k1[1], k2[1], k3[1]), y: cr(k0[2], k1[2], k2[2], k3[2]), z: cr(k0[3], k1[3], k2[3], k3[3]) };
+            // While striping, ride along with the brush.
             const { key, p } = local(t);
-            const WIDE = { x: 662, y: 530, z: 1 };
-            const ON_DENT = { x: DENT.x + 4, y: DENT.y - 4 };
-            const ON_DOOR = { x: 630, y: 562, z: 2.0 };
-            switch (key) {
-                case 'damage': { const k = inOut(span(p, 0.42, 1)); return { x: lerp(WIDE.x, ON_DENT.x, k), y: lerp(WIDE.y, ON_DENT.y, k), z: lerp(1, 3.4, k) }; }
-                case 'straighten': return { ...ON_DENT, z: 3.6 };
-                case 'sand': return { ...ON_DENT, z: 3.4 };
-                case 'fill': return { ...ON_DENT, z: lerp(3.4, 3.2, p) };
-                case 'prime': return p < PRIME_START ? ON_DOOR : { ...ON_DENT, z: 3.0 };
-                case 'color': case 'clear': return ON_DOOR;
-                case 'stripe': { const x = lerp(STRIPE_X0, STRIPE_X1, stripeProgress(p)); return { x: clamp(x, 540, 722), y: 506, z: 3.3 }; }
-                case 'reveal': {
-                    if (p < 0.3) return { x: lerp(ON_DOOR.x, 620, span(p, 0, 0.3)), y: 562, z: 2.0 };
-                    const k = inOut(span(p, 0.3, 0.78));
-                    return { x: lerp(620, 662, k), y: lerp(562, 530, k), z: lerp(2.0, 1.0, k) };
-                }
-                default: return WIDE;
+            if (key === 'stripe') {
+                const w = sstep(0.04, 0.14, p) * (1 - sstep(0.86, 0.96, p));
+                cam.x = lerp(cam.x, clamp(lerp(STRIPE_X0, STRIPE_X1, stripeProgress(p)), 548, 716), w);
             }
+            return cam;
+        }
+
+        // The painter keeps the gun in hand from primer through color to clear:
+        // between coats it travels to the next pass and the cup changes color.
+        function gunState(t) {
+            const { key, p } = local(t);
+            const grey = [150, 152, 158], clearC = [235, 240, 248];
+            const carC = st.car.map((v) => v * 255);
+            const mixC = (a, b, k) => a.map((v, n) => lerp(v, b[n], k));
+            const off = (g) => ({ x: g.x + 170, y: g.y - 130, dir: g.dir });
+            const between = (a, b, k) => ({ x: lerp(a.x, b.x, inOut(k)), y: lerp(a.y, b.y, inOut(k)) - Math.sin(Math.PI * k) * 18, dir: k < 0.5 ? a.dir : b.dir });
+            const P0 = gunPath(0, COATS.prime.box, COATS.prime.passes), P1 = gunPath(1, COATS.prime.box, COATS.prime.passes);
+            const C0 = gunPath(0, COATS.color.box, COATS.color.passes), C1 = gunPath(1, COATS.color.box, COATS.color.passes);
+            const L0 = gunPath(0, DOORBOX, 5), L1 = gunPath(1, DOORBOX, 5);
+            if (key === 'prime') {
+                const cp = coatP(key, p);
+                if (p < PRIME_START - 0.12) return null;
+                if (cp <= 0) return { g: between(off(P0), P0, span(p, PRIME_START - 0.12, PRIME_START)), rgb: grey, spraying: false };
+                if (cp < SPRAY_END) return { g: gunPath(cp / SPRAY_END, COATS.prime.box, COATS.prime.passes), rgb: grey, spraying: true };
+                const k = span(cp, SPRAY_END, 1);
+                return { g: between(P1, C0, k), rgb: mixC(grey, carC, sstep(0.3, 0.7, k)), spraying: false };
+            }
+            if (key === 'color') {
+                if (p < SPRAY_END) return { g: gunPath(p / SPRAY_END, COATS.color.box, COATS.color.passes), rgb: carC, spraying: true };
+                const k = span(p, SPRAY_END, 1);
+                return { g: between(C1, L0, k), rgb: mixC(carC, clearC, sstep(0.3, 0.7, k)), spraying: false };
+            }
+            if (key === 'clear') {
+                if (p < 0.62) return { g: gunPath(p / 0.62, DOORBOX, 5), rgb: clearC, spraying: true };
+                if (p < 0.74) return { g: between(L1, off(L1), span(p, 0.62, 0.74)), rgb: clearC, spraying: false };
+            }
+            return null;
         }
 
         // ---- 2D layer: tools at real-world size, with contact shadows ----
@@ -957,52 +1012,126 @@
         // Draw a tool in its own full-size units, scaled down around an anchor.
         const tool = (c, x, y, fn) => { c.save(); c.translate(x, y); c.scale(TS, TS); fn(); c.restore(); };
 
-        function drawHammer(c, ang, blur) {
-            const px = DENT.x + 168 * TS, py = DENT.y + 66 * TS;
-            const one = (a, alpha) => tool(c, px, py, () => {
+        // A real body hammer: forged head (long tapered neck, round face, pick),
+        // hickory handle with grain, a wedge in the eye, a swelled grip.
+        // lift: 0 at impact, 1 fully raised. Raised means closer to the camera,
+        // so it reads a touch larger and throws a softer, farther shadow.
+        function drawHammer(c, lift, blur, enter) {
+            // Swung from the lower right: the handle runs down-right from the head,
+            // the face comes down onto the dent, raising rolls the head back.
+            const ang0 = 0.62;
+            const ang = ang0 + lift * 0.6;
+            const sc = TS * (1 + lift * 0.16);
+            const face = [-236, 54];                                    // face center, tool units
+            const r0 = [Math.cos(ang0) * face[0] - Math.sin(ang0) * face[1], Math.sin(ang0) * face[0] + Math.cos(ang0) * face[1]];
+            const px = DENT.x - r0[0] * TS + enter * 120, py = DENT.y - r0[1] * TS + enter * 90;
+            const fw = [Math.cos(ang) * face[0] - Math.sin(ang) * face[1], Math.sin(ang) * face[0] + Math.cos(ang) * face[1]];
+            const hx = px + fw[0] * sc, hy = py + fw[1] * sc;
+            contact(c, hx + 2 + lift * 14, hy + 3 + lift * 12, 10 + lift * 14, 5 + lift * 8, 0.42 * (1 - lift * 0.55) * (1 - enter));
+
+            const one = (a, alpha) => {
+                c.save();
                 c.globalAlpha = alpha;
-                c.rotate(a + 0.32);
-                c.scale(0.78, 0.78);
-                const h = c.createLinearGradient(0, -6, 0, 6);
-                h.addColorStop(0, '#d6ad78'); h.addColorStop(0.5, '#a97a46'); h.addColorStop(1, '#6a4523');
-                c.fillStyle = h;
-                c.beginPath(); c.moveTo(-210, -4.5); c.lineTo(30, -6.5); c.lineTo(30, 6.5); c.lineTo(-210, 4.5); c.closePath(); c.fill();
-                c.fillStyle = 'rgba(255,255,255,0.18)'; c.fillRect(-206, -4, 230, 1.2);
-                c.fillStyle = steelGrad(c, -246, -40, -222, 40);
-                c.beginPath(); c.roundRect(-242, -40, 24, 46, 3); c.fill();
-                c.beginPath(); c.ellipse(-230, 10, 15, 8, 0, 0, Math.PI * 2); c.fill();
-                c.beginPath(); c.moveTo(-240, -40); c.lineTo(-234, -84); c.lineTo(-226, -84); c.lineTo(-220, -40); c.closePath(); c.fill();
-            });
-            if (blur) for (let k = 4; k >= 1; k--) one(ang + k * 0.035, 0.08);
+                c.translate(px, py);
+                c.rotate(a);
+                c.scale(sc, sc);
+                // Handle: tapered hickory, swelling into the grip, with grain
+                const hg = c.createLinearGradient(0, -9, 0, 9);
+                hg.addColorStop(0, '#e2bb84'); hg.addColorStop(0.35, '#c8955a'); hg.addColorStop(0.7, '#9c6a37'); hg.addColorStop(1, '#5e3c1c');
+                c.fillStyle = hg;
+                c.beginPath();
+                c.moveTo(-226, -6); c.bezierCurveTo(-150, -6.5, -60, -7, -10, -8.5);
+                c.bezierCurveTo(20, -9.5, 40, -9, 48, -6); c.quadraticCurveTo(54, 0, 48, 6);
+                c.bezierCurveTo(40, 9, 20, 9.5, -10, 8.5); c.bezierCurveTo(-60, 7, -150, 6.5, -226, 6); c.closePath(); c.fill();
+                c.strokeStyle = 'rgba(90,55,25,0.35)'; c.lineWidth = 0.7;
+                for (let k = 0; k < 5; k++) {
+                    const o = -4 + k * 2;
+                    c.beginPath(); c.moveTo(-224, o * 0.9); c.bezierCurveTo(-140, o * 1.1 + 0.8, -60, o * 0.8 - 0.6, 44, o * 1.15); c.stroke();
+                }
+                c.fillStyle = 'rgba(255,240,215,0.28)'; c.fillRect(-222, -5, 250, 1.1);
+                // Head: neck (cylindrical shading), face disc, pick
+                const neck = c.createLinearGradient(-250, 0, -222, 0);
+                neck.addColorStop(0, '#3e434a'); neck.addColorStop(0.28, '#a9b0b8'); neck.addColorStop(0.45, '#f3f6f9'); neck.addColorStop(0.62, '#8e959e'); neck.addColorStop(1, '#3a3f45');
+                c.fillStyle = neck;
+                c.beginPath();
+                c.moveTo(-246, -14); c.lineTo(-226, -14); c.lineTo(-224, 18);
+                c.quadraticCurveTo(-222, 34, -219, 44); c.lineTo(-253, 44); c.quadraticCurveTo(-250, 34, -248, 18); c.closePath(); c.fill();
+                // Face: a short drum ending in a slightly crowned striking face
+                c.beginPath(); c.moveTo(-254, 42); c.lineTo(-218, 42); c.lineTo(-218, 52); c.lineTo(-254, 52); c.closePath(); c.fill();
+                const fg = c.createRadialGradient(-240, 52, 2, -236, 54, 19);
+                fg.addColorStop(0, '#ffffff'); fg.addColorStop(0.5, '#c9cfd6'); fg.addColorStop(1, '#5d636b');
+                c.fillStyle = fg;
+                c.beginPath(); c.ellipse(-236, 53, 18, 5, 0, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = 'rgba(30,32,36,0.6)'; c.lineWidth = 1;
+                c.beginPath(); c.ellipse(-236, 53, 18, 5, 0, 0, Math.PI * 2); c.stroke();
+                // Pick: a tapered blade
+                c.fillStyle = neck;
+                c.beginPath(); c.moveTo(-246, -14); c.quadraticCurveTo(-242, -46, -237, -70); c.lineTo(-234, -70); c.quadraticCurveTo(-229, -46, -226, -14); c.closePath(); c.fill();
+                // Eye with the handle's end grain and steel wedge
+                c.fillStyle = '#7a5129'; c.fillRect(-243, -12, 14, 6);
+                c.fillStyle = '#c3c8ce'; c.fillRect(-237, -12, 2, 6);
+                c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 0.8;
+                c.beginPath(); c.moveTo(-237, -66); c.lineTo(-240, -16); c.moveTo(-239, 20); c.lineTo(-240, 42); c.stroke();
+                c.restore();
+            };
+            if (blur > 0) for (let k = 4; k >= 1; k--) one(ang + k * 0.05 * blur, 0.07);
             one(ang, 1);
         }
 
-        function drawSander(c, x, y, t) {
-            contact(c, x + 4, y + 5, 40, 30, 0.45);
-            tool(c, x, y, () => {
-                const spin = t / 12;
-                c.strokeStyle = 'rgba(40,40,46,0.9)'; c.lineWidth = 7;
-                c.beginPath(); c.arc(0, 0, 70, 0, Math.PI * 2); c.stroke();
-                c.strokeStyle = 'rgba(200,190,160,0.35)'; c.lineWidth = 2;
-                for (let k = 0; k < 3; k++) { c.beginPath(); c.arc(0, 0, 70, spin + k * 2.1, spin + k * 2.1 + 0.9); c.stroke(); }
-                const hg = c.createRadialGradient(-18, -22, 6, 0, 0, 62);
-                hg.addColorStop(0, '#4a4b54'); hg.addColorStop(0.7, '#202127'); hg.addColorStop(1, '#141418');
-                c.fillStyle = hg; c.beginPath(); c.arc(0, 0, 60, 0, Math.PI * 2); c.fill();
-                c.strokeStyle = 'rgba(255,255,255,0.14)'; c.lineWidth = 1.2;
-                c.beginPath(); c.arc(0, 0, 58, Math.PI * 1.05, Math.PI * 1.75); c.stroke();
-                c.fillStyle = '#0c0c0f';
-                for (let k = 0; k < 8; k++) { c.save(); c.rotate(k * Math.PI / 4); c.beginPath(); c.roundRect(24, -3, 18, 6, 3); c.fill(); c.restore(); }
-                const cap = c.createRadialGradient(-6, -6, 2, 0, 0, 20);
-                cap.addColorStop(0, '#d9dde2'); cap.addColorStop(1, '#6b7078');
-                c.fillStyle = cap; c.beginPath(); c.arc(0, 0, 16, 0, Math.PI * 2); c.fill();
-                const bg = c.createLinearGradient(30, 20, 60, 60);
-                bg.addColorStop(0, '#2c2d34'); bg.addColorStop(1, '#16161a');
-                c.fillStyle = bg;
-                c.beginPath(); c.moveTo(36, 28); c.lineTo(200, 160); c.lineTo(178, 190); c.lineTo(14, 52); c.closePath(); c.fill();
-                c.fillStyle = '#c62828';
-                c.beginPath(); c.moveTo(70, 66); c.lineTo(96, 88); c.lineTo(88, 98); c.lineTo(62, 76); c.closePath(); c.fill();
-                c.strokeStyle = '#111114'; c.lineWidth = 9; c.lineCap = 'round';
-                c.beginPath(); c.moveTo(190, 176); c.bezierCurveTo(260, 240, 360, 200, 520, 300); c.stroke();
+        // A dual-action sander, seen from behind as it works the panel:
+        // hook-and-loop disc spinning under the pad, rubber-overmolded body,
+        // palm cap, side throttle lever, exhaust port and ribbed hose.
+        function drawSander(c, x, y, t, running) {
+            const jx = running ? (Math.random() - 0.5) * 0.5 : 0, jy = running ? (Math.random() - 0.5) * 0.5 : 0;
+            contact(c, x + 4, y + 5, 38, 30, 0.42);
+            tool(c, x + jx, y + jy, () => {
+                const spin = t / 9;
+                // Disc and backing pad
+                c.fillStyle = '#121214';
+                c.beginPath(); c.arc(0, 0, 76, 0, Math.PI * 2); c.fill();
+                const disc = c.createRadialGradient(0, 0, 40, 0, 0, 74);
+                disc.addColorStop(0, '#9c8f73'); disc.addColorStop(0.8, '#c3b593'); disc.addColorStop(1, '#8a7e64');
+                c.fillStyle = disc;
+                c.beginPath(); c.arc(0, 0, 73, 0, Math.PI * 2); c.fill();
+                // Dust-extraction holes smear into rings when it spins
+                c.strokeStyle = running ? 'rgba(60,52,40,0.35)' : 'rgba(40,34,26,0.8)';
+                c.lineWidth = running ? 3 : 1;
+                if (running) { c.beginPath(); c.arc(0, 0, 62, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(0, 0, 48, 0, Math.PI * 2); c.stroke(); }
+                else for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4; c.beginPath(); c.arc(Math.cos(a) * 60, Math.sin(a) * 60, 3, 0, Math.PI * 2); c.stroke(); }
+                c.strokeStyle = 'rgba(255,248,230,0.35)'; c.lineWidth = 1.5;
+                for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(0, 0, 70, spin + k * 1.57, spin + k * 1.57 + 0.5); c.stroke(); }
+                // Exhaust port and ribbed hose, out the back
+                const port = c.createLinearGradient(30, 30, 50, 10);
+                port.addColorStop(0, '#26272c'); port.addColorStop(0.5, '#4a4b53'); port.addColorStop(1, '#1b1b1f');
+                c.save(); c.rotate(0.72);
+                c.fillStyle = port; c.beginPath(); c.roundRect(40, -14, 70, 28, 8); c.fill();
+                c.restore();
+                c.strokeStyle = '#18181b'; c.lineWidth = 22; c.lineCap = 'round';
+                c.beginPath(); c.moveTo(78, 80); c.bezierCurveTo(130, 150, 220, 140, 330, 260); c.stroke();
+                c.strokeStyle = 'rgba(255,255,255,0.08)'; c.lineWidth = 22; c.setLineDash([3, 5]);
+                c.beginPath(); c.moveTo(78, 80); c.bezierCurveTo(130, 150, 220, 140, 330, 260); c.stroke();
+                c.setLineDash([]);
+                // Body: overmolded housing with grip ribs
+                const body = c.createRadialGradient(-16, -20, 8, 0, 0, 58);
+                body.addColorStop(0, '#4b4d55'); body.addColorStop(0.65, '#25262b'); body.addColorStop(1, '#141417');
+                c.fillStyle = body; c.beginPath(); c.arc(0, -2, 56, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = 'rgba(0,0,0,0.55)'; c.lineWidth = 2;
+                for (let k = 0; k < 28; k++) { const a = k / 28 * Math.PI * 2; c.beginPath(); c.moveTo(Math.cos(a) * 44, -2 + Math.sin(a) * 44); c.lineTo(Math.cos(a) * 54, -2 + Math.sin(a) * 54); c.stroke(); }
+                c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 1.4;
+                c.beginPath(); c.arc(0, -2, 55, Math.PI * 1.08, Math.PI * 1.7); c.stroke();
+                // Accent ring and palm cap
+                c.strokeStyle = '#e3b11f'; c.lineWidth = 3;
+                c.beginPath(); c.arc(0, -4, 38, 0, Math.PI * 2); c.stroke();
+                const cap = c.createRadialGradient(-10, -16, 3, 0, -4, 36);
+                cap.addColorStop(0, '#5a5c64'); cap.addColorStop(1, '#1e1f23');
+                c.fillStyle = cap; c.beginPath(); c.arc(0, -4, 35, 0, Math.PI * 2); c.fill();
+                c.fillStyle = 'rgba(255,255,255,0.08)';
+                for (let r = 0; r < 4; r++) for (let k = 0; k < 10; k++) { const a = k / 10 * Math.PI * 2 + r * 0.3; c.beginPath(); c.arc(Math.cos(a) * (8 + r * 7), -4 + Math.sin(a) * (8 + r * 7), 1.4, 0, Math.PI * 2); c.fill(); }
+                // Throttle lever along the left side
+                const lev = c.createLinearGradient(-70, 0, -54, 0);
+                lev.addColorStop(0, '#6e747c'); lev.addColorStop(0.5, '#e9edf1'); lev.addColorStop(1, '#7c838b');
+                c.strokeStyle = lev; c.lineWidth = 7; c.lineCap = 'round';
+                c.beginPath(); c.arc(0, -2, 62, Math.PI * 0.72, Math.PI * 1.18); c.stroke();
             });
         }
 
@@ -1019,9 +1148,10 @@
             });
         }
 
-        function drawGun(c, g, rgb) {
+        function drawGun(c, g, rgb, spraying = true) {
             const nx = g.x + 74 * TS, ny = g.y - 128 * TS;
             c.save();
+            if (!spraying) c.globalAlpha = 0;
             c.globalCompositeOperation = 'lighter';
             const cone = c.createLinearGradient(nx, ny, g.x, g.y);
             cone.addColorStop(0, `rgba(${rgb[0] | 0},${rgb[1] | 0},${rgb[2] | 0},0.2)`);
@@ -1029,7 +1159,7 @@
             c.fillStyle = cone;
             c.beginPath(); c.moveTo(nx - 1, ny); c.quadraticCurveTo(g.x - 13, g.y - 25, g.x - 26, g.y + 3); c.lineTo(g.x + 24, g.y - 2); c.quadraticCurveTo(g.x + 14, g.y - 30, nx + 1, ny); c.closePath(); c.fill();
             c.restore();
-            contact(c, g.x + 3, g.y + 2, 30, 11, 0.12);
+            if (spraying) contact(c, g.x + 3, g.y + 2, 30, 11, 0.12);
             tool(c, nx, ny, () => {
                 c.strokeStyle = '#111114'; c.lineWidth = 7; c.lineCap = 'round';
                 c.beginPath(); c.moveTo(96, 82); c.bezierCurveTo(130, 210, 300, 140, 440, 290); c.stroke();
@@ -1138,9 +1268,11 @@
             toScreen(c);
             const { i, key, p } = local(t);
 
-            const maskK = key === 'prime' ? span(p, 0, PRIME_START * 0.9) : (i > IDX.prime && i <= IDX.clear) ? 1 : 0;
-            const peel = key === 'clear' ? inCubic(span(p, 0.7, 1)) : 0;
-            drawMasking(c, maskK, peel);
+            // Masking starts going up while the last of the blocking finishes,
+            // and the paper is still coming off as the striper moves in.
+            const maskK = key === 'fill' ? 0.4 * span(p, 0.9, 1) : key === 'prime' ? lerp(0.4, 1, span(p, 0, PRIME_START * 0.9)) : (i > IDX.prime && i <= IDX.clear) ? 1 : 0;
+            const peel = key === 'clear' ? 0.85 * inCubic(span(p, 0.72, 1)) : key === 'stripe' ? lerp(0.85, 1, span(p, 0, 0.08)) : 0;
+            drawMasking(c, Math.max(maskK, key === 'stripe' && p < 0.08 ? 1 : 0), peel);
 
             for (const m of st.mist) {
                 const k = m.life / m.max;
@@ -1152,45 +1284,46 @@
             }
 
             if (key === 'straighten') {
-                let a = 0.7, blur = false;
+                // Comes in raised, three blows (anticipation, fast drop, held
+                // impact, recoil), then lifts away.
+                let lift = 1, blur = 0;
                 for (const at of STRIKES) {
                     const d = p - at;
-                    if (d > -0.16 && d <= 0) {
-                        const q = (d + 0.16) / 0.16;
-                        a = q < 0.62 ? lerp(0.7, 1.0, outCubic(q / 0.62)) : lerp(1.0, 0, inCubic((q - 0.62) / 0.38));
-                        blur = q >= 0.62;
-                    } else if (d > 0 && d < 0.012) a = 0;
-                    else if (d >= 0.012 && d < 0.14) a = lerp(0, 0.7, outBack((d - 0.012) / 0.128));
+                    if (d > -0.11 && d <= 0) {
+                        const q = (d + 0.11) / 0.11;
+                        lift = q < 0.55 ? lerp(1, 1.12, outCubic(q / 0.55)) : lerp(1.12, 0, inCubic((q - 0.55) / 0.45));
+                        blur = q >= 0.55 ? 1 : 0;
+                    } else if (d > 0 && d < 0.012) lift = 0;
+                    else if (d >= 0.012 && d < 0.09) lift = lerp(0, 1, outBack((d - 0.012) / 0.078));
                 }
-                if (a < 0.08) contact(c, DENT.x, DENT.y + 3, 13, 6, 0.5);
-                drawHammer(c, -a, blur);
+                const enter = (1 - outCubic(span(p, 0, 0.16))) + inCubic(span(p, 0.84, 1));
+                drawHammer(c, lift, blur, enter);
             }
             if (key === 'sand') {
                 const q = span(p, 0.06, 0.92);
-                const enter = outCubic(span(p, 0, 0.08)), leave = inCubic(span(p, 0.92, 1));
+                const off = (1 - outCubic(span(p, 0, 0.1))) + inCubic(span(p, 0.9, 1));
                 const s = sanderAt(Math.max(q, 0.001), false);
-                drawSander(c, s.x + (1 - enter) * 130 + leave * 140, s.y + (1 - enter) * 90 + leave * 100, t);
+                drawSander(c, s.x + off * 140, s.y + off * 100, t, q > 0 && q < 1);
             }
             if (key === 'fill') {
-                if (p < 0.36) drawSpreader(c, DENT.x - 34 + 68 * outCubic(span(p, 0.04, 0.34)), DENT.y + 17, p);
-                else if (p < 0.98) {
+                // The spreader hands off to the sander, overlapping, no cut.
+                if (p < 0.42) {
+                    const off = (1 - outCubic(span(p, 0, 0.06))) + inCubic(span(p, 0.33, 0.42));
+                    drawSpreader(c, DENT.x - 34 + 68 * outCubic(span(p, 0.04, 0.34)) + off * 110, DENT.y + 17 + off * 80, p);
+                }
+                if (p > 0.32) {
+                    const off = (1 - outCubic(span(p, 0.32, 0.42))) + inCubic(span(p, 0.92, 1));
                     const s = sanderAt(span(p, 0.36, 0.94), true);
-                    const leave = inCubic(span(p, 0.92, 0.98));
-                    drawSander(c, s.x + leave * 140, s.y + leave * 100, t);
+                    drawSander(c, s.x + off * 140, s.y + off * 100, t, p > 0.36 && p < 0.94);
                 }
             }
-            const coat = COATS[key];
-            if (coat) {
-                const cp = coatP(key, p);
-                if (cp > 0 && cp < SPRAY_END) drawGun(c, gunPath(cp / SPRAY_END, coat.box, coat.passes), coat.rgb());
-            }
-            if (key === 'clear' && p < 0.62) drawGun(c, gunPath(p / 0.62, DOORBOX, 5), [235, 240, 248]);
+            const gun = gunState(t);
+            if (gun) drawGun(c, gun.g, gun.rgb, gun.spraying);
             if (key === 'stripe') {
                 const sp = stripeProgress(p);
-                if (sp > 0 && sp < 1) {
-                    const x = lerp(STRIPE_X0, STRIPE_X1, sp);
-                    drawBrush(c, x, stripeY(x), (stripeY(x + 4) - stripeY(x - 4)) / 8);
-                }
+                const x = lerp(STRIPE_X0, STRIPE_X1, sp);
+                const off = (1 - outCubic(span(p, 0, 0.06))) + inCubic(span(p, 0.9, 1));
+                if (off < 1) drawBrush(c, x - off * 40, stripeY(x) - off * 70, (stripeY(x + 4) - stripeY(x - 4)) / 8);
             }
             if (key === 'reveal') {
                 const b = buffer(p);
@@ -1329,7 +1462,7 @@
                 else advance(t0, st.t, dt);
             }
             const tg = cameraTarget(st.t);
-            const w = 2.4, k = dt / 1000;
+            const w = 3.6, k = dt / 1000;
             ['x', 'y', 'z'].forEach((a) => {
                 const v = 'v' + a;
                 st.cam[v] += (w * w * (tg[a] - st.cam[a]) - 2 * w * st.cam[v]) * k;

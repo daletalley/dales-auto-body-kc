@@ -471,11 +471,13 @@ section { padding-block: clamp(5rem, 10vw, 9rem); position: relative; }
 .booth.no-gl canvas { display: none; }
 .booth.no-gl .booth-poster { display: block; }
 .booth-hud {
+    transition: opacity 0.28s ease, transform 0.4s var(--ease-out);
     position: absolute; left: clamp(14px, 2.4vw, 32px); bottom: clamp(12px, 2.2vw, 28px);
     display: grid; gap: 0.2rem; max-width: min(70%, 40ch);
     pointer-events: none;
     text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
 }
+.booth-hud.is-swapping { opacity: 0; transform: translateY(6px); }
 .booth-step { display: flex; align-items: baseline; gap: 0.7rem; }
 .booth-no { font-family: var(--font-mono); font-size: 0.72rem; color: var(--red-hot); letter-spacing: 0.08em; }
 .booth-name { font-family: var(--font-display); font-style: italic; font-size: clamp(1.2rem, 0.8rem + 1.6vw, 2.2rem); line-height: 1.1; }
