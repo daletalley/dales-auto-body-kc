@@ -928,7 +928,7 @@
             };
             const age = (t - st.impact.t) / 1000;
             return {
-                bars: i === 0 ? [tube(0), tube(1), tube(2)] : [1, 1, 1],
+                bars: i === 0 ? [tube(0), tube(1), tube(2)] : key === 'reveal' ? [0, 1, 2].map((k) => 1 - 0.97 * sstep(0.84 + k * 0.045, 0.9 + k * 0.045, p)) : [1, 1, 1],
                 dent: i === 0 ? 1 : i === 1 ? 1 - st.strikes / TAPS.length * 0.97 : 0.03 * (1 - span(p, 0, 0.2)) * (i === 2 ? 1 : 0),
                 scratch: i <= IDX.straighten ? 1 : i === IDX.sand ? 1 - span(p, 0.1, 0.5) : 0,
                 clearDoor: key === 'clear' ? sstep(0, 0.6, p) : i > IDX.clear ? 1 : 0,
@@ -1277,20 +1277,59 @@
             c.beginPath(); c.arc(x, y, 0.35, 0, Math.PI * 2); c.fill();
         }
 
+        // A rotary polisher, seen from behind as it works: an orange foam
+        // waffle pad blurred with spin and dusted with compound, the backing
+        // plate, a right-angle gear head, the motor body running off to the
+        // right with its D-handle, a side handle stub, and the cord.
         function drawBuffer(c, x, y, t) {
-            contact(c, x + 3, y + 4, 46, 34, 0.4);
+            contact(c, x + 4, y + 5, 44, 34, 0.42);
             tool(c, x, y, () => {
-                const pad = c.createRadialGradient(-20, -20, 10, 0, 0, 84);
-                pad.addColorStop(0, '#f6f1e6'); pad.addColorStop(1, '#cfc6b4');
+                const spin = t / 6;
+                // Compound haze thrown off the pad edge
+                const haze = c.createRadialGradient(0, 0, 70, 0, 0, 104);
+                haze.addColorStop(0, 'rgba(240,232,215,0.22)'); haze.addColorStop(1, 'rgba(240,232,215,0)');
+                c.fillStyle = haze; c.beginPath(); c.arc(0, 0, 104, 0, Math.PI * 2); c.fill();
+                // Foam pad: waffle rings smeared by rotation
+                const pad = c.createRadialGradient(-18, -22, 10, 0, 0, 84);
+                pad.addColorStop(0, '#f39a55'); pad.addColorStop(0.7, '#e2732c'); pad.addColorStop(1, '#b65520');
                 c.fillStyle = pad; c.beginPath(); c.arc(0, 0, 82, 0, Math.PI * 2); c.fill();
-                c.strokeStyle = 'rgba(120,110,95,0.3)'; c.lineWidth = 1;
-                for (let k = 0; k < 7; k++) { const a = t / 18 + k * 0.9; c.beginPath(); c.arc(0, 0, 30 + k * 7, a, a + 1.3); c.stroke(); }
-                const hg = c.createRadialGradient(-12, -14, 4, 0, 0, 46);
-                hg.addColorStop(0, '#4a4b54'); hg.addColorStop(1, '#16161a');
-                c.fillStyle = hg; c.beginPath(); c.arc(0, 0, 44, 0, Math.PI * 2); c.fill();
-                c.fillStyle = '#1d1d22';
-                c.beginPath(); c.moveTo(30, -20); c.lineTo(230, -110); c.lineTo(244, -84); c.lineTo(40, 6); c.closePath(); c.fill();
-                c.fillStyle = '#c62828'; c.beginPath(); c.arc(0, 0, 9, 0, Math.PI * 2); c.fill();
+                for (let r = 34; r <= 78; r += 7) {
+                    c.strokeStyle = 'rgba(120,50,15,0.28)'; c.lineWidth = 2.2;
+                    c.beginPath(); c.arc(0, 0, r, 0, Math.PI * 2); c.stroke();
+                }
+                c.strokeStyle = 'rgba(255,245,230,0.35)'; c.lineWidth = 2;
+                for (let k = 0; k < 5; k++) { const a = spin + k * 1.26; c.beginPath(); c.arc(0, 0, 50 + (k % 3) * 9, a, a + 0.55); c.stroke(); }
+                c.fillStyle = 'rgba(245,240,230,0.35)';
+                c.beginPath(); c.arc(0, 0, 82, spin * 0.7, spin * 0.7 + 1.1); c.arc(0, 0, 68, spin * 0.7 + 1.1, spin * 0.7, true); c.fill();
+                // Backing plate
+                c.fillStyle = '#141416'; c.beginPath(); c.arc(0, 0, 60, 0, Math.PI * 2); c.fill();
+                // Motor body to the right, with a brand band, vents and D-handle
+                const motor = c.createLinearGradient(0, -32, 0, 34);
+                motor.addColorStop(0, '#5a5d66'); motor.addColorStop(0.35, '#2e3036'); motor.addColorStop(1, '#141417');
+                c.fillStyle = motor;
+                c.beginPath(); c.moveTo(20, -30); c.lineTo(230, -26); c.quadraticCurveTo(246, 0, 230, 26); c.lineTo(20, 30); c.closePath(); c.fill();
+                c.fillStyle = '#e3b11f'; c.fillRect(120, -27.5, 18, 55);
+                c.fillStyle = 'rgba(0,0,0,0.6)';
+                for (let k = 0; k < 6; k++) c.fillRect(160 + k * 10, -14, 4, 28);
+                c.strokeStyle = '#1c1d21'; c.lineWidth = 13; c.lineCap = 'round';
+                c.beginPath(); c.moveTo(232, -22); c.bezierCurveTo(300, -40, 310, 40, 232, 22); c.stroke();
+                c.strokeStyle = 'rgba(255,255,255,0.12)'; c.lineWidth = 2;
+                c.beginPath(); c.moveTo(30, -24); c.lineTo(222, -21); c.stroke();
+                // Gear head over the pad
+                const head = c.createRadialGradient(-12, -16, 4, 0, 0, 46);
+                head.addColorStop(0, '#9aa0a8'); head.addColorStop(0.55, '#565b62'); head.addColorStop(1, '#2a2d32');
+                c.fillStyle = head; c.beginPath(); c.arc(0, 0, 44, 0, Math.PI * 2); c.fill();
+                c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 2;
+                for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; c.beginPath(); c.moveTo(Math.cos(a) * 30, Math.sin(a) * 30); c.lineTo(Math.cos(a) * 40, Math.sin(a) * 40); c.stroke(); }
+                const cap = c.createRadialGradient(-4, -5, 1, 0, 0, 14);
+                cap.addColorStop(0, '#eef1f4'); cap.addColorStop(1, '#6d737b');
+                c.fillStyle = cap; c.beginPath(); c.arc(0, 0, 13, 0, Math.PI * 2); c.fill();
+                // Side handle stub
+                c.strokeStyle = '#1c1d21'; c.lineWidth = 16;
+                c.beginPath(); c.moveTo(-30, -26); c.lineTo(-74, -78); c.stroke();
+                // Cord
+                c.strokeStyle = '#101012'; c.lineWidth = 7;
+                c.beginPath(); c.moveTo(286, 10); c.bezierCurveTo(330, 90, 420, 70, 520, 220); c.stroke();
             });
         }
 
@@ -1303,11 +1342,11 @@
                 { x: DOOR.x0 - 1, y: 300, w: DOOR.x1 - DOOR.x0 + 2, h: top - 300, from: 0 },
             ];
             sheets.forEach((s) => {
-                const slide = (1 - outCubic(k)) * s.from * 200;
-                const lift = s.from ? 0 : -(1 - outCubic(k)) * 120;
-                const off = peel * (s.from ? s.from * 260 : -160);
+                const slide = (1 - outCubic(k)) * s.from * 420;
+                const lift = s.from ? 0 : -(1 - outCubic(k)) * 260;
+                const off = inCubic(peel) * (s.from ? s.from * 620 : -380);
                 c.save();
-                c.globalAlpha = Math.min(1, k * 1.6) * (1 - peel);
+                c.globalAlpha = 1;
                 c.translate(slide + (s.from ? off : 0), lift + (s.from ? 0 : off));
                 c.fillStyle = paper;
                 c.fillRect(s.x, s.y, s.w, s.h);
@@ -1505,7 +1544,7 @@
             gl.uniform2f(C.u.uRes, W, H);
             gl.uniform1f(C.u.uFloorY, FLOOR * s + st.view.oy);
             gl.uniform1f(C.u.uTime, tt);
-            const fade = Math.max(1 - clamp(t / 700), clamp((t - (TOTAL - 700)) / 700));
+            const fade = Math.max(1 - clamp(t / 500), clamp((t - (TOTAL - 450)) / 450));
             gl.uniform1f(C.u.uFade, inOut(fade));
             gl.drawArrays(gl.TRIANGLES, 0, 3);
 
