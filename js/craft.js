@@ -992,7 +992,7 @@
             const grey = [150, 152, 158], clearC = [235, 240, 248];
             const carC = st.car.map((v) => v * 255);
             const mixC = (a, b, k) => a.map((v, n) => lerp(v, b[n], k));
-            const off = (g) => ({ x: g.x + 170, y: g.y - 130, dir: g.dir });
+            const off = (g) => ({ x: g.x + 440, y: g.y - 330, dir: g.dir });
             const between = (a, b, k) => ({ x: lerp(a.x, b.x, inOut(k)), y: lerp(a.y, b.y, inOut(k)) - Math.sin(Math.PI * k) * 18, dir: k < 0.5 ? a.dir : b.dir });
             const P0 = primerPath(0), P1 = primerPath(1);
             const C0 = gunPath(0, COATS.color.box, COATS.color.passes), C1 = gunPath(1, COATS.color.box, COATS.color.passes);
@@ -1047,7 +1047,7 @@
             const sc = TS * (1 + lift * 0.16);
             const face = [-236, 54];                                    // face center, tool units
             const r0 = [Math.cos(ang0) * face[0] - Math.sin(ang0) * face[1], Math.sin(ang0) * face[0] + Math.cos(ang0) * face[1]];
-            const px = DENT.x + ox - r0[0] * TS + enter * 120, py = DENT.y + oy - r0[1] * TS + enter * 90;
+            const px = DENT.x + ox - r0[0] * TS + enter * 400, py = DENT.y + oy - r0[1] * TS + enter * 300;
             const fw = [Math.cos(ang) * face[0] - Math.sin(ang) * face[1], Math.sin(ang) * face[0] + Math.cos(ang) * face[1]];
             const hx = px + fw[0] * sc, hy = py + fw[1] * sc;
             contact(c, hx + 2 + lift * 14, hy + 3 + lift * 12, 10 + lift * 14, 5 + lift * 8, 0.42 * (1 - lift * 0.55) * (1 - enter));
@@ -1414,18 +1414,18 @@
                 const q = span(p, 0.06, 0.92);
                 const off = (1 - outCubic(span(p, 0, 0.1))) + inCubic(span(p, 0.9, 1));
                 const s = sanderAt(Math.max(q, 0.001), false);
-                drawSander(c, s.x + off * 140, s.y + off * 100, t, q > 0 && q < 1);
+                drawSander(c, s.x + off * 430, s.y + off * 320, t, q > 0 && q < 1);
             }
             if (key === 'fill') {
                 // The spreader hands off to the sander, overlapping, no cut.
                 if (p < 0.42) {
                     const off = (1 - outCubic(span(p, 0, 0.06))) + inCubic(span(p, 0.33, 0.42));
-                    drawSpreader(c, DENT.x - 34 + 68 * outCubic(span(p, 0.04, 0.34)) + off * 110, DENT.y + 17 + off * 80, p);
+                    drawSpreader(c, DENT.x - 34 + 68 * outCubic(span(p, 0.04, 0.34)) + off * 400, DENT.y + 17 + off * 300, p);
                 }
                 if (p > 0.32) {
                     const off = (1 - outCubic(span(p, 0.32, 0.42))) + inCubic(span(p, 0.92, 1));
                     const s = sanderAt(span(p, 0.36, 0.94), true);
-                    drawSander(c, s.x + off * 140, s.y + off * 100, t, p > 0.36 && p < 0.94);
+                    drawSander(c, s.x + off * 430, s.y + off * 320, t, p > 0.36 && p < 0.94);
                 }
             }
             const gun = gunState(t);
@@ -1434,13 +1434,13 @@
                 const sp = stripeProgress(p);
                 const x = lerp(STRIPE_X0, STRIPE_X1, sp);
                 const off = (1 - outCubic(span(p, 0, 0.06))) + inCubic(span(p, 0.9, 1));
-                if (off < 1) drawBrush(c, x + off * 40, stripeY(x) - off * 70, (stripeY(x + 4) - stripeY(x - 4)) / 8);
+                if (off < 1) drawBrush(c, x + off * 320, stripeY(x) - off * 280, (stripeY(x + 4) - stripeY(x - 4)) / 8);
             }
             if (key === 'reveal') {
                 const b = buffer(p);
                 if (b.q > 0 && b.q < 1) {
                     const enter = outCubic(span(b.q, 0, 0.1)), leave = inCubic(span(b.q, 0.9, 1));
-                    drawBuffer(c, b.x + (1 - enter) * 130 + leave * 150, b.y + (1 - enter) * 100 + leave * 110, t);
+                    drawBuffer(c, b.x + (1 - enter) * 430 + leave * 450, b.y + (1 - enter) * 320 + leave * 330, t);
                 }
             }
 
@@ -1560,11 +1560,9 @@
         }
 
         const FRAME = 1000 / 60;
-        function frame(now) {
-            st.raf = 0;
-            const elapsed = st.last ? now - st.last : FRAME;
-            const dt = Math.min(66, elapsed);
-            st.last = now;
+        // Advance the film by dt milliseconds: timeline, camera, particles.
+        let paintTarget = cssPaint();
+        function tick(dt) {
             if (st.playing) {
                 const t0 = st.t;
                 st.t += dt;
@@ -1581,8 +1579,15 @@
             st.shake *= Math.pow(0.00005, k);
             if (st.shake < 0.2) st.shake = 0;
             stepParticles(dt);
-            const target = cssPaint();
-            st.car = st.car.map((v, n) => lerp(v, target[n], 0.12));
+            // Ease toward the site's Finish at the same rate on any display.
+            const e = 1 - Math.pow(0.02, k);
+            st.car = st.car.map((v, n) => lerp(v, paintTarget[n], e));
+        }
+        function frame(now) {
+            st.raf = 0;
+            const dt = Math.min(66, st.last ? now - st.last : FRAME);
+            st.last = now;
+            tick(dt);
             render();
             if (st.visible && (st.playing || st.particles.length || st.mist.length)) st.raf = requestAnimationFrame(frame);
         }
@@ -1609,12 +1614,14 @@
         new ResizeObserver(resize).observe(glCanvas);
         new IntersectionObserver(([e]) => { st.visible = e.isIntersecting && !document.hidden; kick(); }, { threshold: 0.12 }).observe(glCanvas);
         document.addEventListener('visibilitychange', () => { if (document.hidden) st.visible = false; kick(); });
-        document.documentElement.addEventListener('paintchange', () => { if (!st.playing) { st.car = cssPaint(); render(); } });
+        document.documentElement.addEventListener('paintchange', () => { paintTarget = cssPaint(); if (!st.playing) { st.car = paintTarget; render(); } });
 
         resize();
         if (reduceMotion) { jump(IDX.reveal, 0.9); setPlaying(false); }
         else { settle(0); onStage(0); setPlaying(true); }
-        root.craft = { jump, setPlaying, get t() { return st.t; } };
+        // Test hook: play forward exactly ms milliseconds in real-time-sized steps.
+        const step = (ms) => { const was = st.playing; st.playing = true; for (let left = ms; left > 0; left -= 16.7) tick(Math.min(16.7, left)); st.playing = was; render(); };
+        root.craft = { jump, setPlaying, step, get t() { return st.t; } };
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
