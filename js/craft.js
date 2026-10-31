@@ -138,7 +138,7 @@
                 float k = i == 0 ? uBars.x : (i == 1 ? uBars.y : uBars.z);
                 float bx = smoothstep(cx - 0.17 - w, cx - 0.17 + w, R.x) * (1.0 - smoothstep(cx + 0.17 - w, cx + 0.17 + w, R.x));
                 float by = smoothstep(0.42 - w, 0.42 + w, up) * (1.0 - smoothstep(0.80 - w, 0.80 + w, up));
-                c += vec3(1.0, 0.975, 0.93) * 7.0 * peak * bx * by * k * (0.88 + 0.12 * sin((R.x - cx) * 60.0));
+                c += vec3(1.0, 0.975, 0.93) * 7.0 * peak * bx * by * k * (0.94 + 0.06 * sin((R.x - cx) * 24.0));
             }
             float sx = R.x + uEnvShift * 0.35;
             c += vec3(0.82, 0.88, 1.0) * 1.3 * peak * smoothstep(0.80 - w, 0.80 + w, sx) * (1.0 - smoothstep(0.92 - w, 0.92 + w, sx)) * smoothstep(-0.5, 0.25, up);
@@ -216,16 +216,20 @@
         float greenTop(float x) {
             float belt = topY(x);
             float roof = 380.0 + pow((x - 800.0) / 300.0, 2.0) * 16.0;
-            float rise = smoothstep(466.0, 720.0, x);
+            // The windshield springs straight up off the cowl, ahead of the door,
+            // and the roof runs back to meet the deck.
+            float rise = pow(clamp((x - 418.0) / 300.0, 0.0, 1.0), 0.8);
             rise = rise * rise * (3.0 - 2.0 * rise);
-            float fall = smoothstep(1046.0, 862.0, x);
+            float fall = smoothstep(1072.0, 860.0, x);
             return mix(belt, roof, rise * fall);
         }
         float greenSD(vec2 p) {
             float gt = greenTop(p.x);
             float s = (greenTop(p.x + 1.0) - greenTop(p.x - 1.0)) * 0.5;
             float dTop = (gt - p.y) / sqrt(1.0 + s * s);
-            return max(dTop, p.y - topY(p.x) - 0.5);
+            // Where the greenhouse has no height (along the hood and deck) it
+            // isn't there at all: no hairline down the length of the car.
+            return max(max(dTop, p.y - topY(p.x) - 0.5), 1.5 - (topY(p.x) - gt));
         }
 
         vec3 wheel(vec2 wq, float wr, float aa, float lit) {
@@ -317,7 +321,7 @@
                         vec3 Nb = normalize(vec3(gb * rollB * 1.8 + vec2(0.0, (p.y - by) / 16.0 * 0.5), 1.0));
                         bc = chrome(Nb, lit);
                         bc *= 0.55 + 0.45 * smoothstep(0.0, 2.2, abs(p.y - by - 3.0));
-                    } else if (green > 0.5) {
+                    } else if (green >= body) {   // edge pixels shade as the part they belong to
                         float inset = -gs;
                         float xQ = mix(978.0, 916.0, clamp((478.0 - p.y) / 86.0, 0.0, 1.0));
                         float dg = smin(inset - 7.0, 768.0 - p.x, 7.0);
@@ -325,7 +329,9 @@
                         float wd = max(dg, qg);
                         float glassM = smoothstep(-aa, aa, wd);
                         float rev = smoothstep(-2.4 - aa, -2.4 + aa, wd) * (1.0 - glassM);
-                        float drip = (1.0 - smoothstep(1.4 - aa, 1.4 + aa, inset)) * smoothstep(560.0, 640.0, p.x) * smoothstep(1010.0, 940.0, p.x);
+                        // Drip rail along the roof only, and never thinner than a pixel.
+                        float dw = max(1.4, aa * 1.2);
+                        float drip = (1.0 - smoothstep(dw - aa, dw + aa, inset)) * smoothstep(600.0, 670.0, p.x) * smoothstep(940.0, 880.0, p.x);
                         // Glass leans in toward the roof and reflects the booth faintly.
                         float lean = smoothstep(80.0, 0.0, inset);
                         vec3 Ng = normalize(vec3((p.x - 760.0) / 2200.0, -0.24 - 0.22 * lean, 1.0));
@@ -376,13 +382,14 @@
 
                         float sand = region(uSand, p);
                         float fil = region(uFiller, p);
-                        float pr = region(uPrime, p);
+                        float pr = smoothstep(0.0, 0.85, region(uPrime, p));
                         float bs = smoothstep(0.0, 0.55, region(uBase, p));
                         float wet = region(uWet, p);
                         float pol = region(uPolish, p);
                         float onDoor = step(488.0, p.x) * step(p.x, 772.0);
 
-                        N.xy += (vec2(noise(p * 1.6), noise(p * 1.6 + 7.3)) - 0.5) * uPeel * bs * onDoor * (1.0 - pol);
+                        float fine = smoothstep(1.4, 3.0, uView.x);
+                        N.xy += (vec2(noise(p * 1.6), noise(p * 1.6 + 7.3)) - 0.5) * uPeel * bs * onDoor * (1.0 - pol) * fine;
                         float swirl = sin(length(p - uDent.xy) * 3.5 + noise(p * 0.6) * 6.0) * 0.5 + 0.5;
                         float bare = smoothstep(0.6, 0.78, sand);
                         N.xy += vec2(swirl - 0.5) * 0.08 * bare * (1.0 - max(fil, max(pr, bs)));
@@ -427,7 +434,7 @@
                         vec3 fN = normalize(N + vec3(h1 - 0.5, h2 - 0.5, 0.0) * 1.2);
                         vec3 fR = vec3(2.0 * fN.z * fN.x, 2.0 * fN.z * fN.y, 2.0 * fN.z * fN.z - 1.0);
                         float paintK = clamp((1.0 - ring) * (1.0 - fil) * (1.0 - pr) + bs, 0.0, 1.0);
-                        bc += env(fR, 0.04) * 0.01 * step(0.74, h3) * paintK * (uCarCol * 1.2 + 0.2);
+                        bc += env(fR, 0.04) * 0.01 * step(0.74, h3) * paintK * (uCarCol * 1.2 + 0.2) * smoothstep(3.0, 6.0, uView.x);
 
                         // Chrome: wheel-opening moldings, rocker molding, flush handle
                         float wm = (1.0 - smoothstep(1.4 - aa, 1.4 + aa, abs(archR - 85.6))) * step(p.y, ac.y + 40.0);
@@ -621,7 +628,7 @@
             if (!r.width) return;
             const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
             let W = Math.round(r.width * dpr), H = Math.round(r.height * dpr);
-            const cap = 1.5e6;
+            const cap = 1.15e6;
             if (W * H > cap) { const k = Math.sqrt(cap / (W * H)); W = Math.round(W * k); H = Math.round(H * k); }
             glCanvas.width = W; glCanvas.height = H;
             fx.width = W; fx.height = H;
@@ -665,10 +672,18 @@
         const DOORBOX = { x0: DOOR.x0 + 8, x1: DOOR.x1 - 8, y0: topY(DOOR.x0) + 4, y1: DOOR.y1 - 6 };
         const COATS = {
             // Primer is reverse-masked: a soft-edged patch over the repair only.
-            prime: { map: 'prime', box: REPAIR, passes: 4, r: 24, a: 0.07, rgb: () => [150, 152, 158], clip: (g) => { g.beginPath(); g.ellipse(DENT.x, DENT.y + 2, 70, 44, 0, 0, Math.PI * 2); g.clip(); } },
-            color: { map: 'base', box: DOORBOX, passes: 6, r: 28, a: 0.08, rgb: () => st.car.map((v) => v * 255), clip: doorClip },
+            prime: { map: 'prime', path: primerPath, r: 34, a: 0.035, rgb: () => [150, 152, 158], clip: null },
+            color: { map: 'base', box: DOORBOX, passes: 6, r: 30, a: 0.1, rgb: () => st.car.map((v) => v * 255), clip: doorClip },
         };
         const SPRAY_END = 0.86;
+        // Spot priming: tight overlapping orbits, widening then closing in, so the
+        // patch is densest over the repair and feathers to nothing at its edge.
+        function primerPath(q) {
+            const a = q * Math.PI * 2 * 4.5;
+            const r = 30 * Math.sin(Math.PI * clamp(q)) + 6;
+            return { x: DENT.x + Math.cos(a) * r * 1.45, y: DENT.y + Math.sin(a) * r * 0.8, dir: Math.cos(a) > 0 ? 1 : -1, on: true };
+        }
+        const coatPos = (coat, q) => (coat.path ? coat.path(q) : gunPath(q, coat.box, coat.passes));
         const PRIME_START = 0.28;
 
         // Finish a coat: complete the remaining passes in one go, so it stays
@@ -694,7 +709,7 @@
             for (let i = 1; i <= steps; i++) {
                 const p = lerp(p0, p1, i / steps);
                 if (p > SPRAY_END || p <= 0) continue;
-                const g = gunPath(p / SPRAY_END, coat.box, coat.passes);
+                const g = coatPos(coat, p / SPRAY_END);
                 if (!g.on) continue;
                 stamp(maps[coat.map], g.x, g.y, coat.r, coat.a, coat.clip);
                 stamp(maps.wet, g.x, g.y, coat.r, 0.07, coat.clip);
@@ -813,7 +828,12 @@
         // ---- Timeline ----
         const stageAt = (t) => { let i = 0; while (i < STAGES.length - 1 && t >= STARTS[i + 1]) i++; return i; };
         const local = (t) => { const i = stageAt(t); return { i, key: STAGES[i].key, p: clamp((t - STARTS[i]) / STAGES[i].dur) }; };
-        const STRIKES = [0.32, 0.52, 0.72];
+        // Hammer-and-dolly work: lots of light taps walking around the dent.
+        const TAPS = Array.from({ length: 11 }, (_, n) => {
+            const a = n * 2.4;
+            return { at: 0.2 + n * 0.058, dx: Math.cos(a) * 9 * (1 - n / 11), dy: Math.sin(a) * 4 * (1 - n / 11) };
+        });
+        const STRIKES = TAPS.map((x) => x.at);
 
         function settle(t) {
             Object.values(maps).forEach(clearMap);
@@ -828,7 +848,7 @@
             });
             if (i > IDX.color) clearMap(maps.wet);
             if (i === IDX.reveal) polishTo(0, p);
-            st.strikes = i > IDX.straighten ? 3 : i === IDX.straighten ? STRIKES.filter((s) => p > s).length : 0;
+            st.strikes = i > IDX.straighten ? TAPS.length : i === IDX.straighten ? STRIKES.filter((s) => p > s).length : 0;
         }
 
         function advance(t0, t1, dt) {
@@ -836,17 +856,15 @@
             const p0 = clamp((t0 - STARTS[i]) / STAGES[i].dur);
             if (i !== st.stage) {
                 if (st.stage === -1 || i < st.stage || i === 0) settle(t1);
-                else ['prime', 'color'].forEach((k) => { if (IDX[k] === st.stage) solidCoat(k); });
                 st.stage = i;
                 onStage(i);
             }
             if (key === 'straighten') {
-                STRIKES.forEach((at, n) => {
-                    if (p0 < at && p >= at) {
-                        const k = n === 2 ? 0.7 : 1;
+                TAPS.forEach((tap, n) => {
+                    if (p0 < tap.at && p >= tap.at) {
                         st.strikes = n + 1;
-                        st.impact = { x: DENT.x, y: DENT.y, t: t1, k };
-                        sparks(DENT.x - 2, DENT.y + 2, k);
+                        st.impact = { x: DENT.x + tap.dx, y: DENT.y + tap.dy, t: t1, k: 0.35 };
+                        st.shake = 0.9;
                     }
                 });
             }
@@ -911,13 +929,13 @@
             const age = (t - st.impact.t) / 1000;
             return {
                 bars: i === 0 ? [tube(0), tube(1), tube(2)] : [1, 1, 1],
-                dent: i === 0 ? 1 : i === 1 ? 1 - st.strikes / 3 * 0.97 : 0,
+                dent: i === 0 ? 1 : i === 1 ? 1 - st.strikes / TAPS.length * 0.97 : 0.03 * (1 - span(p, 0, 0.2)) * (i === 2 ? 1 : 0),
                 scratch: i <= IDX.straighten ? 1 : i === IDX.sand ? 1 - span(p, 0.1, 0.5) : 0,
                 clearDoor: key === 'clear' ? sstep(0, 0.6, p) : i > IDX.clear ? 1 : 0,
-                clearRough: key === 'clear' ? 0.05 : 0.03,
-                peel: i >= IDX.color ? (i === IDX.reveal ? 0.02 : 0.03) : 0,
-                envShift: key === 'reveal' ? lerp(-0.75, 0.6, inOut(span(p, 0.3, 0.95))) : Math.sin(t / 5200) * 0.05,
-                exposure: key === 'reveal' ? 1.04 : 1.0,
+                clearRough: key === 'clear' ? lerp(0.05, 0.03, sstep(0.3, 1, p)) : 0.03,
+                peel: i >= IDX.color ? (i === IDX.reveal ? lerp(0.03, 0.02, p) : 0.03) : 0,
+                envShift: key === 'reveal' ? lerp(Math.sin(t / 5200) * 0.05, lerp(-0.75, 0.6, inOut(span(p, 0.3, 0.95))), sstep(0.0, 0.3, p)) : Math.sin(t / 5200) * 0.05,
+                exposure: key === 'reveal' ? lerp(1.0, 1.04, sstep(0.2, 0.6, p)) : 1.0,
                 impact: [st.impact.x, st.impact.y, key === 'straighten' && age >= 0 ? age : -1, st.impact.k],
                 // Before the stripe stage the old line is intact; the door's new
                 // paint covers it, and the new line is laid back over everything.
@@ -950,9 +968,14 @@
             let i = 0;
             while (i < CAM_KEYS.length - 2 && t > CAM_KEYS[i + 1][0]) i++;
             const k0 = CAM_KEYS[Math.max(0, i - 1)], k1 = CAM_KEYS[i], k2 = CAM_KEYS[i + 1], k3 = CAM_KEYS[Math.min(CAM_KEYS.length - 1, i + 2)];
-            const u = clamp((t - k1[0]) / Math.max(1, k2[0] - k1[0]));
-            const cr = (a, b, c2, d) => 0.5 * ((2 * b) + (-a + c2) * u + (2 * a - 5 * b + 4 * c2 - d) * u * u + (-a + 3 * b - 3 * c2 + d) * u * u * u);
-            const cam = { x: cr(k0[1], k1[1], k2[1], k3[1]), y: cr(k0[2], k1[2], k2[2], k3[2]), z: cr(k0[3], k1[3], k2[3], k3[3]) };
+            const h = Math.max(1, k2[0] - k1[0]);
+            const u = clamp((t - k1[0]) / h);
+            // Tangents measured per millisecond, so speed carries smoothly across
+            // keys of different lengths (no lurch at a framing point).
+            const tan = (a, b, n) => (b[n] - a[n]) / Math.max(1, b[0] - a[0]);
+            const h00 = 2 * u * u * u - 3 * u * u + 1, h10 = u * u * u - 2 * u * u + u, h01 = -2 * u * u * u + 3 * u * u, h11 = u * u * u - u * u;
+            const herm = (n) => h00 * k1[n] + h10 * h * tan(k0, k2, n) * (k0 === k1 ? 0 : 1) + h01 * k2[n] + h11 * h * tan(k1, k3, n) * (k2 === k3 ? 0 : 1);
+            const cam = { x: herm(1), y: herm(2), z: herm(3) };
             // While striping, ride along with the brush.
             const { key, p } = local(t);
             if (key === 'stripe') {
@@ -971,14 +994,14 @@
             const mixC = (a, b, k) => a.map((v, n) => lerp(v, b[n], k));
             const off = (g) => ({ x: g.x + 170, y: g.y - 130, dir: g.dir });
             const between = (a, b, k) => ({ x: lerp(a.x, b.x, inOut(k)), y: lerp(a.y, b.y, inOut(k)) - Math.sin(Math.PI * k) * 18, dir: k < 0.5 ? a.dir : b.dir });
-            const P0 = gunPath(0, COATS.prime.box, COATS.prime.passes), P1 = gunPath(1, COATS.prime.box, COATS.prime.passes);
+            const P0 = primerPath(0), P1 = primerPath(1);
             const C0 = gunPath(0, COATS.color.box, COATS.color.passes), C1 = gunPath(1, COATS.color.box, COATS.color.passes);
             const L0 = gunPath(0, DOORBOX, 5), L1 = gunPath(1, DOORBOX, 5);
             if (key === 'prime') {
                 const cp = coatP(key, p);
                 if (p < PRIME_START - 0.12) return null;
                 if (cp <= 0) return { g: between(off(P0), P0, span(p, PRIME_START - 0.12, PRIME_START)), rgb: grey, spraying: false };
-                if (cp < SPRAY_END) return { g: gunPath(cp / SPRAY_END, COATS.prime.box, COATS.prime.passes), rgb: grey, spraying: true };
+                if (cp < SPRAY_END) return { g: primerPath(cp / SPRAY_END), rgb: grey, spraying: true };
                 const k = span(cp, SPRAY_END, 1);
                 return { g: between(P1, C0, k), rgb: mixC(grey, carC, sstep(0.3, 0.7, k)), spraying: false };
             }
@@ -1016,7 +1039,7 @@
         // hickory handle with grain, a wedge in the eye, a swelled grip.
         // lift: 0 at impact, 1 fully raised. Raised means closer to the camera,
         // so it reads a touch larger and throws a softer, farther shadow.
-        function drawHammer(c, lift, blur, enter) {
+        function drawHammer(c, lift, blur, enter, ox = 0, oy = 0) {
             // Swung from the lower right: the handle runs down-right from the head,
             // the face comes down onto the dent, raising rolls the head back.
             const ang0 = 0.62;
@@ -1024,7 +1047,7 @@
             const sc = TS * (1 + lift * 0.16);
             const face = [-236, 54];                                    // face center, tool units
             const r0 = [Math.cos(ang0) * face[0] - Math.sin(ang0) * face[1], Math.sin(ang0) * face[0] + Math.cos(ang0) * face[1]];
-            const px = DENT.x - r0[0] * TS + enter * 120, py = DENT.y - r0[1] * TS + enter * 90;
+            const px = DENT.x + ox - r0[0] * TS + enter * 120, py = DENT.y + oy - r0[1] * TS + enter * 90;
             const fw = [Math.cos(ang) * face[0] - Math.sin(ang) * face[1], Math.sin(ang) * face[0] + Math.cos(ang) * face[1]];
             const hx = px + fw[0] * sc, hy = py + fw[1] * sc;
             contact(c, hx + 2 + lift * 14, hy + 3 + lift * 12, 10 + lift * 14, 5 + lift * 8, 0.42 * (1 - lift * 0.55) * (1 - enter));
@@ -1284,20 +1307,22 @@
             }
 
             if (key === 'straighten') {
-                // Comes in raised, three blows (anticipation, fast drop, held
-                // impact, recoil), then lifts away.
-                let lift = 1, blur = 0;
-                for (const at of STRIKES) {
-                    const d = p - at;
-                    if (d > -0.11 && d <= 0) {
-                        const q = (d + 0.11) / 0.11;
-                        lift = q < 0.55 ? lerp(1, 1.12, outCubic(q / 0.55)) : lerp(1.12, 0, inCubic((q - 0.55) / 0.45));
-                        blur = q >= 0.55 ? 1 : 0;
-                    } else if (d > 0 && d < 0.012) lift = 0;
-                    else if (d >= 0.012 && d < 0.09) lift = lerp(0, 1, outBack((d - 0.012) / 0.078));
+                // Light, quick wrist taps: a small rise, a short drop, a tiny bounce.
+                const REST = 0.28;
+                let lift = REST, blur = 0, tx = TAPS[0].dx, ty = TAPS[0].dy;
+                for (let n = 0; n < TAPS.length; n++) {
+                    const tap = TAPS[n], d = p - tap.at;
+                    if (d > -0.04 && d <= 0) {
+                        const q = (d + 0.04) / 0.04;
+                        lift = q < 0.5 ? lerp(REST, 0.36, outCubic(q / 0.5)) : lerp(0.36, 0, inCubic((q - 0.5) / 0.5));
+                        blur = q > 0.5 ? 0.5 : 0;
+                        const prev = TAPS[Math.max(0, n - 1)];
+                        tx = lerp(prev.dx, tap.dx, outCubic(q)); ty = lerp(prev.dy, tap.dy, outCubic(q));
+                    } else if (d > 0 && d < 0.018) { lift = lerp(0, REST, outBack(d / 0.018)); tx = tap.dx; ty = tap.dy; }
+                    else if (d >= 0.018) { tx = tap.dx; ty = tap.dy; }
                 }
-                const enter = (1 - outCubic(span(p, 0, 0.16))) + inCubic(span(p, 0.84, 1));
-                drawHammer(c, lift, blur, enter);
+                const enter = (1 - outCubic(span(p, 0, 0.16))) + inCubic(span(p, 0.86, 1));
+                drawHammer(c, lift, blur, enter, tx, ty);
             }
             if (key === 'sand') {
                 const q = span(p, 0.06, 0.92);
@@ -1448,11 +1473,10 @@
             }
         }
 
-        const FRAME = 1000 / 30;
+        const FRAME = 1000 / 60;
         function frame(now) {
             st.raf = 0;
             const elapsed = st.last ? now - st.last : FRAME;
-            if (elapsed < FRAME - 2) { st.raf = requestAnimationFrame(frame); return; }
             const dt = Math.min(66, elapsed);
             st.last = now;
             if (st.playing) {
