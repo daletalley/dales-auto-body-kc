@@ -928,7 +928,7 @@
             };
             const age = (t - st.impact.t) / 1000;
             return {
-                bars: i === 0 ? [tube(0), tube(1), tube(2)] : key === 'reveal' ? [0, 1, 2].map((k) => 1 - 0.97 * sstep(0.84 + k * 0.045, 0.9 + k * 0.045, p)) : [1, 1, 1],
+                bars: i === 0 ? [tube(0), tube(1), tube(2)] : key === 'reveal' ? [0, 1, 2].map((k) => 1 - 0.97 * sstep(0.78 + k * 0.05, 0.9 + k * 0.035, p)) : [1, 1, 1],
                 dent: i === 0 ? 1 : i === 1 ? 1 - st.strikes / TAPS.length * 0.97 : 0.03 * (1 - span(p, 0, 0.2)) * (i === 2 ? 1 : 0),
                 scratch: i <= IDX.straighten ? 1 : i === IDX.sand ? 1 - span(p, 0.1, 0.5) : 0,
                 clearDoor: key === 'clear' ? sstep(0, 0.6, p) : i > IDX.clear ? 1 : 0,
@@ -1341,10 +1341,12 @@
                 { x: DOOR.x1 + 1, y: 300, w: 900, h: 400, from: 1 },
                 { x: DOOR.x0 - 1, y: 300, w: DOOR.x1 - DOOR.x0 + 2, h: top - 300, from: 0 },
             ];
+            const order = { 0: 0, 1: 1, '-1': 2 };
             sheets.forEach((s) => {
-                const slide = (1 - outCubic(k)) * s.from * 420;
-                const lift = s.from ? 0 : -(1 - outCubic(k)) * 260;
-                const off = inCubic(peel) * (s.from ? s.from * 620 : -380);
+                const pk = inOut(clamp((peel - order[s.from] * 0.16) / 0.68));
+                const slide = (1 - inOut(k)) * s.from * 420;
+                const lift = s.from ? 0 : -(1 - inOut(k)) * 260;
+                const off = pk * (s.from ? s.from * 620 : -380);
                 c.save();
                 c.globalAlpha = 1;
                 c.translate(slide + (s.from ? off : 0), lift + (s.from ? 0 : off));
@@ -1379,9 +1381,10 @@
 
             // Masking starts going up while the last of the blocking finishes,
             // and the paper is still coming off as the striper moves in.
-            const maskK = key === 'fill' ? 0.4 * span(p, 0.9, 1) : key === 'prime' ? lerp(0.4, 1, span(p, 0, PRIME_START * 0.9)) : (i > IDX.prime && i <= IDX.clear) ? 1 : 0;
-            const peel = key === 'clear' ? 0.85 * inCubic(span(p, 0.72, 1)) : key === 'stripe' ? lerp(0.85, 1, span(p, 0, 0.08)) : 0;
-            drawMasking(c, Math.max(maskK, key === 'stripe' && p < 0.08 ? 1 : 0), peel);
+            const maskK = key === 'fill' ? 0.35 * span(p, 0.78, 1) : key === 'prime' ? lerp(0.35, 1, span(p, 0, PRIME_START * 0.9)) : (i > IDX.prime && i <= IDX.clear) ? 1 : 0;
+            // Peeled by hand over a couple of seconds, finishing as the striper arrives.
+            const peel = key === 'clear' ? 0.9 * span(p, 0.5, 1) : key === 'stripe' ? lerp(0.9, 1, span(p, 0, 0.06)) : 0;
+            drawMasking(c, Math.max(maskK, key === 'stripe' && p < 0.06 ? 1 : 0), peel);
 
             for (const m of st.mist) {
                 const k = m.life / m.max;
