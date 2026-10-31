@@ -104,12 +104,6 @@ section { padding: 5rem 0; }
     background: rgba(255, 255, 255, 0.1);
 }
 
-.nav-links .pill {
-    background: var(--rust);
-    color: #0b1825;
-    box-shadow: 0 6px 24px rgba(212, 95, 52, 0.35);
-}
-
 .status-pill {
     display: inline-flex;
     align-items: center;
@@ -214,11 +208,6 @@ section { padding: 5rem 0; }
     color: var(--cream);
 }
 
-.btn.ghost {
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--cream);
-}
-
 .btn:hover { transform: translateY(-2px); }
 
 .hero-tags {
@@ -266,10 +255,35 @@ section { padding: 5rem 0; }
 
 .hero-photo [data-hero-next-img].is-in { opacity: 1; }
 
-.hero-count {
+.hero-meta {
     position: absolute;
     right: 12px;
     bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.hero-toggle {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: rgba(8, 16, 25, 0.7);
+    color: var(--cream);
+    cursor: pointer;
+}
+
+.hero-toggle svg { width: 12px; height: 12px; fill: currentColor; }
+
+.hero-toggle .i-play, .hero-toggle[aria-pressed="true"] .i-pause { display: none; }
+
+.hero-toggle[aria-pressed="true"] .i-play { display: block; }
+
+.hero-count {
     padding: 0.2rem 0.6rem;
     border-radius: 999px;
     background: rgba(8, 16, 25, 0.7);
@@ -345,36 +359,6 @@ section { padding: 5rem 0; }
 
 .card p { margin: 0; color: var(--stone); }
 
-.story-grid {
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
-    gap: 2rem;
-    align-items: start;
-}
-
-.story-text h2 {
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: clamp(2rem, 3vw, 2.6rem);
-    margin: 0.4rem 0 0.8rem;
-}
-
-.story-text p { color: var(--stone); }
-
-.inline-cta { display: flex; gap: 0.8rem; flex-wrap: wrap; }
-
-.story-image img {
-    border-radius: 18px;
-    border: 1px solid var(--line);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
-    object-fit: cover;
-    aspect-ratio: 4 / 3;
-}
-
-.gallery {
-    background: rgba(255, 255, 255, 0.02);
-    border-top: 1px solid var(--line);
-}
-
 .visit {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent);
 }
@@ -405,6 +389,8 @@ section { padding: 5rem 0; }
 
 .contact-list .today.is-open { color: #3cba7e; }
 
+.map iframe { display: block; border: 0; min-height: 320px; }
+
 .map {
     border-radius: 18px;
     overflow: hidden;
@@ -432,6 +418,36 @@ section { padding: 5rem 0; }
 
 .footer .fine { font-size: 0.82rem; color: var(--muted); margin-top: 0.8rem; }
 
+/* Mobile call bar: appears once the hero buttons scroll away */
+.callbar { display: none; }
+
+@media (max-width: 640px) {
+    .callbar {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        z-index: 15;
+        display: grid;
+        grid-template-columns: 1.4fr 1fr;
+        gap: 8px;
+        padding: 8px;
+        border-radius: 999px;
+        background: rgba(15, 39, 64, 0.92);
+        border: 1px solid var(--line);
+        box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+        backdrop-filter: blur(10px);
+        transform: translateY(calc(100% + 24px));
+        transition: transform 0.35s ease;
+    }
+    .callbar.is-shown { transform: none; }
+    .callbar .btn { padding: 0.7rem 1rem; box-shadow: none; }
+    .callbar .btn.outline { background: rgba(255, 255, 255, 0.04); }
+
+    /* The header stacks into three rows on phones; let it scroll away instead of covering a quarter of the screen */
+    .top-nav { position: relative; }
+}
+
 /* Accessibility */
 .skip-link {
     position: absolute;
@@ -455,7 +471,10 @@ a:focus-visible, button:focus-visible, .hero-photo:focus-visible {
 
 html { scroll-behavior: smooth; }
 
+/* Offset anchor jumps for the sticky header (its height changes with width) */
 section[id] { scroll-margin-top: 90px; }
+@media (max-width: 1024px) { section[id] { scroll-margin-top: 150px; } }
+@media (max-width: 640px) { section[id] { scroll-margin-top: 0; } }
 
 /* Gentle fade-in on scroll (only when JS is running) */
 .js-reveal .reveal {
@@ -476,12 +495,11 @@ section[id] { scroll-margin-top: 90px; }
 }
 
 @media (max-width: 1024px) {
-    .hero-grid, .story-grid, .visit-grid {
+    .hero-grid, .visit-grid {
         grid-template-columns: 1fr;
     }
     .nav-inner { flex-direction: column; align-items: flex-start; }
     .nav-links { width: 100%; }
-    section[id] { scroll-margin-top: 150px; }
 }
 
 @media (max-width: 768px) {
@@ -532,3 +550,8 @@ section[id] { scroll-margin-top: 90px; }
     .hero-copy h1 { font-size: 1.8rem; }
     .btn { font-size: 0.95rem; }
 }
+
+/* 404 page */
+.notfound { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; }
+.notfound h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.05; margin: 0 0 1rem; }
+.notfound .lede { color: var(--stone); max-width: 52ch; margin: 0 0 1.5rem; }

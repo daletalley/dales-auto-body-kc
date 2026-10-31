@@ -6,6 +6,8 @@
     <title>Dale's Auto Body KC | Since 1975</title>
     <meta name="description" content="Family-owned auto body and upholstery shop at 1310 State Avenue, Kansas City, KS. Collision and frame repair, paint, and upholstery from Dale since 1975.">
     <meta name="theme-color" content="#0f2740">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; frame-src https://www.google.com https://maps.google.com; base-uri 'self'; form-action 'none'">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <link rel="canonical" href="https://daleskc.com/">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://daleskc.com/">
@@ -17,6 +19,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="images/work/shop-741.webp" fetchpriority="high">
     <link rel="stylesheet" href="css/style.css">
     <script type="application/ld+json">
     {
@@ -41,7 +44,9 @@
             "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
             "opens": "10:00",
             "closes": "18:00"
-        }]
+        }],
+        "hasMap": "https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102",
+        "areaServed": "Kansas City metro"
     }
     </script>
 </head>
@@ -60,7 +65,7 @@
                 <a href="#about">About</a>
                 <a href="#services">Services</a>
                 <a href="#visit">Visit</a>
-                <span class="status-pill" id="navStatus" aria-live="polite">Checking hours…</span>
+                <span class="status-pill" id="navStatus" aria-live="polite">Weekdays 10a–6p</span>
             </nav>
         </div>
     </header>
@@ -85,9 +90,15 @@
                 <div class="hero-showcase hero-slider reveal" data-slider aria-roledescription="carousel" aria-label="Photos of Dale's work">
                     <button class="hero-arrow" type="button" data-hero-prev aria-label="Previous photo">‹</button>
                     <div class="hero-photo" tabindex="0">
-                        <img src="images/work/shop-741.webp" alt="Dale's Auto Body shop on State Avenue" width="741" height="544" data-hero-img>
+                        <img src="images/work/shop-741.webp" alt="Dale's Auto Body shop on State Avenue" width="741" height="544" fetchpriority="high" data-hero-img>
                         <img alt="" aria-hidden="true" data-hero-next-img>
-                        <span class="hero-count" data-hero-count aria-live="polite">1 / 16</span>
+                        <div class="hero-meta">
+                            <button class="hero-toggle" type="button" data-hero-toggle aria-pressed="false" aria-label="Pause slideshow">
+                                <svg class="i-pause" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3h3v10H4zM9 3h3v10H9z"/></svg>
+                                <svg class="i-play" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5v11l9-5.5z"/></svg>
+                            </button>
+                            <span class="hero-count" data-hero-count>1 / 16</span>
+                        </div>
                     </div>
                     <button class="hero-arrow" type="button" data-hero-next aria-label="Next photo">›</button>
                 </div>
@@ -159,11 +170,10 @@
                 </div>
                 <div class="map reveal">
                     <iframe
-                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&output=embed"
+                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&amp;output=embed"
                         title="Map to Dale's Auto Body, 1310 State Avenue, Kansas City, KS"
                         width="100%"
                         height="100%"
-                        style="border:0;"
                         allowfullscreen=""
                         loading="lazy"
                         referrerpolicy="no-referrer-when-downgrade">
@@ -186,6 +196,11 @@
             </div>
         </div>
     </footer>
+
+    <div class="callbar" data-callbar inert>
+        <a class="btn solid" href="tel:+19133716654">Call Dale</a>
+        <a class="btn outline" href="https://www.google.com/maps/dir/?api=1&amp;destination=1310+State+Ave+Kansas+City+KS+66102" target="_blank" rel="noopener">Directions</a>
+    </div>
 
     <script src="js/script.js"></script>
 </body>
