@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Shop Portal | Dale's Auto Body KC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Dale's Auto Body shop portal — same tokens as daleskc.com (navy, rust, amber, cream). */
+:root {
+  --ink: #0d1c2a; --navy: #0f2740; --panel: #13283f; --panel-2: #172f4a;
+  --rust: #F54503; --amber: #e8bf57; --cream: #f5eee2; --stone: #d8cabc; --muted: #8fa0b6;
+  --line: rgba(255, 255, 255, 0.12); --line-2: rgba(255, 255, 255, 0.2);
+  --good: #5fd39a; --good-soft: rgba(95, 211, 154, 0.14); --bad: #ff7a5c; --bad-soft: rgba(245, 69, 3, 0.16); --warn-soft: rgba(232, 191, 87, 0.16);
+  --sheet: #f8f4ec; --sheet-ink: #1a1a1a;
+  --display: "Bebas Neue", Impact, "Arial Narrow", sans-serif; --body: "Work Sans", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+html { background: #0f2134; }
+body { font-family: var(--body); background: linear-gradient(180deg, #0d1c2a 0%, #0f2134 100%) fixed; color: var(--cream); line-height: 1.55; font-size: 15px; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+a { color: var(--amber); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.inner { max-width: 1240px; margin: 0 auto; }
+
+.eyebrow { letter-spacing: .2em; text-transform: uppercase; font-size: .72rem; color: var(--amber); margin: 0; }
+.small { font-size: 12.5px; color: var(--muted); }
+.date { font-family: var(--mono); font-size: 13px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.num { font-variant-numeric: tabular-nums; }
+.cite { font-family: var(--mono); font-size: 11.5px; color: var(--amber); margin-top: 4px; display: inline-block; }
+
+.btn { border: 1px solid var(--line-2); background: transparent; padding: 9px 16px; border-radius: 999px; cursor: pointer; font-weight: 600; font-size: 14px; color: var(--cream); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:hover { border-color: var(--stone); }
+.btn.primary { background: var(--rust); border-color: var(--rust); color: #fff; box-shadow: 0 8px 22px -10px var(--rust); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.ghost { border-color: transparent; color: var(--muted); }
+.btn.danger { color: var(--bad); }
+.btn.big { padding: 12px 22px; font-size: 16px; }
+.btn.sm { padding: 6px 12px; font-size: 13px; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+.chip { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; border: 1px solid transparent; display: inline-block; }
+.chip.over { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); }
+.chip.soon { background: var(--warn-soft); color: var(--amber); }
+.chip.up { color: var(--muted); border-color: var(--line-2); }
+.chip.done, .chip.ready, .chip.paid { background: var(--good-soft); color: var(--good); }
+.chip.wait { border: 1px dashed var(--muted); color: var(--muted); }
+.chip.info { color: var(--muted); }
+
+.field { display: grid; gap: 5px; min-width: 0; }
+.field label { font-size: 12px; color: var(--stone); font-weight: 600; letter-spacing: .02em; }
+.field input, .field select, .field textarea { border: 1px solid var(--line-2); background: rgba(0,0,0,.18); border-radius: 10px; padding: 9px 11px; width: 100%; min-width: 0; }
+.field select option { background: var(--navy); }
+.field.wide { grid-column: 1 / -1; }
+.field.check { display: flex; gap: 8px; align-items: center; }
+.field.check input { width: auto; accent-color: var(--rust); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px 16px; }
+.grouplabel { grid-column: 1 / -1; font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--amber); border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; }
+
+/* top bar — mirrors the public site's nav */
+.top { background: var(--navy); border-bottom: 1px solid var(--line); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; }
+.top .inner { display: flex; align-items: center; gap: 18px; padding-block: 12px; flex-wrap: wrap; }
+.brandblock { line-height: 1.05; text-decoration: none; color: var(--cream); }
+.brandblock .name { font-family: var(--display); font-size: 1.7rem; letter-spacing: .12em; }
+.brandblock .sub { font-size: .68rem; letter-spacing: .18em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
+.nav { display: flex; gap: 4px; flex: 1; flex-wrap: wrap; }
+.nav a { text-decoration: none; color: var(--stone); font-weight: 600; padding: 7px 12px; border-radius: 999px; }
+.nav a[aria-current="page"] { color: #fff; background: rgba(255,255,255,.08); }
+@media (max-width: 760px) { .nav { order: 3; flex-basis: 100%; overflow-x: auto; flex-wrap: nowrap; } .nav a { white-space: nowrap; } .top .inner { justify-content: space-between; } }
+
+main.inner { padding-block: 26px 64px; display: grid; gap: 26px; }
+h1 { font-family: var(--display); font-weight: 400; letter-spacing: .03em; font-size: clamp(34px, 4.4vw, 52px); margin: 2px 0 0; line-height: 1; }
+h2 { font-family: var(--body); font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--stone); margin: 0 0 10px; }
+.pagehead { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.tile { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; text-decoration: none; color: inherit; display: block; }
+.tile .n { font-family: var(--display); font-size: 40px; line-height: 1; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.tile .l { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.tile.alert { border-color: var(--rust); background: linear-gradient(180deg, rgba(245,69,3,.16), rgba(245,69,3,.05)); }
+a.tile:hover { border-color: var(--line-2); }
+
+.list { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 13px 16px; border-top: 1px solid var(--line); align-items: center; cursor: pointer; text-align: left; background: none; border-left: 0; border-right: 0; border-bottom: 0; width: 100%; color: inherit; text-decoration: none; }
+.row:first-child { border-top: 0; }
+.row:hover { background: rgba(255,255,255,.035); }
+.row .t { font-weight: 600; }
+.row .s { font-size: 13px; color: var(--muted); }
+.row .r { text-align: right; display: grid; gap: 5px; justify-items: end; }
+.row .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.empty { padding: 22px 18px; color: var(--muted); }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.filters button[aria-pressed="true"] { border-color: var(--rust); color: #fff; background: rgba(245,69,3,.18); }
+
+/* aging bar */
+.aging { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 700px) { .aging { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bucket { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; cursor: pointer; text-align: left; color: inherit; }
+.bucket[aria-pressed="true"] { border-color: var(--rust); }
+.bucket .k { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.bucket .n { font-family: var(--display); font-size: 32px; line-height: 1.05; }
+.bucket .c { font-size: 12.5px; color: var(--muted); }
+.bucket.b90 .n { color: var(--bad); } .bucket.b60 .n { color: var(--amber); }
+.agebar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,.06); }
+.agebar span { display: block; height: 100%; }
+
+/* lien detail */
+.head { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
+.amount { text-align: right; }
+.amount .n { font-family: var(--display); font-size: 40px; line-height: 1; font-variant-numeric: tabular-nums; }
+.amount .l { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; }
+.banner { border-radius: 14px; padding: 13px 16px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; border: 1px solid var(--line); background: var(--panel); }
+.banner.over { background: var(--bad-soft); border-color: var(--rust); }
+.banner.soon { background: var(--warn-soft); border-color: var(--amber); }
+.banner.ok { background: var(--good-soft); border-color: var(--good); }
+.cols { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 24px; }
+@media (max-width: 1100px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.steps { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.step { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px; padding: 13px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.step input { margin-top: 4px; width: 16px; height: 16px; accent-color: var(--rust); }
+.step .t { font-weight: 600; }
+.step.isdone .t { text-decoration: line-through; color: var(--muted); }
+.step .d { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+.when { text-align: right; display: grid; gap: 5px; justify-items: end; }
+.docs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.docbtn[aria-pressed="true"] { border-color: var(--rust); color: #fff; background: rgba(245,69,3,.18); }
+.sheet { background: var(--sheet); color: var(--sheet-ink); border-radius: 6px; padding: 28px 30px; white-space: pre-wrap; font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; max-height: 640px; overflow: auto; font-family: Georgia, "Times New Roman", serif; }
+.sheet .ph { background: #fde7b0; color: #7a4b00; border-radius: 3px; padding: 0 3px; font-family: var(--body); font-size: 13px; }
+.sheetbar { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; align-items: center; }
+.panel { border: 1px solid var(--line); border-radius: 16px; background: var(--panel); }
+.panel summary { cursor: pointer; padding: 14px 16px; font-weight: 600; }
+.panel .grid { padding: 4px 16px 18px; }
+
+/* modal + auth */
+.overlay { position: fixed; inset: 0; background: rgba(5, 12, 20, .7); display: grid; place-items: start center; overflow: auto; z-index: 20; padding-block: max(24px, env(safe-area-inset-top, 0px)) 24px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.modal { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 18px; width: min(780px, 100%); padding: 24px; display: grid; gap: 16px; }
+.modal h2 { font-family: var(--display); font-size: 32px; font-weight: 400; letter-spacing: .03em; text-transform: none; color: var(--cream); margin: 0; line-height: 1; }
+.modalfoot { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.msg { font-size: 13.5px; min-height: 1.3em; }
+.msg.err { color: var(--bad); }
+.auth { max-width: 430px; margin: 9vh auto 0; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 28px; display: grid; gap: 14px; }
+.auth .brandblock .name { font-size: 2.1rem; }
+.toast { position: fixed; bottom: max(16px, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--cream); color: var(--ink); padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; z-index: 30; }
+.foot { font-size: 12px; color: var(--muted); padding-block: 0 32px; }
+textarea.copybox { width: 100%; min-height: 150px; border: 1px solid var(--line-2); background: rgba(0,0,0,.2); border-radius: 10px; padding: 10px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div id="authView" class="wrap" hidden>
+  <form class="auth" id="authForm" novalidate>
+    <a class="brandblock" href="/"><div class="sub">Family owned since 1975</div><div class="name">DALE'S AUTO BODY</div><div class="sub" style="color:var(--stone)">Shop portal</div></a>
+    <div><b id="authTitle">Sign in</b><div class="small">Jobs, money owed, and Kansas lien paperwork for the shop.</div></div>
+    <div class="field"><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" required></div>
+    <div class="field"><label for="authPass">Password</label><input id="authPass" type="password" autocomplete="current-password" minlength="8" required></div>
+    <button class="btn primary big" id="authSubmit" type="submit">Sign in</button>
+    <div class="msg" id="authMsg" aria-live="polite"></div>
+    <div class="small" id="authSwitchRow"><span id="authSwitchWrap" hidden><span id="authSwitchText">New here?</span> <a href="#" id="authSwitch">Create an account</a> · </span><a href="#" id="authForgot">Forgot password</a></div>
+    <div class="small"><a href="/">← Back to daleskc.com</a></div>
+  </form>
+</div>
+
+<div id="setupView" class="wrap" hidden>
+  <form class="auth" id="setupForm">
+    <div class="brandblock"><div class="sub">One-time setup</div><div class="name">CONFIRM SHOP INFO</div></div>
+    <div class="small">This goes on every letter and lien form. Use the legal business name and address.</div>
+    <div class="field"><label for="sName">Business name</label><input id="sName" required value="Dale's Auto Body"></div>
+    <div class="field"><label for="sAddr">Business address</label><input id="sAddr" required value="1310 State Avenue, Kansas City, KS 66102"></div>
+    <div class="field"><label for="sPhone">Phone</label><input id="sPhone" type="tel" value="(913) 371-6654"></div>
+    <div class="field"><label for="sInd">Kind of business</label>
+      <select id="sInd"><option value="collision" selected>Collision / body shop</option><option value="auto_repair">Auto repair</option><option value="towing">Towing and storage</option><option value="equipment">Equipment repair</option><option value="contractor">Contractor</option><option value="subcontractor">Subcontractor or supplier</option></select></div>
+    <button class="btn primary big" type="submit">Open the portal</button>
+    <div class="msg" id="setupMsg" aria-live="polite"></div>
+  </form>
+</div>
+
+<div id="appView" hidden>
+  <header class="top wrap"><div class="inner">
+    <a class="brandblock" href="#dashboard"><div class="name">DALE'S AUTO BODY</div><div class="sub">Shop portal</div></a>
+    <nav class="nav" id="nav">
+      <a href="#dashboard">Dashboard</a><a href="#receivables">Money owed</a><a href="#jobs">Jobs</a><a href="#customers">Customers</a><a href="#liens">Liens</a>
+    </nav>
+    <button class="btn ghost" id="signOut" type="button">Sign out</button>
+  </div></header>
+  <div class="wrap"><main class="inner" id="main"></main></div>
+  <div class="wrap"><p class="inner foot">Private shop portal for Dale's Auto Body. Lien drafts are prepared for Dale to review and sign; this is not legal advice. Kansas deadlines summarized November 2026 from K.S.A. 58-201 et seq., 8-1101 et seq., 60-1101 et seq. and Division of Vehicles forms.</p></div>
+</div>
+
+<div class="overlay" id="overlay" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="kansas.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

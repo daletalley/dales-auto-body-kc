@@ -428,3 +428,7 @@ section { padding: 5rem 0; }
     .hero-copy h1 { font-size: 1.8rem; }
     .btn { font-size: 0.95rem; }
 }
+
+.footer-login { margin: 0.4rem 0 0; font-size: 0.82rem; }
+.footer-login a { color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.footer-login a:hover { color: var(--cream); }
