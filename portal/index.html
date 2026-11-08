@@ -148,9 +148,84 @@ a.tile:hover { border-color: var(--line-2); }
 .msg.err { color: var(--bad); }
 .auth { max-width: 430px; margin: 9vh auto 0; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 28px; display: grid; gap: 14px; }
 .auth .brandblock .name { font-size: 2.1rem; }
-.toast { position: fixed; bottom: max(16px, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); background: var(--cream); color: var(--ink); padding: 9px 16px; border-radius: 999px; font-size: 14px; font-weight: 600; z-index: 30; }
+.toast { position: fixed; bottom: max(16px, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); width: max-content; max-width: min(560px, calc(100% - 32px)); background: var(--cream); color: var(--ink); padding: 11px 16px; border-radius: 14px; font-size: 14px; font-weight: 600; z-index: 30; box-shadow: 0 12px 30px -12px #000; }
 .foot { font-size: 12px; color: var(--muted); padding-block: 0 32px; }
 textarea.copybox { width: 100%; min-height: 150px; border: 1px solid var(--line-2); background: rgba(0,0,0,.2); border-radius: 10px; padding: 10px; }
+/* ---- v2: guided workflow ---- */
+.netbar { position: sticky; top: 0; z-index: 40; background: var(--rust); color: #fff; text-align: center; font-weight: 600; padding: 8px 16px; font-size: 14px; }
+.search { position: relative; min-width: 0; flex: 0 1 300px; }
+.search input { width: 100%; border: 1px solid var(--line-2); background: rgba(0,0,0,.22); border-radius: 999px; padding: 8px 14px; }
+.results { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 14px; overflow: hidden; z-index: 15; box-shadow: 0 20px 40px -20px #000; max-height: 70vh; overflow-y: auto; }
+.results a { display: block; padding: 10px 14px; text-decoration: none; color: var(--cream); border-top: 1px solid var(--line); }
+.results a:first-child { border-top: 0; }
+.results a:hover, .results a.on { background: rgba(255,255,255,.06); }
+.results .rk { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--amber); }
+.results .none { padding: 12px 14px; color: var(--muted); font-size: 14px; }
+@media (max-width: 760px) { .search { order: 4; flex-basis: 100%; } }
+
+.quick { display: flex; gap: 10px; flex-wrap: wrap; }
+.todo { display: grid; gap: 10px; }
+.task { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--line-2); border-radius: 14px; padding: 14px 16px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+.task.urgent { border-left-color: var(--rust); }
+.task.soon { border-left-color: var(--amber); }
+.task.easy { border-left-color: var(--good); }
+.task .t { font-weight: 700; font-size: 16px; }
+.task .s { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+.task .acts { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 640px) { .task { grid-template-columns: minmax(0, 1fr); } .task .acts { justify-content: flex-start; } }
+.allclear { background: var(--good-soft); border: 1px solid var(--good); border-radius: 14px; padding: 18px; font-weight: 600; }
+
+.stepper { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.stage { text-align: center; padding: 10px 4px 8px; border-radius: 10px; background: rgba(255,255,255,.04); border: 1px solid var(--line); font-size: 12.5px; font-weight: 600; color: var(--muted); position: relative; }
+.stage .dot { display: block; width: 22px; height: 22px; border-radius: 50%; margin: 0 auto 5px; border: 2px solid var(--line-2); font-size: 12px; line-height: 18px; }
+.stage.done { color: var(--stone); } .stage.done .dot { background: var(--good); border-color: var(--good); color: var(--ink); }
+.stage.now { color: #fff; border-color: var(--rust); background: rgba(245,69,3,.14); } .stage.now .dot { border-color: var(--rust); background: var(--rust); color: #fff; }
+@media (max-width: 520px) { .stage { font-size: 10.5px; } }
+.nextcard { background: linear-gradient(180deg, rgba(245,69,3,.16), rgba(245,69,3,.04)); border: 1px solid var(--rust); border-radius: 16px; padding: 18px; display: grid; gap: 10px; }
+.nextcard.calm { background: var(--panel); border-color: var(--line-2); }
+.nextcard.good { background: var(--good-soft); border-color: var(--good); }
+.nextcard .headline { font-family: var(--display); font-size: 30px; letter-spacing: .02em; line-height: 1.05; }
+.nextcard .row2 { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; margin: 0; }
+.kv dt { color: var(--muted); font-size: 13px; }
+.kv dd { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.twocol { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 860px) { .twocol { grid-template-columns: minmax(0, 1fr); } }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: grid; gap: 12px; align-content: start; }
+.box h3 { margin: 0; font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--stone); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.pay { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); align-items: center; }
+.pay.void { opacity: .5; text-decoration: line-through; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--amber); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; font-size: 13px; }
+.linkbtn.danger { color: var(--bad); }
+
+.wizsteps { display: flex; gap: 6px; }
+.wizsteps span { flex: 1; height: 5px; border-radius: 999px; background: rgba(255,255,255,.1); }
+.wizsteps span.on { background: var(--rust); }
+.choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.choice { border: 1px solid var(--line-2); background: rgba(0,0,0,.15); border-radius: 12px; padding: 12px; text-align: left; cursor: pointer; color: var(--cream); display: grid; gap: 2px; }
+.choice b { font-size: 15px; } .choice span { font-size: 12.5px; color: var(--muted); }
+.choice[aria-pressed="true"] { border-color: var(--rust); background: rgba(245,69,3,.16); }
+.pickl { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; }
+.pickl button { display: flex; justify-content: space-between; gap: 10px; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 10px 12px; color: var(--cream); cursor: pointer; }
+.pickl button:first-child { border-top: 0; }
+.pickl button[aria-pressed="true"] { background: rgba(245,69,3,.18); }
+.pickl button span { color: var(--muted); font-size: 13px; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chipbtn { border: 1px solid var(--line-2); background: transparent; border-radius: 999px; padding: 5px 11px; font-size: 13px; cursor: pointer; color: var(--stone); }
+.chipbtn[aria-pressed="true"] { border-color: var(--rust); color: #fff; background: rgba(245,69,3,.18); }
+.fmsg { font-size: 12.5px; color: var(--bad); min-height: 0; }
+.fwarn { font-size: 12.5px; color: var(--amber); }
+.field.invalid input, .field.invalid select, .field.invalid textarea { border-color: var(--bad); }
+.req::after { content: " *"; color: var(--rust); }
+.hint { font-size: 13px; color: var(--muted); }
+.notice { border-radius: 12px; padding: 12px 14px; font-size: 14px; background: var(--warn-soft); border: 1px solid var(--amber); }
+.notice.bad { background: var(--bad-soft); border-color: var(--rust); }
+.notice.good { background: var(--good-soft); border-color: var(--good); }
+.savestate { font-size: 12.5px; color: var(--muted); }
+.savestate.err { color: var(--bad); }
+.confirmo { z-index: 35; }
+.confirmo .modal { width: min(480px, 100%); }
+.checkl .step .undo { margin-top: 4px; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 </head>
@@ -163,7 +238,7 @@ textarea.copybox { width: 100%; min-height: 150px; border: 1px solid var(--line-
     <div class="field"><label for="authPass">Password</label><input id="authPass" type="password" autocomplete="current-password" minlength="8" required></div>
     <button class="btn primary big" id="authSubmit" type="submit">Sign in</button>
     <div class="msg" id="authMsg" aria-live="polite"></div>
-    <div class="small" id="authSwitchRow"><span id="authSwitchWrap" hidden><span id="authSwitchText">New here?</span> <a href="#" id="authSwitch">Create an account</a> · </span><a href="#" id="authForgot">Forgot password</a></div>
+    <div class="small" id="authSwitchRow"><span id="authSwitchWrap"><span id="authSwitchText">First time here?</span> <a href="#" id="authSwitch">Create your login</a> · </span><a href="#" id="authForgot">Forgot password</a></div>
     <div class="small"><a href="/">← Back to daleskc.com</a></div>
   </form>
 </div>
@@ -182,19 +257,32 @@ textarea.copybox { width: 100%; min-height: 150px; border: 1px solid var(--line-
   </form>
 </div>
 
+<div id="noShopView" class="wrap" hidden>
+  <div class="auth">
+    <div class="brandblock"><div class="sub">Shop portal</div><div class="name">ALMOST THERE</div></div>
+    <p style="margin:0">You're signed in as <b id="noShopEmail"></b>, but this login isn't connected to the shop yet.</p>
+    <p class="small" style="margin:0">Ask Dale to add this email under <b>Settings → Team</b>, then tap <b>Check again</b>.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="noShopRetry" type="button">Check again</button><button class="btn ghost" id="noShopOut" type="button">Sign out</button></div>
+  </div>
+</div>
+
+<div id="loadView" class="wrap" hidden><div class="auth"><div class="brandblock"><div class="name">LOADING…</div></div><div class="msg" id="loadMsg"></div><button class="btn" id="loadRetry" type="button" hidden>Try again</button></div></div>
+
 <div id="appView" hidden>
+  <div class="netbar" id="netbar" hidden>No internet connection. Changes can't be saved until it's back.</div>
   <header class="top wrap"><div class="inner">
-    <a class="brandblock" href="#dashboard"><div class="name">DALE'S AUTO BODY</div><div class="sub">Shop portal</div></a>
+    <a class="brandblock" href="#home"><div class="name">DALE'S AUTO BODY</div><div class="sub">Shop portal</div></a>
     <nav class="nav" id="nav">
-      <a href="#dashboard">Dashboard</a><a href="#receivables">Money owed</a><a href="#jobs">Jobs</a><a href="#customers">Customers</a><a href="#liens">Liens</a>
+      <a href="#home">Today</a><a href="#jobs">Jobs</a><a href="#money">Money owed</a><a href="#customers">Customers</a><a href="#liens">Liens</a><a href="#settings">Settings</a>
     </nav>
-    <button class="btn ghost" id="signOut" type="button">Sign out</button>
+    <div class="search" role="search"><input id="search" type="search" placeholder="Find name, phone, VIN, plate…" autocomplete="off" aria-label="Search customers and jobs"><div class="results" id="results" hidden></div></div>
   </div></header>
   <div class="wrap"><main class="inner" id="main"></main></div>
   <div class="wrap"><p class="inner foot">Private shop portal for Dale's Auto Body. Lien drafts are prepared for Dale to review and sign; this is not legal advice. Kansas deadlines summarized November 2026 from K.S.A. 58-201 et seq., 8-1101 et seq., 60-1101 et seq. and Division of Vehicles forms.</p></div>
 </div>
 
 <div class="overlay" id="overlay" hidden><div class="modal" id="modal" role="dialog" aria-modal="true"></div></div>
+<div class="overlay confirmo" id="confirmOverlay" hidden><div class="modal" id="confirmBox" role="alertdialog" aria-modal="true"></div></div>
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
