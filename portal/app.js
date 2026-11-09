@@ -122,7 +122,7 @@ function dateRule(id, { required = false, notFuture = true, min = null, minLabel
 }
 
 // ================= state =================
-const S = { user: null, account: null, isOwner: false, customers: [], jobs: [], liens: [], payments: [], members: [], invites: [] };
+const S = { user: null, account: null, isOwner: false, isDale: false, customers: [], jobs: [], liens: [], payments: [], members: [], invites: [] };
 const STAGES = [
   { k: "estimate", label: "Estimate" }, { k: "in_progress", label: "In the shop" }, { k: "done", label: "Work done" },
   { k: "invoiced", label: "Invoiced" }, { k: "paid", label: "Paid" }];
@@ -235,8 +235,11 @@ async function boot(session) {
   } catch (ex) { $("loadMsg").className = "msg err"; $("loadMsg").textContent = friendly(ex); $("loadRetry").hidden = false; }
 }
 async function startApp() {
-  S.isOwner = S.account.owner_id === S.user.id;
+  S.isDale = S.account.owner_id === S.user.id;
+  S.isOwner = S.isDale;
   await loadAll();
+  S.isOwner = S.isDale || S.members.some(m => m.user_id === S.user.id && m.active && m.co_owner);
+  if (S.isOwner && !S.isDale) await loadAll();
   showOnly("appView"); route();
 }
 async function loadAll() {
@@ -341,7 +344,7 @@ function renderHome() {
   const old = owed.filter(j => (ageDays(j) ?? 0) > 90);
   const hour = new Date().getHours();
   $("main").innerHTML = `
-    <div class="pagehead"><div><div class="eyebrow">${esc(K.fmt(K.TODAY))}</div><h1>Good ${hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}${S.isOwner ? ", Dale" : ""}</h1></div></div>
+    <div class="pagehead"><div><div class="eyebrow">${esc(K.fmt(K.TODAY))}</div><h1>Good ${hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}${S.isDale ? ", Dale" : ""}</h1></div></div>
     <div class="quick">
       <button class="btn primary big" type="button" data-act="new-job">+ New job</button>
       <button class="btn big" type="button" data-act="pay-pick">Record a payment</button>
@@ -1085,9 +1088,9 @@ function renderSettings() {
         <div class="field"><label for="stPhone">Phone</label><input id="stPhone" type="tel" value="${esc(a.phone)}" ${S.isOwner ? "" : "disabled"}></div>
         ${S.isOwner ? `<div><button class="btn primary" type="submit">Save shop info</button></div>` : `<div class="hint">Only the shop owner can change this.</div>`}</form>
       <div class="box"><h3>Team</h3>
-        <div class="hint">People who can sign in and use the shop portal.</div>
-        <div class="pickl" style="max-height:none"><div class="pay" style="border-top:0;padding:10px 12px"><div><b>Owner</b>${S.isOwner ? " · you" : ""}</div></div>
-          ${S.members.filter(m => m.active).map(m => `<div class="pay" style="padding:10px 12px"><div>${esc(m.email || "Team member")}${m.user_id === S.user.id ? " · you" : ""}</div>${S.isOwner ? `<button class="linkbtn danger" type="button" data-act="rm-member" data-id="${m.user_id}">Remove</button>` : ""}</div>`).join("")}
+        <div class="hint">People who can sign in and use the shop portal. Co-owners can also change shop info and the team.</div>
+        <div class="pickl" style="max-height:none"><div class="pay" style="border-top:0;padding:10px 12px"><div><b>Owner</b>${S.isDale ? " · you" : ""}</div></div>
+          ${S.members.filter(m => m.active).map(m => `<div class="pay" style="padding:10px 12px"><div>${esc(m.email || "Team member")}${m.co_owner ? " <span class=\"chip done\">Co-owner</span>" : ""}${m.user_id === S.user.id ? " · you" : ""}</div>${S.isOwner && m.user_id !== S.user.id ? `<div style="display:flex;gap:12px"><button class="linkbtn" type="button" data-act="toggle-coowner" data-id="${m.user_id}">${m.co_owner ? "Remove co-owner" : "Make co-owner"}</button><button class="linkbtn danger" type="button" data-act="rm-member" data-id="${m.user_id}">Remove</button></div>` : ""}</div>`).join("")}
           ${S.invites.filter(i => i.active).map(i => `<div class="pay" style="padding:10px 12px"><div>${esc(i.email)} <span class="small">· invited, hasn't signed in yet</span></div><button class="linkbtn danger" type="button" data-act="rm-invite" data-id="${esc(i.email)}">Cancel</button></div>`).join("")}</div>
         ${S.isOwner ? `<form id="invForm" novalidate style="display:grid;gap:8px"><div class="field"><label for="invEmail">Add someone by email</label><input id="invEmail" type="email" placeholder="name@gmail.com"></div><div><button class="btn" type="submit">Add to team</button></div>
           <div class="hint">Then tell them to go to daleskc.com/portal and tap “Create your login” with that same email.</div></form>` : ""}</div>
@@ -1177,6 +1180,7 @@ document.addEventListener("click", async e => {
     case "reopen-lien": { const { error } = await sb.from("shop_liens").update({ status: "open" }).eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); route(true); return toast("Case reopened."); }
     case "del-lien": { if (!(await confirmBox({ title: "Delete this lien case?", body: "Its steps and dates are lost for good. The job and payments stay.", ok: "Delete case", danger: true }))) return; const { error } = await sb.from("shop_liens").delete().eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); go("liens"); return toast("Lien case deleted."); }
     case "rm-member": { if (!(await confirmBox({ title: "Remove from the team?", body: "They won't be able to sign in to the shop portal anymore.", ok: "Remove", danger: true }))) return; const { error } = await sb.from("shop_members").update({ active: false }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Removed."); }
+    case "toggle-coowner": { const m = S.members.find(x => x.user_id === id); if (!m) return; if (!(await confirmBox({ title: m.co_owner ? "Remove co-owner?" : "Make co-owner?", body: m.co_owner ? "They keep using the portal but can't change shop info or the team." : "They'll be able to change shop info and add or remove team members.", ok: m.co_owner ? "Remove co-owner" : "Make co-owner" }))) return; const { error } = await sb.from("shop_members").update({ co_owner: !m.co_owner }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Saved."); }
     case "rm-invite": { const { error } = await sb.from("shop_invites").update({ active: false }).eq("account_id", S.account.id).eq("email", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Invite cancelled."); }
     case "sign-out": if (!(await confirmBox({ title: "Sign out?", ok: "Sign out" }))) return; userSignedOut = true; await sb.auth.signOut(); return;
   }
