@@ -122,7 +122,7 @@ function dateRule(id, { required = false, notFuture = true, min = null, minLabel
 }
 
 // ================= state =================
-const S = { user: null, account: null, isOwner: false, isDale: false, customers: [], jobs: [], liens: [], payments: [], members: [], invites: [] };
+const S = { user: null, account: null, isOwner: false, isDale: false, customers: [], jobs: [], liens: [], payments: [], members: [], invites: [], photos: [], offlineSince: null };
 const STAGES = [
   { k: "estimate", label: "Estimate" }, { k: "in_progress", label: "In the shop" }, { k: "done", label: "Work done" },
   { k: "invoiced", label: "Invoiced" }, { k: "paid", label: "Paid" }];
@@ -142,6 +142,7 @@ function vehicleText(j) {
 const jobName = j => `${cust(j.customer_id)?.name || "No customer"} · ${vehicleText(j)}`;
 function stageChip(j) {
   if (j.status === "paid") return `<span class="chip paid">Paid</span>`;
+  if (j.status === "done") return `<span class="chip soon">Needs a bill</span>`;
   if (owes(j)) { const a = ageDays(j) ?? 0; return `<span class="chip ${a >= 30 ? "over" : "soon"}">${a >= 30 ? `${a} days unpaid` : "Waiting on payment"}</span>`; }
   return `<span class="chip up">${esc(STAGE_LABEL[j.status])}</span>`;
 }
@@ -222,6 +223,8 @@ async function boot(session) {
   }
   S.user = session.user;
   showOnly("loadView"); $("loadMsg").textContent = ""; $("loadRetry").hidden = true;
+  const snap = loadSnapshot(S.user.id);
+  if (!navigator.onLine && snap) return startOffline(snap);
   try {
     await sb.rpc("shop_claim_invites");
     const { data, error } = await sb.from("shop_accounts").select("*").order("created_at");
@@ -232,7 +235,10 @@ async function boot(session) {
       $("noShopEmail").textContent = S.user.email; showOnly("noShopView"); return;
     }
     S.account = mine; await startApp();
-  } catch (ex) { $("loadMsg").className = "msg err"; $("loadMsg").textContent = friendly(ex); $("loadRetry").hidden = false; }
+  } catch (ex) {
+    if (snap && isNetErr(ex)) return startOffline(snap);
+    $("loadMsg").className = "msg err"; $("loadMsg").textContent = friendly(ex); $("loadRetry").hidden = false;
+  }
 }
 async function startApp() {
   S.isDale = S.account.owner_id === S.user.id;
@@ -240,7 +246,12 @@ async function startApp() {
   await loadAll();
   S.isOwner = S.isDale || S.members.some(m => m.user_id === S.user.id && m.active && m.co_owner);
   if (S.isOwner && !S.isDale) await loadAll();
-  showOnly("appView"); route();
+  showOnly("appView"); route(); flushQueue();
+}
+async function startOffline(snap) {
+  Object.assign(S, { account: snap.account, isDale: snap.isDale, isOwner: snap.isOwner, customers: snap.customers, jobs: snap.jobs, liens: snap.liens, payments: snap.payments, members: snap.members, invites: snap.invites, photos: snap.photos || [] });
+  S.offlineSince = snap.at; await mergePending();
+  showOnly("appView"); netState(); route();
 }
 async function loadAll() {
   const a = S.account.id;
@@ -249,13 +260,126 @@ async function loadAll() {
     q("shop_customers", ["name", true]), q("shop_jobs", ["created_at", false]), q("shop_liens", ["created_at", false]),
     q("shop_payments", ["created_at", false]), q("shop_members", ["created_at", true]),
     S.isOwner ? q("shop_invites", ["created_at", true]) : Promise.resolve({ data: [] }),
+    q("shop_job_photos", ["created_at", true]),
     sb.from("shop_accounts").select("*").eq("id", a).maybeSingle()
   ]);
   const bad = res.find(r => r.error); if (bad) throw bad.error;
-  [S.customers, S.jobs, S.liens, S.payments, S.members, S.invites] = res.slice(0, 6).map(r => r.data || []);
-  if (res[6].data) S.account = res[6].data;
+  [S.customers, S.jobs, S.liens, S.payments, S.members, S.invites, S.photos] = res.slice(0, 7).map(r => r.data || []);
+  if (res[7].data) S.account = res[7].data;
+  S.offlineSince = null; saveSnapshot(); await mergePending();
 }
-async function reload() { try { await loadAll(); } catch (ex) { toast(friendly(ex)); } }
+async function reload() { try { await loadAll(); } catch (ex) { if (isNetErr(ex)) { await mergePending(); netState(); } else toast(friendly(ex)); } }
+
+// ================= offline: snapshot + upload queue =================
+const SNAP_KEY = "dab.snapshot.v1";
+const isNetErr = e => /Failed to fetch|NetworkError|network|load failed|fetch/i.test(String(e?.message || e || "")) || !navigator.onLine;
+function saveSnapshot() {
+  try { localStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), uid: S.user.id, account: S.account, isDale: S.isDale, isOwner: S.isOwner, customers: S.customers, jobs: S.jobs.filter(j => !j._pending), liens: S.liens, payments: S.payments, members: S.members, invites: S.invites, photos: S.photos.filter(p => !p._pending) })); } catch (e) { /* storage full or blocked: offline view just won't have data */ }
+}
+function loadSnapshot(uid) { try { const s = JSON.parse(localStorage.getItem(SNAP_KEY) || "null"); return s && s.uid === uid ? s : null; } catch { return null; } }
+const IDB = (() => {
+  let dbp;
+  const open = () => dbp || (dbp = new Promise((res, rej) => { const r = indexedDB.open("dab-portal", 1); r.onupgradeneeded = () => r.result.createObjectStore("queue", { keyPath: "qid" }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+  const run = async (mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction("queue", mode); const req = fn(t.objectStore("queue")); t.oncomplete = () => res(req ? req.result : undefined); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error("Couldn't save on this device. Storage may be full.")); }); };
+  return { all: () => run("readonly", st => st.getAll()), put: it => run("readwrite", st => st.put(it)), del: k => run("readwrite", st => st.delete(k)) };
+})();
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)));
+let queueCache = [];
+async function mergePending() {
+  try { queueCache = (await IDB.all()).filter(i => S.account && i.accountId === S.account.id); } catch { queueCache = []; }
+  S.jobs = S.jobs.filter(j => !j._pending); S.customers = S.customers.filter(c => !c._pending); S.photos = (S.photos || []).filter(p => !p._pending);
+  for (const it of queueCache) {
+    if (it.type === "job") {
+      if (it.customer && !S.customers.some(c => c.id === it.customer.id)) S.customers.push({ ...it.customer, _pending: true });
+      if (!S.jobs.some(j => j.id === it.job.id)) S.jobs.unshift({ ...it.job, amount_paid: 0, created_at: new Date(it.created).toISOString(), _pending: true, _error: it.error || "" });
+      (it.photos || []).forEach(p => S.photos.push({ id: p.pid, job_id: it.job.id, kind: p.kind, _pending: true, _blob: p.blob }));
+    }
+    if (it.type === "photo") S.photos.push({ id: it.pid, job_id: it.jobId, kind: it.kind, _pending: true, _blob: it.blob });
+  }
+  S.customers.sort((a, b) => a.name.localeCompare(b.name));
+  pendingBar();
+}
+function pendingBar() {
+  const bar = $("pendbar"); if (!bar) return;
+  const n = queueCache.length, bad = queueCache.filter(i => i.error);
+  if (!n) { bar.hidden = true; return; }
+  bar.hidden = false;
+  bar.className = "pendbar" + (bad.length ? " bad" : "");
+  bar.innerHTML = bad.length
+    ? `${plural(bad.length, "saved item")} couldn't upload: ${esc(bad[0].error)} <button class="linkbtn" type="button" data-act="retry-queue">Try again</button> <button class="linkbtn danger" type="button" data-act="discard-queue">Throw away</button>`
+    : `${plural(n, "item")} saved on this device. ${navigator.onLine ? "Uploading…" : "It will upload by itself when the internet is back."}`;
+}
+let flushing = false;
+async function flushQueue() {
+  if (flushing || !navigator.onLine || !S.account) return;
+  flushing = true; let did = 0;
+  try {
+    const items = (await IDB.all()).filter(i => i.accountId === S.account.id).sort((a, b) => a.created - b.created);
+    for (const it of items) {
+      try {
+        if (it.type === "job") {
+          if (it.customer) { const { error } = await sb.from("shop_customers").upsert(it.customer, { onConflict: "id", ignoreDuplicates: true }); if (error) throw error; }
+          const { error } = await sb.from("shop_jobs").upsert(it.job, { onConflict: "id", ignoreDuplicates: true }); if (error) throw error;
+          for (const p of it.photos || []) await uploadPhoto(it.job.id, p.blob, p.kind, p.pid);
+        } else if (it.type === "photo") await uploadPhoto(it.jobId, it.blob, it.kind, it.pid);
+        await IDB.del(it.qid); did++;
+      } catch (ex) {
+        if (isNetErr(ex)) break; // try again when back online
+        it.error = friendly(ex); await IDB.put(it); // real problem: show it, don't loop
+      }
+    }
+  } catch (ex) { /* device storage unavailable */ }
+  finally { flushing = false; }
+  if (did) { await reload(); route(true); toast(did === 1 ? "Uploaded." : `${did} saved items uploaded.`); }
+  else { await mergePending(); }
+}
+async function uploadPhoto(jobId, blob, kind, pid) {
+  const ext = /png/.test(blob.type) ? "png" : /webp/.test(blob.type) ? "webp" : /hei/.test(blob.type) ? "heic" : "jpg";
+  const path = `${S.account.id}/${jobId}/${pid}.${ext}`;
+  const up = await sb.storage.from("shop-photos").upload(path, blob, { contentType: blob.type || "image/jpeg", upsert: false });
+  if (up.error && !/exist|duplicate|409/i.test(up.error.message || String(up.error.statusCode))) throw up.error;
+  const { error } = await sb.from("shop_job_photos").upsert({ id: pid, account_id: S.account.id, job_id: jobId, path, kind }, { onConflict: "id", ignoreDuplicates: true });
+  if (error) throw error;
+}
+async function enqueue(item) {
+  item.qid = item.qid || uuid(); item.created = Date.now(); item.accountId = S.account.id;
+  await IDB.put(item); await mergePending();
+}
+async function shrinkImage(file) {
+  const okType = /^image\//.test(file.type || "") || /\.(heic|heif|jpe?g|png|webp)$/i.test(file.name || "");
+  if (!okType) throw new Error("That file isn't a photo. Pick a picture of the estimate.");
+  try {
+    const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+    const sc = Math.min(1, 1800 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement("canvas"); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const out = await new Promise(r => c.toBlob(r, "image/jpeg", 0.82));
+    if (out && out.size > 0) return out;
+  } catch (e) { /* browser can't read this format (e.g. HEIC on Windows): upload the original */ }
+  if (file.size > 15 * 1024 * 1024) throw new Error("That photo is too big (over 15 MB). Take it again or pick a smaller one.");
+  return file;
+}
+const signed = {};
+async function photoSrc(p) {
+  if (p._blob) return URL.createObjectURL(p._blob);
+  if (signed[p.path] && signed[p.path].exp > Date.now()) return signed[p.path].url;
+  if (!navigator.onLine) return "";
+  const { data, error } = await sb.storage.from("shop-photos").createSignedUrl(p.path, 3600);
+  if (error || !data) return "";
+  signed[p.path] = { url: data.signedUrl, exp: Date.now() + 55 * 60e3 };
+  return data.signedUrl;
+}
+async function fillPhotos(root) {
+  const imgs = [...(root || document).querySelectorAll("img[data-photo]")];
+  await Promise.all(imgs.map(async img => { const p = S.photos.find(x => x.id === img.dataset.photo); if (!p) return; const src = await photoSrc(p); if (src) img.src = src; else img.alt = "Photo will show when you're online"; }));
+}
+const jobPhotos = j => (S.photos || []).filter(p => p.job_id === j.id).sort((a, b) => (a.kind === "estimate" ? 0 : 1) - (b.kind === "estimate" ? 0 : 1));
+function netState() {
+  const off = !navigator.onLine;
+  $("netbar").hidden = !off;
+  $("netbar").textContent = off ? `You're offline${S.offlineSince ? `. Showing what was saved ${new Date(S.offlineSince).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}` : ""}. You can still add jobs and photos; they'll upload when you're back online.` : "";
+  pendingBar();
+}
 
 // keep fresh when coming back to the tab (someone else may have changed something)
 document.addEventListener("visibilitychange", async () => {
@@ -263,8 +387,10 @@ document.addEventListener("visibilitychange", async () => {
   if (!$("overlay").hidden || document.activeElement?.matches("input,textarea,select")) return;
   await reload(); route(true);
 });
-window.addEventListener("offline", () => { $("netbar").hidden = false; });
-window.addEventListener("online", () => { $("netbar").hidden = true; toast("Back online."); });
+window.addEventListener("offline", () => netState());
+window.addEventListener("online", async () => { netState(); if (!S.account) return; toast("Back online. Updating…"); await flushQueue(); await reload(); netState(); route(true); });
+setInterval(() => { if (navigator.onLine && queueCache.length && !flushing) flushQueue(); }, 30000);
+if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
 
 // ================= routing =================
 window.addEventListener("hashchange", () => route());
@@ -360,27 +486,53 @@ function renderHome() {
 }
 
 // ================= JOBS =================
-let jobTab = "active";
-const JOB_TABS = {
-  active: { label: "All active", f: j => j.status !== "paid" },
-  estimate: { label: "Estimates", f: j => j.status === "estimate" },
-  in_progress: { label: "In the shop", f: j => j.status === "in_progress" },
-  done: { label: "Needs invoice", f: j => j.status === "done" },
-  invoiced: { label: "Waiting on payment", f: j => j.status === "invoiced" },
-  paid: { label: "Paid", f: j => j.status === "paid" },
-  all: { label: "Everything", f: () => true }
+const JOB_GROUPS = [
+  { key: "in_progress", title: "In the shop", hint: "You're working on these.", f: j => j.status === "in_progress" },
+  { key: "done", title: "Finished: give them the bill", hint: "Work is done. Tap the button once they have the bill.", f: j => j.status === "done" },
+  { key: "invoiced", title: "Waiting on money", hint: "They have the bill but haven't paid it all.", f: j => j.status === "invoiced" },
+  { key: "estimate", title: "Estimates", hint: "The customer hasn't said yes yet.", f: j => j.status === "estimate" }
+];
+const CARD_ACTION = {
+  in_progress: { label: "✓ Work is done", act: "stage-done" },
+  done: { label: "They have the bill", act: "stage-invoice" },
+  invoiced: { label: "$ Got paid", act: "pay" },
+  estimate: { label: "Car is here", act: "stage-start" }
 };
+let jobFind = "";
+function jobMatches(j, q) {
+  if (!q) return true; const c = cust(j.customer_id) || {}; const v = j.vehicle || {};
+  const d = q.replace(/\D/g, "");
+  return [c.name, vehicleText(j), j.title, v.vin, v.plate].filter(Boolean).join(" ").toLowerCase().includes(q) || (d.length >= 3 && (c.phone || "").replace(/\D/g, "").includes(d));
+}
+function jobCard(j) {
+  const c = cust(j.customer_id); const ph = jobPhotos(j)[0]; const a = CARD_ACTION[j.status];
+  return `<div class="jcard" data-href="job/${j.id}" role="link" tabindex="0">
+    <div class="jthumb">${ph ? `<img data-photo="${ph.id}" alt="Estimate photo">` : `<span aria-hidden="true">🚗</span>`}</div>
+    <div class="jmain"><div class="jname">${esc(c?.name || "No customer")}</div><div class="jcar">${esc(vehicleText(j))}</div>
+      <div class="jmeta">${j._pending ? `<span class="chip ${j._error ? "over" : "soon"}">${j._error ? "Couldn't upload" : "Waiting to upload"}</span>` : stageChip(j)}${+j.amount ? ` <span class="num">${money(j.status === "invoiced" ? balance(j) : j.amount)}${j.status === "invoiced" ? " owed" : ""}</span>` : ""}</div></div>
+    ${a && !j._pending ? `<button class="btn primary jgo" type="button" data-act="${a.act}" data-id="${j.id}">${a.label}</button>` : ""}
+  </div>`;
+}
 function jobRows(list, empty) {
   if (!list.length) return `<div class="list"><div class="empty">${empty}</div></div>`;
-  return `<div class="list">${list.map(j => `<a class="row" href="#job/${j.id}"><div><div class="t">${esc(jobName(j))}</div><div class="s">${esc(j.title || "No description")}${j.vehicle?.vin ? " · VIN " + esc(j.vehicle.vin) : ""}</div></div>
-    <div class="r"><span class="num">${+j.amount ? money(j.amount) : "No total yet"}</span>${stageChip(j)}</div></a>`).join("")}</div>`;
+  return `<div class="jlist">${list.map(jobCard).join("")}</div>`;
 }
 function renderJobs() {
-  const list = S.jobs.filter(JOB_TABS[jobTab].f);
+  const q = jobFind.trim().toLowerCase();
+  const all = S.jobs.filter(j => jobMatches(j, q));
+  const paid = all.filter(j => j.status === "paid");
+  const active = all.filter(j => j.status !== "paid");
   $("main").innerHTML = `
-    <div class="pagehead"><h1>Jobs</h1><button class="btn primary" data-act="new-job" type="button">+ New job</button></div>
-    <div class="filters">${Object.entries(JOB_TABS).map(([k, t]) => `<button class="btn sm" type="button" data-tab="${k}" aria-pressed="${k === jobTab}">${t.label} (${S.jobs.filter(t.f).length})</button>`).join("")}</div>
-    ${jobRows(list, S.jobs.length ? "No jobs in this group." : "No jobs yet. Tap “+ New job” when a car comes in.")}`;
+    <button class="btn primary addjob" type="button" data-act="new-job">+ Add a job</button>
+    <div class="field"><label for="jobFind">Find a job</label><input id="jobFind" type="search" placeholder="Name, car, phone, VIN…" value="${esc(jobFind)}" autocomplete="off"></div>
+    ${!S.jobs.length ? `<div class="allclear">No jobs yet. Tap <b>+ Add a job</b> when a car comes in.</div>` : ""}
+    ${S.jobs.length && !all.length ? `<div class="notice">No job matches “${esc(jobFind)}”. <button class="linkbtn" type="button" data-act="clear-find">Show all jobs</button></div>` : ""}
+    ${JOB_GROUPS.map(g => { const list = active.filter(g.f); if (!list.length) return "";
+      return `<section><h2>${esc(g.title)} · ${list.length}</h2><div class="hint" style="margin:-4px 0 10px">${esc(g.hint)}</div>${jobRows(list, "")}</section>`; }).join("")}
+    ${paid.length ? `<details class="panel"><summary>Paid jobs · ${paid.length}</summary><div style="padding:0 12px 12px">${jobRows(paid.slice(0, 100), "")}</div></details>` : ""}`;
+  const f = $("jobFind");
+  f.addEventListener("input", () => { jobFind = f.value; const pos = f.selectionStart; renderJobs(); const g = $("jobFind"); g.focus(); g.setSelectionRange(pos, pos); });
+  fillPhotos($("main"));
 }
 
 function nextJobAction(j) {
@@ -393,6 +545,14 @@ function nextJobAction(j) {
 function renderJob(id) {
   const j = jobById(id);
   if (!j) { $("main").innerHTML = `<div class="empty">That job isn't here anymore. <a href="#jobs">Back to jobs</a></div>`; return; }
+  if (j._pending) {
+    const c0 = cust(j.customer_id);
+    $("main").innerHTML = `<div><a href="#jobs" class="small">← All jobs</a></div>
+      <div class="head"><div><div class="eyebrow">${esc(c0?.name || "No customer")}</div><h1>${esc(vehicleText(j))}</h1><div class="small">${esc(j.title || "")}</div></div></div>
+      <div class="notice ${j._error ? "bad" : ""}">${j._error ? `This job couldn't upload: ${esc(j._error)} <button class="linkbtn" type="button" data-act="retry-queue">Try again</button>` : `Saved on this device. ${navigator.onLine ? "Uploading now…" : "It will upload by itself when the internet is back."} You can change it after it uploads.`}</div>
+      ${photoBox(j, true)}`;
+    fillPhotos($("main")); return;
+  }
   const c = cust(j.customer_id); const idx = STAGES.findIndex(s => s.k === j.status);
   const nx = nextJobAction(j); const lien = openLien(j.id); const anyLien = S.liens.find(l => l.job_id === j.id);
   const pays = jobPays(j); const a = ageDays(j);
@@ -425,120 +585,143 @@ function renderJob(id) {
           <dt>Work done</dt><dd>${j.completed_on ? esc(K.fmt(K.D(j.completed_on))) : "—"}</dd><dt>Invoiced</dt><dd>${j.invoiced_on ? esc(K.fmt(K.D(j.invoiced_on))) : "—"}</dd>
         </dl>
         <div><button class="linkbtn danger" type="button" data-act="del-job" data-id="${j.id}">Delete this job</button></div></div>
-    </div>`;
+    </div>
+    ${photoBox(j, false)}`;
+  fillPhotos($("main"));
 }
 
-// ---- new job wizard ----
-let W = null;
-const WORK_CHIPS = ["Collision repair", "Frame straightening", "Paint", "Dent repair", "Rust repair", "Upholstery", "Headliner", "Insurance claim"];
+// ---- add a job: one simple screen ----
+const WORK_CHIPS = ["Collision repair", "Paint", "Dent repair", "Bumper", "Rust repair", "Frame", "Upholstery", "Insurance claim"];
+let AJ = null;
+function parseCar(s) {
+  s = String(s || "").trim().replace(/\s+/g, " ");
+  let m = s.match(/^((?:19|20)\d{2})\s+(\S+)\s*(.*)$/); if (m) return { year: m[1], make: m[2], model: m[3] };
+  m = s.match(/^(\S+)\s*(.*?)\s+((?:19|20)\d{2})$/); if (m) return { year: m[3], make: m[1], model: m[2] };
+  m = s.match(/^(\S+)\s*(.*)$/); return m ? { year: "", make: m[1], model: m[2] } : { year: "", make: "", model: "" };
+}
 function newJob(preCustomerId) {
-  W = { step: 1, customerId: preCustomerId || null, newCust: { name: "", phone: "", email: "", address: "" }, makeNew: false, search: "",
-    kind: ["contractor", "subcontractor"].includes(S.account.industry) ? "property" : "vehicle", vehicle: {}, property: {}, title: "", description: "", amount: "", start: "in_progress" };
-  if (!S.customers.length) W.makeNew = true;
-  openModal(`<div id="wiz"></div>`); renderWiz();
-}
-function wizSave() {
-  if (!W) return;
-  const r = id => $(id) ? $(id).value : undefined;
-  if (W.step === 1) { if ($("wcSearch")) W.search = r("wcSearch"); if ($("wcName")) Object.assign(W.newCust, { name: r("wcName"), phone: r("wcPhone"), email: r("wcEmail"), address: r("wcAddr") }); }
-  if (W.step === 2) { if ($("wvYear")) W.vehicle = { year: r("wvYear").trim(), make: r("wvMake").trim(), model: r("wvModel").trim(), vin: r("wvVin").trim(), plate: r("wvPlate").trim() }; if ($("wpAddr")) W.property = { address: r("wpAddr").trim(), county: r("wpCounty").trim(), residential: $("wpRes").checked }; }
-  if (W.step === 3) { W.title = r("wwTitle"); W.description = r("wwDesc"); W.amount = r("wwAmt"); }
-}
-function renderWiz() {
-  const steps = `<div class="wizsteps">${[1, 2, 3].map(n => `<span class="${n <= W.step ? "on" : ""}"></span>`).join("")}</div>`;
-  let body = "";
-  if (W.step === 1) {
-    const q = W.search.toLowerCase(), d = q.replace(/\D/g, "");
-    const list = S.customers.filter(c => !q || c.name.toLowerCase().includes(q) || (d.length >= 3 && c.phone.replace(/\D/g, "").includes(d)));
-    body = `<h2>Who's the customer?</h2><div class="hint">Step 1 of 3. Pick someone you've worked for, or add a new customer.</div>
-      ${S.customers.length ? `<div class="choices"><button type="button" class="choice" data-w="old" aria-pressed="${!W.makeNew}"><b>Existing customer</b><span>Search your list</span></button><button type="button" class="choice" data-w="new" aria-pressed="${W.makeNew}"><b>New customer</b><span>First time at the shop</span></button></div>` : ""}
-      ${!W.makeNew ? `<div class="field"><label for="wcSearch">Search by name or phone</label><input id="wcSearch" value="${esc(W.search)}" autocomplete="off"></div>
-        <div class="pickl" id="wcList">${list.length ? list.slice(0, 60).map(c => `<button type="button" data-pick="${c.id}" aria-pressed="${c.id === W.customerId}">${esc(c.name)} <span>${esc(c.phone || c.email || "")}</span></button>`).join("") : `<div class="empty">No match. <button class="linkbtn" type="button" data-w="new">Add them as a new customer</button></div>`}</div>
-        <div class="fmsg" id="wcErr"></div>`
-      : `<div class="grid"><div class="field"><label class="req" for="wcName">Full name</label><input id="wcName" value="${esc(W.newCust.name)}" autocomplete="off" autofocus></div>
-        <div class="field"><label for="wcPhone">Phone</label><input id="wcPhone" type="tel" value="${esc(W.newCust.phone)}" placeholder="(913) 555-0100"></div>
-        <div class="field"><label for="wcEmail">Email</label><input id="wcEmail" type="email" value="${esc(W.newCust.email)}"></div>
-        <div class="field wide"><label for="wcAddr">Mailing address</label><input id="wcAddr" value="${esc(W.newCust.address)}" placeholder="Street, city, state ZIP"><div class="hint">Needed later if you ever have to mail a lien notice.</div></div></div>
-        <div id="wcDup"></div>`}`;
-  }
-  if (W.step === 2) {
-    const prev = W.customerId ? S.jobs.filter(j => j.customer_id === W.customerId && j.kind !== "property" && (j.vehicle?.make || j.vehicle?.vin)) : [];
-    const seen = new Set(); const vehicles = prev.filter(j => { const k = (j.vehicle.vin || vehicleText(j)).toUpperCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 4);
-    const v = W.vehicle, p = W.property;
-    body = `<h2>What are you working on?</h2><div class="hint">Step 2 of 3.</div>
-      <div class="choices"><button type="button" class="choice" data-kind="vehicle" aria-pressed="${W.kind === "vehicle"}"><b>Vehicle</b><span>Car, truck, motorcycle</span></button>
-        <button type="button" class="choice" data-kind="equipment" aria-pressed="${W.kind === "equipment"}"><b>Equipment</b><span>Trailer, machine, boat</span></button>
-        <button type="button" class="choice" data-kind="property" aria-pressed="${W.kind === "property"}"><b>Building</b><span>Work on real estate</span></button></div>
-      ${W.kind !== "property" ? `${vehicles.length ? `<div><div class="hint">Same ${W.kind === "equipment" ? "item" : "vehicle"} as before?</div><div class="chips">${vehicles.map(j => `<button type="button" class="chipbtn" data-reuse="${j.id}">${esc(vehicleText(j))}${j.vehicle.plate ? " · " + esc(j.vehicle.plate) : ""}</button>`).join("")}</div></div>` : ""}
-        <div class="grid"><div class="field"><label for="wvYear">Year</label><input id="wvYear" inputmode="numeric" maxlength="4" value="${esc(v.year || "")}"></div>
-        <div class="field"><label for="wvMake">Make</label><input id="wvMake" value="${esc(v.make || "")}" placeholder="Ford"></div>
-        <div class="field"><label for="wvModel">Model</label><input id="wvModel" value="${esc(v.model || "")}" placeholder="F-150"></div>
-        <div class="field"><label for="wvPlate">Plate</label><input id="wvPlate" value="${esc(v.plate || "")}"></div>
-        <div class="field wide"><label for="wvVin">${W.kind === "equipment" ? "Serial number" : "VIN"}</label><input id="wvVin" value="${esc(v.vin || "")}" autocapitalize="characters" spellcheck="false" placeholder="${W.kind === "equipment" ? "" : "17 characters, on the dash or door jamb"}"><div class="hint">Needed if this ever turns into a lien. Grab it now while the car is here.</div></div></div>`
-      : `<div class="grid"><div class="field wide"><label class="req" for="wpAddr">Property address</label><input id="wpAddr" value="${esc(p.address || "")}"></div>
-        <div class="field"><label for="wpCounty">County</label><input id="wpCounty" value="${esc(p.county || "")}" placeholder="Wyandotte"></div>
-        <div class="field check"><input type="checkbox" id="wpRes" ${p.residential ? "checked" : ""}><label for="wpRes">Someone's home (residential)</label></div></div>`}
-      <div class="fmsg" id="wvErr"></div>`;
-  }
-  if (W.step === 3) {
-    body = `<h2>What's the work?</h2><div class="hint">Step 3 of 3.</div>
-      <div class="chips">${WORK_CHIPS.map(w => `<button type="button" class="chipbtn" data-workchip="${esc(w)}">${esc(w)}</button>`).join("")}</div>
-      <div class="grid"><div class="field wide"><label class="req" for="wwTitle">Short description</label><input id="wwTitle" value="${esc(W.title)}" placeholder="e.g. Rear quarter panel and paint" autofocus></div>
-        <div class="field wide"><label for="wwDesc">Notes (optional)</label><textarea id="wwDesc" rows="2">${esc(W.description)}</textarea></div>
-        <div class="field"><label for="wwAmt">Price or estimate ($)</label><input id="wwAmt" inputmode="decimal" value="${esc(W.amount)}" placeholder="0.00"><div class="hint">You can change it later.</div></div></div>
-      <div class="choices"><button type="button" class="choice" data-start="in_progress" aria-pressed="${W.start === "in_progress"}"><b>It's here. Start work.</b><span>Car is in the shop now</span></button>
-        <button type="button" class="choice" data-start="estimate" aria-pressed="${W.start === "estimate"}"><b>Just an estimate</b><span>Customer hasn't said yes yet</span></button></div>`;
-  }
-  $("wiz").innerHTML = `<div style="display:grid;gap:16px">${steps}${body}
-    <div class="modalfoot">${W.step > 1 ? `<button class="btn ghost" type="button" data-w="back" style="margin-right:auto">← Back</button>` : `<button class="btn ghost" type="button" data-act="close" style="margin-right:auto">Cancel</button>`}
-      ${W.step < 3 ? `<button class="btn primary" type="button" data-w="next">Next →</button>` : `<button class="btn primary" type="button" data-w="save">Save job</button>`}</div></div>`;
-  if ($("wvVin")) $("wvVin").addEventListener("input", () => { const r = vinCheck(val("wvVin")); fieldErr("wvVin", r.ok ? "" : r.msg); fieldWarn("wvVin", r.ok ? r.warn || "" : ""); });
-  if ($("wcSearch")) $("wcSearch").addEventListener("input", () => { wizSave(); const pos = $("wcSearch").selectionStart; renderWiz(); const s = $("wcSearch"); s.focus(); s.setSelectionRange(pos, pos); });
-  if ($("wcName")) { const dupCheck = () => { wizSave(); const n = W.newCust.name.trim().toLowerCase(), d = W.newCust.phone.replace(/\D/g, ""); const m = S.customers.find(c => (n.length > 2 && c.name.toLowerCase() === n) || (d.length >= 10 && c.phone.replace(/\D/g, "").endsWith(d.slice(-10)))); $("wcDup").innerHTML = m ? `<div class="notice">${esc(m.name)}${m.phone ? " (" + esc(m.phone) + ")" : ""} is already a customer. <button class="linkbtn" type="button" data-pick="${m.id}">Use ${esc(m.name)} instead</button></div>` : ""; }; ["wcName", "wcPhone"].forEach(i => $(i).addEventListener("input", dupCheck)); dupCheck(); }
-}
-async function wizStep(dir) {
-  wizSave();
-  if (dir < 0) { W.step--; renderWiz(); return; }
-  if (W.step === 1) {
-    if (!W.makeNew) { if (!W.customerId) { $("wcErr").textContent = "Tap a customer in the list, or choose New customer."; return; } }
-    else {
-      let ok = true;
-      if (!W.newCust.name.trim()) { fieldErr("wcName", "Enter the customer's name."); ok = false; } else fieldErr("wcName", "");
-      if (!phoneOk(W.newCust.phone)) { fieldErr("wcPhone", "Phone numbers have 10 digits."); ok = false; } else fieldErr("wcPhone", "");
-      if (!emailOk(W.newCust.email)) { fieldErr("wcEmail", "That email doesn't look right."); ok = false; } else fieldErr("wcEmail", "");
-      if (!ok) return;
-    }
-  }
-  if (W.step === 2) {
-    if (W.kind === "property") { if (!W.property.address) { fieldErr("wpAddr", "Enter the property address."); return; } }
-    else {
-      const v = W.vehicle; const r = vinCheck(v.vin);
-      if (!r.ok) { fieldErr("wvVin", r.msg); return; }
-      if (v.year && (!/^\d{4}$/.test(v.year) || +v.year < 1900 || +v.year > new Date().getFullYear() + 1)) { fieldErr("wvYear", "Use a 4-digit year."); return; } else fieldErr("wvYear", "");
-      if (!v.make && !v.model && !v.vin) { $("wvErr").textContent = "Add at least the make and model, or the VIN."; return; }
-      v.vin = r.value || "";
-    }
-  }
-  W.step++; renderWiz();
-}
-async function wizFinish(btn) {
-  wizSave();
-  if (!W.title.trim()) { fieldErr("wwTitle", "Say what work is being done."); return; } else fieldErr("wwTitle", "");
-  const amt = parseMoney(W.amount); if (Number.isNaN(amt)) { fieldErr("wwAmt", "Use a dollar amount like 1250 or 1250.50."); return; } else fieldErr("wwAmt", "");
-  await busy(btn, async () => {
-    try {
-      let customer_id = W.customerId;
-      if (W.makeNew) {
-        const nc = { account_id: S.account.id, name: W.newCust.name.trim(), phone: fmtPhone(W.newCust.phone), email: W.newCust.email.trim().toLowerCase(), address: W.newCust.address.trim() };
-        const { data, error } = await sb.from("shop_customers").insert(nc).select().single(); if (error) throw error;
-        S.customers.push(data); customer_id = data.id; W.makeNew = false; W.customerId = data.id; // so a retry doesn't create a duplicate
-      }
-      const row = { account_id: S.account.id, customer_id, kind: W.kind, title: W.title.trim(), description: W.description.trim(),
-        vehicle: W.kind === "property" ? {} : W.vehicle, property: W.kind === "property" ? W.property : {}, amount: amt, status: W.start };
-      const { data, error } = await sb.from("shop_jobs").insert(row).select().single(); if (error) throw error;
-      await reload(); await closeModal(true); go("job/" + data.id); toast("Job saved.");
-    } catch (ex) { toast(friendly(ex)); }
+  AJ = { customerId: preCustomerId || null, photos: [], start: "in_progress" };
+  const pc = preCustomerId ? cust(preCustomerId) : null;
+  openModal(`<form id="ajForm" novalidate><div style="display:grid;gap:14px">
+    <h2>Add a job</h2>
+    <div class="photobtns">
+      <label class="btn big photobtn"><input type="file" accept="image/*" capture="environment" id="ajCam" hidden>📷 Take photo of estimate</label>
+      <label class="btn photobtn2"><input type="file" accept="image/*" multiple id="ajPick" hidden>Choose from photos</label>
+    </div>
+    <div class="thumbs" id="ajThumbs"></div>
+    <div class="field" id="ajCustField"><label class="req" for="ajName">Customer name</label>
+      <input id="ajName" autocomplete="off" value="${esc(pc?.name || "")}" ${pc ? "readonly" : ""} placeholder="First and last name">
+      <div class="sugg" id="ajSugg" hidden></div>
+      <div class="hint" id="ajPicked">${pc ? `Existing customer${pc.phone ? " · " + esc(pc.phone) : ""} · <button class="linkbtn" type="button" data-act="aj-unpick">Change</button>` : ""}</div></div>
+    <div class="field" id="ajPhoneField" ${pc ? "hidden" : ""}><label for="ajPhone">Phone</label><input id="ajPhone" type="tel" inputmode="tel" placeholder="(913) 555-0100"></div>
+    <div class="field"><label class="req" for="ajCar">Car</label><input id="ajCar" placeholder="Like: 2014 Ford F-150" autocomplete="off"><div class="hint" id="ajCarHint"></div></div>
+    <div class="field"><label for="ajWork">What needs doing?</label><input id="ajWork" placeholder="Like: rear bumper and paint"></div>
+    <div class="chips">${WORK_CHIPS.map(w => `<button type="button" class="chipbtn" data-ajchip="${esc(w)}">${esc(w)}</button>`).join("")}</div>
+    <div class="field"><label for="ajAmt">Price ($) — leave blank if you don't know yet</label><input id="ajAmt" inputmode="decimal" placeholder="0.00"></div>
+    <div class="seg"><button type="button" data-ajstart="in_progress" aria-pressed="true">The car is here</button><button type="button" data-ajstart="estimate" aria-pressed="false">Just an estimate</button></div>
+    <details class="more"><summary>More details (optional)</summary><div class="grid" style="padding-top:10px">
+      <div class="field wide"><label for="ajVin">VIN</label><input id="ajVin" autocapitalize="characters" spellcheck="false" placeholder="17 characters, on the dash or door"></div>
+      <div class="field"><label for="ajPlate">Plate</label><input id="ajPlate"></div>
+      <div class="field"><label for="ajEmail">Email</label><input id="ajEmail" type="email"></div>
+      <div class="field wide"><label for="ajAddr">Customer's mailing address</label><input id="ajAddr" placeholder="Street, city, state ZIP"></div>
+      <div class="field wide"><label for="ajNotes">Notes</label><textarea id="ajNotes" rows="2"></textarea></div></div></details>
+    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary big" type="submit">Save job</button></div>
+  </div></form>`);
+  const name = $("ajName"), sugg = $("ajSugg");
+  name.addEventListener("input", () => {
+    if (AJ.customerId) return;
+    const q = name.value.trim().toLowerCase(); if (q.length < 2) { sugg.hidden = true; return; }
+    const hits = S.customers.filter(c => c.name.toLowerCase().includes(q)).slice(0, 5);
+    sugg.innerHTML = hits.map(c => `<button type="button" data-ajpick="${c.id}">${esc(c.name)} <span>${esc(c.phone || "")}</span></button>`).join("");
+    sugg.hidden = !hits.length;
   });
+  $("ajCar").addEventListener("input", () => { const p = parseCar(val("ajCar")); $("ajCarHint").textContent = val("ajCar") ? [p.year && "Year " + p.year, p.make && "Make " + p.make, p.model && "Model " + p.model].filter(Boolean).join(" · ") : ""; });
+  $("ajVin").addEventListener("input", () => { const r = vinCheck(val("ajVin")); fieldErr("ajVin", r.ok ? "" : r.msg); fieldWarn("ajVin", r.ok ? r.warn || "" : ""); });
+  const onFiles = async files => {
+    for (const f of [...files]) {
+      if (AJ.photos.length >= 8) { toast("That's 8 photos. Add more from the job page later."); break; }
+      try { AJ.photos.push({ pid: uuid(), kind: "estimate", blob: await shrinkImage(f) }); } catch (ex) { toast(ex.message); }
+    }
+    modalDirty = true; ajThumbs();
+  };
+  $("ajCam").addEventListener("change", e => { onFiles(e.target.files); e.target.value = ""; });
+  $("ajPick").addEventListener("change", e => { onFiles(e.target.files); e.target.value = ""; });
+  $("ajForm").addEventListener("submit", e => { e.preventDefault(); saveNewJob(e.submitter); });
+  if (!pc) setTimeout(() => name.focus(), 40);
+}
+function ajThumbs() {
+  $("ajThumbs").innerHTML = AJ.photos.map((p, i) => `<div class="thumb"><img src="${URL.createObjectURL(p.blob)}" alt="Estimate photo ${i + 1}"><button type="button" class="x" data-ajrm="${i}" aria-label="Remove photo">×</button></div>`).join("");
+}
+function ajPick(id) {
+  const c = cust(id); if (!c) return; AJ.customerId = id;
+  $("ajName").value = c.name; $("ajName").readOnly = true; $("ajSugg").hidden = true; $("ajPhoneField").hidden = true;
+  $("ajPicked").innerHTML = `Existing customer${c.phone ? " · " + esc(c.phone) : ""} · <button class="linkbtn" type="button" data-act="aj-unpick">Change</button>`;
+  fieldErr("ajName", ""); $("ajCar").focus();
+}
+function ajUnpick() { AJ.customerId = null; $("ajName").readOnly = false; $("ajName").value = ""; $("ajPicked").innerHTML = ""; $("ajPhoneField").hidden = false; $("ajName").focus(); }
+async function saveNewJob(btn) {
+  let ok = true;
+  const nm = val("ajName"), phone = val("ajPhone"), car = parseCar(val("ajCar")), vin = vinCheck(val("ajVin")), amt = parseMoney(val("ajAmt")), email = val("ajEmail").toLowerCase();
+  if (!nm) { fieldErr("ajName", "Type the customer's name."); ok = false; } else fieldErr("ajName", "");
+  if (!AJ.customerId && !phoneOk(phone)) { fieldErr("ajPhone", "Phone numbers have 10 digits."); ok = false; } else fieldErr("ajPhone", "");
+  if (!val("ajCar") && !vin.value) { fieldErr("ajCar", "What car is it? Like: 2014 Ford F-150."); ok = false; } else fieldErr("ajCar", "");
+  if (car.year && (+car.year < 1900 || +car.year > new Date().getFullYear() + 1)) { fieldErr("ajCar", "Check the year."); ok = false; }
+  if (Number.isNaN(amt)) { fieldErr("ajAmt", "Use a dollar amount like 1250 or 1250.50 (or leave it blank)."); ok = false; } else fieldErr("ajAmt", "");
+  if (!vin.ok) { $("modal").querySelector("details.more").open = true; fieldErr("ajVin", vin.msg); ok = false; }
+  if (!emailOk(email)) { $("modal").querySelector("details.more").open = true; fieldErr("ajEmail", "That email doesn't look right."); ok = false; }
+  if (!ok) { const bad = $("modal").querySelector(".field.invalid input"); if (bad) bad.focus(); return; }
+  // same name as an existing customer? ask instead of making a duplicate
+  if (!AJ.customerId) {
+    const d = phone.replace(/\D/g, "").slice(-10);
+    const m = S.customers.find(c => c.name.toLowerCase() === nm.toLowerCase() || (d.length === 10 && (c.phone || "").replace(/\D/g, "").endsWith(d)));
+    if (m) {
+      const same = await confirmBox({ title: `Is this ${m.name}?`, body: `You already have ${esc(m.name)}${m.phone ? " · " + esc(m.phone) : ""} as a customer. Same person?`, ok: "Yes, same person", cancel: "No, someone new" });
+      if (same) AJ.customerId = m.id;
+    }
+  }
+  await busy(btn, async () => {
+    const jobId = uuid(); let customer = null; let customerId = AJ.customerId;
+    if (!customerId) { customerId = uuid(); customer = { id: customerId, account_id: S.account.id, name: nm, phone: fmtPhone(phone), email, address: val("ajAddr"), notes: "" }; }
+    const job = { id: jobId, account_id: S.account.id, customer_id: customerId, kind: "vehicle", title: val("ajWork") || "Estimate", description: val("ajNotes"),
+      vehicle: { year: car.year, make: car.make, model: car.model, vin: vin.value || "", plate: val("ajPlate") }, property: {}, amount: amt, status: AJ.start };
+    try { await enqueue({ type: "job", customer, job, photos: AJ.photos }); }
+    catch (ex) { toast("Couldn't save on this device: " + friendly(ex)); return; }
+    await closeModal(true); go("job/" + jobId);
+    if (navigator.onLine) { await flushQueue(); route(true); if (jobById(jobId) && !jobById(jobId)._pending) toast("Job saved."); }
+    else toast("Saved on this device. It will upload when you're back online.");
+  });
+}
+function addPhotoToJob(j, files) {
+  (async () => {
+    let n = 0;
+    for (const f of [...files]) {
+      try { await enqueue({ type: "photo", jobId: j.id, kind: "estimate", pid: uuid(), blob: await shrinkImage(f) }); n++; } catch (ex) { toast(ex.message); }
+    }
+    if (!n) return;
+    route(true);
+    if (navigator.onLine) { await flushQueue(); route(true); } else toast("Photo saved on this device. It will upload when you're back online.");
+  })();
+}
+async function viewPhoto(p) {
+  const src = await photoSrc(p);
+  openModal(`<div style="display:grid;gap:12px"><h2>${p.kind === "estimate" ? "Estimate photo" : "Photo"}</h2>
+    ${src ? `<img class="bigphoto" src="${esc(src)}" alt="Photo">` : `<div class="notice">This photo will show when you're back online.</div>`}
+    <div class="modalfoot">${!p._pending ? `<button class="btn danger" type="button" data-act="del-photo" data-id="${p.id}" style="margin-right:auto">Delete photo</button>` : `<span class="small" style="margin-right:auto">Waiting to upload</span>`}
+    ${src ? `<a class="btn" href="${esc(src)}" target="_blank" rel="noopener">Open full size</a>` : ""}<button class="btn primary" type="button" data-act="close">Done</button></div></div>`);
+}
+async function deletePhoto(p) {
+  if (!(await confirmBox({ title: "Delete this photo?", body: "It's gone for good.", ok: "Delete photo", danger: true }))) return;
+  const { error } = await sb.from("shop_job_photos").delete().eq("id", p.id);
+  if (error) return toast(friendly(error));
+  sb.storage.from("shop-photos").remove([p.path]); // best effort; the record is already gone
+  await closeModal(true); await reload(); route(true); toast("Photo deleted.");
+}
+
+function photoBox(j, pending) {
+  const ps = jobPhotos(j);
+  return `<div class="box"><h3>Estimate photos (${ps.length})${pending ? "" : `<label class="btn sm"><input type="file" accept="image/*" capture="environment" data-addphoto="${j.id}" hidden>📷 Take photo</label>`}</h3>
+    ${ps.length ? `<div class="thumbs">${ps.map(p => `<button type="button" class="thumb" data-viewphoto="${p.id}"><img data-photo="${p.id}" alt="${p.kind === "estimate" ? "Estimate photo" : "Photo"}">${p._pending ? `<span class="tag">Uploading</span>` : ""}</button>`).join("")}</div>` : `<div class="hint">No photos yet. Tap <b>Take photo</b> to snap the estimate.</div>`}
+    ${pending ? "" : `<label class="linkbtn"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>Or choose photos from your phone</label>`}</div>`;
 }
 
 // ---- edit job ----
@@ -636,8 +819,10 @@ async function deleteJob(j) {
   const pays = jobPays(j).filter(p => !p.voided).length; const lien = S.liens.find(l => l.job_id === j.id);
   const extra = [pays ? `${plural(pays, "payment")} recorded on it will be deleted too.` : "", lien ? "Its lien case will be kept, but no longer linked to a job." : ""].filter(Boolean).join(" ");
   if (!(await confirmBox({ title: "Delete this job for good?", body: `${esc(jobName(j))}. ${esc(extra)} This can't be undone.`, ok: "Delete job", danger: true }))) return;
+  const paths = jobPhotos(j).filter(p => p.path).map(p => p.path);
   const { error } = await sb.from("shop_jobs").delete().eq("id", j.id);
   if (error) return toast(friendly(error));
+  if (paths.length) sb.storage.from("shop-photos").remove(paths);
   await reload(); go("jobs"); toast("Job deleted.");
 }
 
@@ -1126,7 +1311,7 @@ function renderSettings() {
 // ================= global click handling =================
 document.addEventListener("click", async e => {
   if ($("appView").hidden) return;
-  const t = e.target.closest("[data-act],[data-tab],[data-bucket],[data-doc],[data-href],[data-w],[data-pick],[data-kind],[data-reuse],[data-workchip],[data-start],[data-paypick],[data-remsend],[data-settab]");
+  const t = e.target.closest("[data-act],[data-tab],[data-bucket],[data-doc],[data-href],[data-ajpick],[data-ajrm],[data-ajchip],[data-ajstart],[data-viewphoto],[data-paypick],[data-remsend],[data-settab]");
   if (!t) return;
   const id = t.dataset.id;
   if (t.dataset.settab) { jobTab = t.dataset.settab; return; }
@@ -1136,24 +1321,27 @@ document.addEventListener("click", async e => {
   if (t.dataset.doc && !t.dataset.act) { currentDoc = t.dataset.doc; renderDocs(); return; }
   if (t.dataset.paypick) { const j = jobById(t.dataset.paypick); await closeModal(true); if (j) payModal(j); return; }
   if (t.dataset.remsend) { const j = jobById(id); if (j) remSend(t.dataset.remsend, j); return; }
-  // wizard
-  if (W && $("wiz")) {
-    if (t.dataset.w === "next") return wizStep(1);
-    if (t.dataset.w === "back") return wizStep(-1);
-    if (t.dataset.w === "save") return wizFinish(t);
-    if (t.dataset.w === "new") { wizSave(); W.makeNew = true; W.customerId = null; renderWiz(); return; }
-    if (t.dataset.w === "old") { wizSave(); W.makeNew = false; renderWiz(); return; }
-    if (t.dataset.pick) { wizSave(); W.customerId = t.dataset.pick; W.makeNew = false; W.step = 2; renderWiz(); return; }
-    if (t.dataset.kind) { wizSave(); W.kind = t.dataset.kind; renderWiz(); return; }
-    if (t.dataset.reuse) { const j = jobById(t.dataset.reuse); W.vehicle = { ...(j.vehicle || {}) }; W.kind = j.kind; renderWiz(); return; }
-    if (t.dataset.workchip) { const el = $("wwTitle"); el.value = el.value ? el.value + ", " + t.dataset.workchip.toLowerCase() : t.dataset.workchip; modalDirty = true; el.focus(); return; }
-    if (t.dataset.start) { wizSave(); W.start = t.dataset.start; renderWiz(); return; }
+  // add-a-job form
+  if (AJ && $("ajForm")) {
+    if (t.dataset.ajpick) return ajPick(t.dataset.ajpick);
+    if (t.dataset.ajrm) { AJ.photos.splice(+t.dataset.ajrm, 1); ajThumbs(); return; }
+    if (t.dataset.ajchip) { const el = $("ajWork"); el.value = el.value ? el.value + ", " + t.dataset.ajchip.toLowerCase() : t.dataset.ajchip; modalDirty = true; return; }
+    if (t.dataset.ajstart) { AJ.start = t.dataset.ajstart; $("modal").querySelectorAll("[data-ajstart]").forEach(b => b.setAttribute("aria-pressed", b === t)); return; }
   }
+  if (t.dataset.viewphoto) { const p = S.photos.find(x => x.id === t.dataset.viewphoto); if (p) viewPhoto(p); return; }
   const act = t.dataset.act; if (!act) return;
   const j = id ? jobById(id) : null;
+  const OFFLINE_OK = new Set(["close", "new-job", "new-job-for", "find", "aj-unpick", "clear-find", "print-doc", "copy-doc", "retry-queue", "discard-queue"]);
+  if (!navigator.onLine && !OFFLINE_OK.has(act)) { toast("You're offline. That needs internet. Adding jobs and photos still works."); return; }
+  if (j && j._pending && !OFFLINE_OK.has(act)) { toast("This job is still uploading. Try again in a minute."); return; }
   switch (act) {
     case "close": e.preventDefault(); if (t.tagName === "A") { await closeModal(true); location.hash = t.getAttribute("href").slice(1); } else closeModal(); return;
     case "new-job": return newJob();
+    case "aj-unpick": return ajUnpick();
+    case "clear-find": jobFind = ""; return renderJobs();
+    case "del-photo": { const p = S.photos.find(x => x.id === id); return p && deletePhoto(p); }
+    case "retry-queue": { for (const it of await IDB.all()) if (it.error) { delete it.error; await IDB.put(it); } await mergePending(); route(true); return flushQueue(); }
+    case "discard-queue": { const bad = (await IDB.all()).filter(i => i.error); if (!(await confirmBox({ title: `Throw away ${plural(bad.length, "item")}?`, body: "Jobs or photos that couldn't upload will be deleted from this device.", ok: "Throw away", danger: true }))) return; for (const it of bad) await IDB.del(it.qid); await mergePending(); return route(true); }
     case "new-job-for": return newJob(id);
     case "find": $("search").focus(); return;
     case "pay-pick": return payPick();
@@ -1182,11 +1370,20 @@ document.addEventListener("click", async e => {
     case "rm-member": { if (!(await confirmBox({ title: "Remove from the team?", body: "They won't be able to sign in to the shop portal anymore.", ok: "Remove", danger: true }))) return; const { error } = await sb.from("shop_members").update({ active: false }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Removed."); }
     case "toggle-coowner": { const m = S.members.find(x => x.user_id === id); if (!m) return; if (!(await confirmBox({ title: m.co_owner ? "Remove co-owner?" : "Make co-owner?", body: m.co_owner ? "They keep using the portal but can't change shop info or the team." : "They'll be able to change shop info and add or remove team members.", ok: m.co_owner ? "Remove co-owner" : "Make co-owner" }))) return; const { error } = await sb.from("shop_members").update({ co_owner: !m.co_owner }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Saved."); }
     case "rm-invite": { const { error } = await sb.from("shop_invites").update({ active: false }).eq("account_id", S.account.id).eq("email", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Invite cancelled."); }
-    case "sign-out": if (!(await confirmBox({ title: "Sign out?", ok: "Sign out" }))) return; userSignedOut = true; await sb.auth.signOut(); return;
+    case "sign-out": {
+      const n = queueCache.length;
+      if (!(await confirmBox({ title: "Sign out?", body: n ? `<b>${plural(n, "item")} on this device haven't uploaded yet</b> and will be lost. Get online first if you can.` : "", ok: n ? "Sign out anyway" : "Sign out", danger: !!n }))) return;
+      for (const it of queueCache) await IDB.del(it.qid).catch(() => {});
+      try { localStorage.removeItem(SNAP_KEY); } catch {}
+      userSignedOut = true; await sb.auth.signOut(); return; }
   }
 });
 document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-href]")) { e.preventDefault(); go(e.target.dataset.href); } });
 
+document.addEventListener("change", e => {
+  const t = e.target; if (!t.dataset || !t.dataset.addphoto || !t.files?.length) return;
+  const j = jobById(t.dataset.addphoto); if (j) addPhotoToJob(j, t.files); t.value = "";
+});
 // lien case-detail edits: save as you type, validate dates
 document.addEventListener("input", e => {
   const t = e.target; if (!currentLien || !t.dataset.path || !$("main").contains(t)) return;
