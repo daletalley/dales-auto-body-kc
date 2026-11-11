@@ -20,7 +20,7 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 function parseMoney(v) {
   const s = String(v ?? "").replace(/[$,\s]/g, "");
   if (s === "") return null;
-  if (!/^\d+(\.\d{1,2})?$/.test(s)) return NaN;
+  if (!/^(\d+|\d{1,3}(,\d{3})+)?(\.\d{1,2})?$/.test(String(v ?? "").trim().replace(/^\$/, "").replace(/\s/g, "")) || !/\d/.test(s)) return NaN;
   return Math.round(parseFloat(s) * 100) / 100;
 }
 function fmtPhone(v) {
@@ -111,7 +111,7 @@ function openModal(html, opts = {}) {
   $("overlay").hidden = false; document.body.style.overflow = "hidden"; modalDirty = false; modalOnClose = opts.onClose || null;
   $("modal").querySelector(".mbody").scrollTop = 0;
   const f = $("modal").querySelector("[autofocus]") || (!coarse && $("modal").querySelector(".mbody input:not([type=hidden]):not([type=file]):not([readonly]),.mbody select,.mbody textarea"));
-  setTimeout(() => (f || $("modal").querySelector(".mclose")).focus(), 30);
+  setTimeout(() => { const el = f && f.isConnected ? f : $("modal").querySelector(".mclose"); if (el && !$("overlay").hidden) el.focus(); }, 30);
 }
 async function closeModal(force) {
   if ($("overlay").hidden) return;
@@ -123,19 +123,20 @@ async function closeModal(force) {
 $("modal").addEventListener("input", e => { if (!e.target.closest("[data-nodirty]")) modalDirty = true; });
 $("modal").addEventListener("keydown", e => trapFocus($("modal"), e));
 $("overlay").addEventListener("mousedown", e => { if (e.target.id === "overlay") closeModal(); });
-let confirmResolve = null, confirmOpener = null;
+let confirmResolve = null, confirmOpener = null, confirmOpenedAt = 0;
 function confirmBox({ title, body = "", ok = "OK", cancel = "Cancel", danger = false }) {
   return new Promise(res => {
     confirmResolve = res; confirmOpener = document.activeElement;
     $("confirmBox").innerHTML = `<div class="mbody"><h2 id="cTitle">${esc(title)}</h2>${body ? `<div>${body}</div>` : ""}</div>
       <div class="modalfoot">${cancel ? `<button class="btn ghost" type="button" data-cf="0">${esc(cancel)}</button>` : ""}<button class="btn ${danger ? "danger" : "primary"}" type="button" data-cf="1">${esc(ok)}</button></div>`;
     $("confirmBox").setAttribute("aria-labelledby", "cTitle");
-    $("confirmOverlay").hidden = false; setTimeout(() => $("confirmBox").querySelector(danger ? '[data-cf="0"]' : '[data-cf="1"]')?.focus() || $("confirmBox").querySelector('[data-cf="1"]').focus(), 30);
+    $("confirmOverlay").hidden = false; confirmOpenedAt = Date.now(); setTimeout(() => { const el = $("confirmBox").querySelector(danger ? '[data-cf="0"]' : '[data-cf="1"]') || $("confirmBox").querySelector('[data-cf="1"]'); if (el && !$("confirmOverlay").hidden) el.focus(); }, 30);
   });
 }
 function confirmDone(v) { $("confirmOverlay").hidden = true; const r = confirmResolve; confirmResolve = null; if (confirmOpener && confirmOpener.isConnected) { try { confirmOpener.focus(); } catch (e) { /* gone */ } } if (r) r(v); }
 $("confirmOverlay").addEventListener("click", e => {
   const b = e.target.closest("[data-cf]"); if (!b && e.target.id !== "confirmOverlay") return;
+  if (!b && Date.now() - confirmOpenedAt < 500) return;
   confirmDone(b ? b.dataset.cf === "1" : null);
 });
 $("confirmBox").addEventListener("keydown", e => trapFocus($("confirmBox"), e));
@@ -163,6 +164,7 @@ function dateRule(id, { required = false, notFuture = true, min = null, minLabel
   const v = val(id);
   if (!v) { if (required) { fieldErr(id, "Pick a date."); return false; } fieldErr(id, ""); return true; }
   if (!K.D(v)) { fieldErr(id, "That isn't a valid date."); return false; }
+  if (v < "1990-01-01") { fieldErr(id, "Check the year. It looks like a typo."); return false; }
   if (notFuture && v > todayISO()) { fieldErr(id, "That's in the future. Use today or earlier."); return false; }
   if (min && v < min) { fieldErr(id, `Can't be before ${minLabel || K.fmt(K.D(min))}.`); return false; }
   fieldErr(id, ""); return true;
@@ -348,7 +350,7 @@ const IDB = (() => {
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)));
 let queueCache = [];
 async function mergePending() {
-  try { queueCache = (await IDB.all()).filter(i => S.account && i.accountId === S.account.id); } catch { queueCache = []; }
+  try { queueCache = (await IDB.all()).filter(i => S.account && i.accountId === S.account.id).sort((a, b) => a.created - b.created); } catch { queueCache = []; }
   S.jobs = S.jobs.filter(j => !j._pending); S.customers = S.customers.filter(c => !c._pending); S.photos = (S.photos || []).filter(p => !p._pending);
   for (const it of queueCache) {
     if (it.type === "job") {
@@ -368,7 +370,7 @@ async function mergePending() {
     if (it.type === "pay") {
       S.payments.unshift({ ...it.row, created_at: new Date(it.created).toISOString(), _pending: true });
       if (jj) { keep(jj, ["amount_paid", "status", "paid_on"]); jj.amount_paid = Math.round(((+jj.amount_paid || 0) + (+it.row.amount || 0)) * 100) / 100;
-        if (+jj.amount > 0 && jj.amount_paid >= +jj.amount) { jj.status = "paid"; jj.paid_on = jj.paid_on || it.row.paid_on || todayISO(); } }
+        if (+jj.amount > 0 && jj.amount_paid >= +jj.amount && ["done", "invoiced", "paid"].includes(jj.status)) { jj.status = "paid"; jj.paid_on = jj.paid_on || it.row.paid_on || todayISO(); } }
     }
   }
   S.customers.sort((a, b) => a.name.localeCompare(b.name));
@@ -499,7 +501,7 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferr
 // ================= routing =================
 const LEGAL = `<p class="legal">Private shop portal for Dale's Auto Body. Lien letters are drafts for Dale to review and sign. This is not legal advice. Kansas deadlines summarized November 2026 from K.S.A. 58-201 et seq., 8-1101 et seq., 60-1101 et seq. and Division of Vehicles forms.</p>`;
 const backLink = (href, label) => `<a class="back" href="#${href}">${icon("back")}${esc(label)}</a>`;
-window.addEventListener("hashchange", () => route(false, true));
+window.addEventListener("hashchange", () => { if (!$("overlay").hidden) closeModal(true); if (!$("confirmOverlay").hidden) confirmDone(null); route(false, true); });
 function route(keepScroll, fromNav) {
   if ($("appView").hidden) return;
   if (/type=recovery|access_token/.test(location.hash)) return;
@@ -617,7 +619,7 @@ function renderHome() {
   const old = owed.filter(j => (ageDays(j) ?? 0) > 90);
   const hour = new Date().getHours();
   const big = document.documentElement.classList.contains("big");
-  const summary = [T.length ? plural(T.length, "thing") + (T.length === 1 ? " needs" : " need") + " you" : "Nothing needs you", plural(inShop, "car") + " in the shop", owedTotal ? dollars(owedTotal) + " owed" : ""].filter(Boolean).join(" · ");
+  const summary = [T.length ? plural(T.length, "thing") + (T.length === 1 ? " needs" : " need") + " you" : "Nothing needs you", plural(inShop, "car") + " in the shop", owedTotal ? money(owedTotal) + " owed" : ""].filter(Boolean).join(" · ");
   $("main").innerHTML = `
     <div class="pagehead"><div><div class="eyebrow">${esc(K.longFmt ? K.longFmt(K.TODAY) : K.fmt(K.TODAY))}</div><h1>Good ${hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}${S.isDale ? ", Dale" : ""}</h1><p class="lede">${esc(summary)}.</p></div></div>
     <div class="quick">
@@ -635,7 +637,7 @@ function renderHome() {
         <h2 style="margin:0">At a glance</h2>
         <div class="tiles">
           <a class="tile" href="#jobs"><div class="n">${inShop}</div><div class="l">${inShop === 1 ? "Car" : "Cars"} in the shop</div></a>
-          <a class="tile" href="#money"><div class="n ${dollars(owedTotal).length > 8 ? "long" : ""}">${dollars(owedTotal)}</div><div class="l">Owed to you</div></a>
+          <a class="tile" href="#money"><div class="n ${money(owedTotal).length > 9 ? "long" : ""}">${money(owedTotal)}</div><div class="l">Owed to you</div></a>
           <a class="tile" href="#money"><div class="n">${unb.length}</div><div class="l">Not billed yet</div></a>
           <a class="tile ${old.length ? "alert" : ""}" href="#money"><div class="n">${old.length}</div><div class="l">Over 90 days</div></a>
         </div>
@@ -938,11 +940,12 @@ function editJob(j) {
     if (!val("ejTitle")) { fieldErr("ejTitle", "Say what work is being done."); ok = false; } else fieldErr("ejTitle", "");
     const amt = parseMoney(val("ejAmt"));
     if (Number.isNaN(amt)) { fieldErr("ejAmt", "Use a dollar amount like 1250 or 1250.50."); ok = false; }
+    else if (["invoiced", "paid"].includes(j.status) && !(amt > 0)) { fieldErr("ejAmt", "A billed job needs a price. To take the bill back, use Undo on the job page."); ok = false; }
     else if (+j.amount_paid > 0 && (amt == null || amt < +j.amount_paid)) { fieldErr("ejAmt", `They've already paid ${money(j.amount_paid)}. To lower it more, undo a payment first.`); ok = false; }
     else fieldErr("ejAmt", "");
     let vin = "";
     if ($("ejVin")) { const r = vinCheck(val("ejVin")); if (!r.ok) { fieldErr("ejVin", r.msg); ok = false; } vin = r.value || ""; }
-    if ($("ejYear") && val("ejYear") && !/^\d{4}$/.test(val("ejYear"))) { fieldErr("ejYear", "Use a 4-digit year."); ok = false; }
+    if ($("ejYear") && val("ejYear") && (!/^\d{4}$/.test(val("ejYear")) || +val("ejYear") < 1900 || +val("ejYear") > new Date().getFullYear() + 1)) { fieldErr("ejYear", "Use a 4-digit year, like 2014."); ok = false; }
     if ($("ejAddr") && !val("ejAddr")) { fieldErr("ejAddr", "Enter the property address."); ok = false; }
     const ded = parseMoney(val("ejDed")); if (Number.isNaN(ded)) { fieldErr("ejDed", "Use a dollar amount."); ok = false; } else fieldErr("ejDed", "");
     if (!phoneOk(val("ejAdjPh"))) { fieldErr("ejAdjPh", "Phone numbers have 10 digits."); ok = false; } else fieldErr("ejAdjPh", "");
@@ -996,6 +999,7 @@ async function setStage(j, row, msg, undoRow) {
   };
   if (r.queued) { route(true); toast(msg + " Will upload when online.", { label: "Undo", run: () => unqueue(r.qid, undoRow ? onlineUndo : null) }, { ok: true }); return true; }
   await reload(); route(true);
+  if (row.status !== "paid" && jobById(j.id)?.status === "paid") msg = msg.replace(/\..*$/, ".") + " It was already paid in full, so it's marked Paid.";
   toast(msg, undoRow ? { label: "Undo", run: onlineUndo } : null, { ok: true });
   return true;
 }
@@ -1052,6 +1056,7 @@ async function stageBack(j) {
   await setStage(j, row, `Moved back to “${STAGE_LABEL[prev]}”.`);
 }
 async function deleteJob(j) {
+  if (openLien(j.id)) { await confirmBox({ title: "Close the lien case first", body: "This job has an open lien case. Open it and tap Close this case, then you can delete the job.", ok: "Got it", cancel: "" }); return; }
   const pays = jobPays(j).filter(p => !p.voided).length; const lien = S.liens.find(l => l.job_id === j.id);
   const extra = [pays ? `${plural(pays, "payment")} recorded on it will be deleted too.` : "", lien ? "Its lien case will be kept, but no longer linked to a job." : ""].filter(Boolean).join(" ");
   if (!(await confirmBox({ title: "Delete this job for good?", body: `${esc(jobName(j))}. ${esc(extra)} This can't be undone.`, ok: "Delete job", danger: true }))) return;
@@ -1094,7 +1099,7 @@ function payModal(j) {
     <div class="field"><span class="req" style="font-size:var(--t-sm);color:var(--stone);font-weight:600" id="pfHowL">How did they pay?</span><div class="chips" role="group" aria-labelledby="pfHowL">${Object.entries(METHODS).map(([k, t]) => `<button type="button" class="chipbtn" data-method="${k}" aria-pressed="false">${t}</button>`).join("")}</div><div class="fmsg" id="pfHowMsg" role="alert"></div></div>
     <div class="grid"><div class="field"><label for="pfDate">Paid on</label><input id="pfDate" type="date" max="${todayISO()}" value="${todayISO()}"></div>
       <div class="field"><label for="pfNote">Note (optional)</label><input id="pfNote" placeholder="Check #, claim #, etc."></div></div>
-    <div class="notice good" id="pfFull" hidden>This pays the job off in full. It will move to <b>Paid</b>.</div>
+    <div class="notice good" id="pfFull" hidden>${deposit ? "This covers the full price. The job stays where it is and moves to <b>Paid</b> once the work is done." : "This pays the job off in full. It will move to <b>Paid</b>."}</div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save payment</button></div></div></form>`);
   const upd = () => { const a = parseMoney(val("pfAmt")); $("pfFull").hidden = !(a >= bal && a > 0); };
   $("pfAmt").addEventListener("input", upd);
@@ -1435,7 +1440,12 @@ async function deleteCustomer(c) {
 }
 
 // ================= LIENS =================
-function lienData(l) { const c = K.norm(l.data || (l.data = {})); c.track = l.track; return c; }
+function lienData(l) {
+  const c = K.norm(l.data || (l.data = {})); c.track = l.track;
+  const j = l.job_id && jobById(l.job_id);
+  if (j && l.status === "open" && +j.amount > 0) c.amount = String(balance(j)); // letters always ask for what's actually owed now
+  return c;
+}
 function lienLabel(l) {
   const c = lienData(l);
   const what = (c.track === "gc" || c.track === "sub") ? (c.property.address || "Property") : ([c.vehicle.year, c.vehicle.make, c.vehicle.model].filter(Boolean).join(" ") || "Vehicle");
@@ -1538,7 +1548,7 @@ function renderLien(id) {
     <div class="head"><div><div class="eyebrow">${esc(K.TRACKS[c.track].label)} lien · ${esc(K.TRACKS[c.track].law)}${closed ? " · CLOSED" : ""}</div><h1>${esc(lienLabel(l))}</h1>
       <div class="small">${job ? `From job: <a href="#job/${job.id}">${esc(job.title || vehicleText(job))}</a>` : "Not linked to a job"}</div></div>
       <div class="amount"><div class="l">Amount owed</div><div class="n">${money(c.amount)}</div></div></div>
-    ${closed ? `<div class="nextcard good"><div class="headline">This case is closed</div><div class="hint">${job && job.status === "paid" ? "The customer paid in full. Print the release below and give it to them." : (l.data?.writtenOff ? "Written off: closed without payment. Tap Reopen case to try collecting again." : "Closed without payment.")}</div><div class="row2"><button class="btn" type="button" data-act="reopen-lien">Reopen case</button></div></div>`
+    ${closed ? `<div class="nextcard good"><div class="headline">This case is closed</div><div class="hint">${job && job.status === "paid" ? "The customer paid in full. Print the release below and give it to them." : (l.data?.writtenOff ? "Written off: closed without payment. Tap Reopen case to try collecting again." : job && balance(job) > 0 ? "This case closed when the bill was paid. That payment was undone, so the bill is owed again. Tap Reopen case to keep going." : "Closed without payment.")}</div>${job && !(balance(job) > 0) ? "" : `<div class="row2"><button class="btn" type="button" data-act="reopen-lien">Reopen case</button></div>`}</div>`
     : n ? `<div class="nextcard ${st && st.cls === "over" ? "" : "calm"}"><div class="eyebrow">Step ${all.indexOf(all.find(s => s.key === n.key)) + 1} of ${all.length}</div><div class="headline">${esc(n.title)}</div>
         <div class="hint">${esc(n.detail)}${ui.help ? " " + esc(ui.help) : ""}</div>
         ${n.date ? `<div><span class="date">Due ${esc(K.fmt(n.date))}</span> <span class="chip ${st.cls}">${esc(st.txt)}</span></div>` : ""}
@@ -1585,7 +1595,7 @@ function factsForm(c, veh) {
     <div class="grouplabel">${veh ? "Vehicle" : "Property"} and money</div>`;
   if (veh) h += f("vehicle.year", "Year") + f("vehicle.make", "Make") + f("vehicle.model", "Model") + f("vehicle.vin", "VIN or serial") + f("vehicle.plate", "Plate") + f("lienholders", "Lienholders on the title (names and addresses, or None)", { type: "textarea" });
   else h += f("property.address", "Property address", { wide: true }) + f("property.county", "County") + f("property.legal", "Legal description") + f("residential", "Someone's home (residential)", { type: "check" }) + (c.residential ? f("newResidential", "Brand-new home construction", { type: "check" }) : "");
-  h += f("amount", "Amount owed ($)") + f("description", "What the work was", { type: "textarea" }) + `<div class="grouplabel">Dates</div>`;
+  h += (currentLien && currentLien.job_id && jobById(currentLien.job_id) ? `<div class="field"><span style="font-size:var(--t-sm);color:var(--stone);font-weight:600">Amount owed</span><div><b>${money(c.amount)}</b></div><div class="hint">Comes from the job and updates when they pay.</div></div>` : f("amount", "Amount owed ($)")) + f("description", "What the work was", { type: "textarea" }) + `<div class="grouplabel">Dates</div>`;
   if (c.track === "repair") h += f("dates.lastWork", "Work finished", { type: "date" }) + f("dates.released", "Gave the car back (leave blank if you still have it)", { type: "date" }) + f("dates.noticeMailed", "Notice of sale mailed", { type: "date" }) + lfield(c, "dates.saleDate", "Sale date", { type: "text", suffix: "-f" }).replace('type="text"', 'type="date"') + f("saleTime", "Sale time") + f("dates.filed", "Lien filed with register of deeds", { type: "date" });
   if (c.track === "tow") h += f("dates.possession", "Towed in on", { type: "date" }) + f("dates.verification", "DMV verification received", { type: "date" }) + f("dates.noticeMailed", "Notice of sale mailed", { type: "date" }) + lfield(c, "dates.saleDate", "Auction date", { suffix: "-f" }).replace('type="text"', 'type="date"') + f("saleTime", "Auction time");
   if (c.track === "gc" || c.track === "sub") h += f("dates.lastWork", "Last day you worked or delivered materials", { type: "date" }) + f("dates.filed", "Lien statement filed", { type: "date" });
@@ -1891,7 +1901,7 @@ document.addEventListener("click", async e => {
     case "retry-save": return saveLienSoon(0);
     case "fill-blanks": { const d = $("factsPanel"); if (!d) return; d.open = true; const empty = [...d.querySelectorAll("input[data-path]:not([type=checkbox]),textarea[data-path]")].find(i => !i.value.trim()); d.scrollIntoView({ behavior: "smooth", block: "start" }); if (empty) setTimeout(() => empty.focus({ preventScroll: true }), 350); return; }
     case "close-lien": return closeLienCase();
-    case "reopen-lien": { const rd = JSON.parse(JSON.stringify(currentLien.data)); delete rd.track; delete rd.writtenOff; const { error } = await sb.from("shop_liens").update({ status: "open", data: rd }).eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); route(true); return toast("Case reopened."); }
+    case "reopen-lien": { { const rj = currentLien.job_id && jobById(currentLien.job_id); if (rj && !(balance(rj) > 0)) return toast("This job is paid in full, so there's nothing to collect."); } const rd = JSON.parse(JSON.stringify(currentLien.data)); delete rd.track; delete rd.writtenOff; const { error } = await sb.from("shop_liens").update({ status: "open", data: rd }).eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); route(true); return toast("Case reopened."); }
     case "del-lien": { if (!(await confirmBox({ title: "Delete this lien case?", body: "Its steps and dates are lost for good. The job and payments stay.", ok: "Delete case", danger: true }))) return; const { error } = await sb.from("shop_liens").delete().eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); go("liens"); return toast("Lien case deleted."); }
     case "rm-member": { if (!(await confirmBox({ title: "Remove from the team?", body: "They won't be able to sign in to the shop portal anymore.", ok: "Remove", danger: true }))) return; const { error } = await sb.from("shop_members").update({ active: false }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Removed."); }
     case "toggle-coowner": { const m = S.members.find(x => x.user_id === id); if (!m) return; if (!(await confirmBox({ title: m.co_owner ? "Remove co-owner?" : "Make co-owner?", body: m.co_owner ? "They keep using the portal but can't change shop info or the team." : "They'll be able to change shop info and add or remove team members.", ok: m.co_owner ? "Remove co-owner" : "Make co-owner" }))) return; const { error } = await sb.from("shop_members").update({ co_owner: !m.co_owner }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Saved."); }
