@@ -3,7 +3,9 @@
 "use strict";
 const SB_URL = "https://uwhtxhxetjbkngjypkcx.supabase.co";
 const SB_KEY = "sb_publishable_aGD67KSXQybtbagP_DJfDQ_7TaFb4gI"; // public key; every row is protected by row-level security
-const sb = window.supabase.createClient(SB_URL, SB_KEY);
+// every server call gives up after 45 seconds, so a hung connection can't freeze the app
+const fetchT = (url, opts = {}) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), 45000); if (opts.signal) opts.signal.addEventListener("abort", () => c.abort()); return fetch(url, { ...opts, signal: c.signal }).finally(() => clearTimeout(t)); };
+const sb = window.supabase.createClient(SB_URL, SB_KEY, { global: { fetch: fetchT } });
 const K = window.KS;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -42,7 +44,7 @@ function vinCheck(raw) {
 }
 function friendly(e) {
   const m = String(e?.message || e || "");
-  if (/Failed to fetch|NetworkError|network|load failed/i.test(m)) return "No connection to the internet. Nothing was saved. Check Wi-Fi and try again.";
+  if (/Failed to fetch|NetworkError|network|load failed|abort/i.test(m)) return "No connection to the internet. Nothing was saved. Check Wi-Fi and try again.";
   if (/JWT|expired|not authenticated|401/i.test(m)) return "Your login expired. Sign in again, then redo that step.";
   if (/row-level security|permission/i.test(m)) return "You don't have permission to change that. Ask Dale.";
   if (/negative/i.test(m)) return "Amounts can't be negative.";
@@ -66,6 +68,7 @@ const ICONS = {
   check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
   out: '<path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
+  calendar: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/>',
   trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
   back: '<path d="M15 5l-7 7 7 7"/>',
   text: '<path d="M3 19L8.5 5h1L15 19M5.2 14h7.6"/><path d="M15.5 19l3-7.5h.6l3 7.5M16.6 16.8h4.4"/>'
@@ -321,7 +324,7 @@ async function reload() { try { await loadAll(); } catch (ex) { if (isNetErr(ex)
 
 // ================= offline: snapshot + upload queue =================
 const SNAP_KEY = "dab.snapshot.v1";
-const isNetErr = e => /Failed to fetch|NetworkError|network|load failed|fetch/i.test(String(e?.message || e || "")) || !navigator.onLine;
+const isNetErr = e => /Failed to fetch|NetworkError|network|load failed|fetch|abort/i.test(String(e?.message || e || "")) || !navigator.onLine;
 function saveSnapshot() {
   try { localStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), uid: S.user.id, account: S.account, isDale: S.isDale, isOwner: S.isOwner, customers: S.customers, jobs: S.jobs.filter(j => !j._pending).map(j => j._orig ? { ...j, ...j._orig, _orig: undefined } : j), liens: S.liens, payments: S.payments, members: S.members, invites: S.invites, photos: S.photos.filter(p => !p._pending), links: S.links })); } catch (e) { /* storage full or blocked: offline view just won't have data */ }
 }
@@ -948,6 +951,7 @@ async function jobUpdate(j, row) {
   return { error };
 }
 async function unqueue(qid, ifUploaded) {
+  if (flushing) toast("Undoing…");
   while (flushing) await new Promise(r => setTimeout(r, 100));
   flushing = true; let still = false;
   try {
@@ -1305,7 +1309,7 @@ function renderMoney() {
     <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${b.n ? money(b.amt) : "—"}</div><div class="c">${b.n ? plural(b.n, "bill") : "None"}</div></button>`).join("")}</div>
     <section aria-labelledby="owedH"><h2 id="owedH">${arBucket === "all" ? "Who owes" : `${esc(BUCKETS.find(b => b.key === arBucket).label)} · ${shown.length}`}${arBucket !== "all" ? ` <button class="linkbtn" type="button" data-bucket="all" style="min-height:0;margin-left:8px;letter-spacing:0;text-transform:none">Show all ${open.length}</button>` : ""}</h2>
     <div class="list">${shown.length ? shown.map(({ j, age, bal }) => { const c = cust(j.customer_id); const lien = openLien(j.id);
-      return `<div class="row mrow" data-href="job/${j.id}"><div><div class="tline"><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>${lien ? `<a class="chip over" href="#lien/${lien.id}">Lien open</a>` : ""}</div>
+      return `<div class="row mrow" data-href="job/${j.id}"><div><div class="tline"><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>${lien ? `<a class="chip over" href="#lien/${lien.id}">Lien open</a>` : ""}<span class="amt2 num">${money(bal)}</span></div>
         <div class="s">${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${daysSince(j.last_reminded_on) === 0 ? "today" : plural(daysSince(j.last_reminded_on), "day") + " ago"}` : ""}</div></div>
         <div class="amt num">${money(bal)}</div>
         <div class="r"><div class="acts">
@@ -1493,7 +1497,7 @@ function renderLien(id) {
         const allS = K.steps(c); const isSk = s => s.key === "extension" && c.done.extensionSkip;
         const done = allS.filter(s => c.done[s.key] || isSk(s)); const up = allS.filter(s => !c.done[s.key] && !isSk(s) && !(n && s.key === n.key)).sort((a, b) => (all.some(x => x.key === a.key) ? 1 : 0) - (all.some(x => x.key === b.key) ? 1 : 0));
         const li = s => { const stt = K.status(c, s); const skipped = isSk(s); const num = all.indexOf(all.find(x => x.key === s.key)) + 1;
-          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span class="snum ${num ? "" : "note"}" aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : num || "i"}</span>
+          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span class="snum ${num ? "" : s.kind === "info" ? "note" : "cal"}" aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : num || (s.kind === "info" ? "i" : icon("calendar"))}</span>
           <div><div class="t">${esc(s.title)}</div><div class="d">${esc(s.detail)}</div>${s.cite ? `<details class="why"><summary>Why?</summary><span class="cite">${esc(s.cite)}</span></details>` : ""}
           ${(c.done[s.key] || skipped) && !closed ? `<div class="undo"><button class="linkbtn" type="button" data-act="step-undo" data-step="${s.key}">Undo</button></div>` : ""}</div>
           <div class="when">${s.kind === "info" || !s.date ? "" : `<span class="wdate">${s.kind === "after" ? "not before " : ""}${esc(K.fmt(s.date))}</span>`}<span class="chip ${skipped ? "info" : stt.cls}">${esc(skipped ? "Skipped" : stt.txt)}</span></div></li>`; };
