@@ -13,9 +13,9 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" href="icons/icon-192.png">
 <title>Shop Portal | Dale's Auto Body KC</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="font" type="font/woff2" href="fonts/bebas-neue.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="fonts/work-sans.woff2" crossorigin>
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
 /* ============================================================
    Dale's Auto Body — Shop Portal design system
@@ -133,7 +133,7 @@ textarea.copybox { width: 100%; min-height: 160px; border: 1.5px solid var(--lin
 /* ---------- surfaces ---------- */
 .card, .box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-lg); }
 .box { padding: 20px; display: grid; gap: 14px; align-content: start; min-width: 0; }
-.box h3 { margin: 0; font-size: var(--t-xs); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 32px; }
+.box h3, .box .bh { margin: 0; font-size: var(--t-xs); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 32px; }
 .notice { border-radius: var(--r-md); padding: 14px 16px; font-size: var(--t-sm); background: var(--warn-soft); border: 1px solid rgba(232,191,87,.45); }
 .notice.bad { background: var(--bad-soft); border-color: rgba(255,122,92,.5); }
 .notice.good { background: var(--good-soft); border-color: rgba(95,211,154,.5); }
@@ -153,7 +153,11 @@ a[href^="tel:"] { white-space: nowrap; }
 .side { display: none; }
 .mtop { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: calc(var(--top-h) + var(--safe-t)); padding: var(--safe-t) max(12px, var(--safe-r)) 0 max(16px, var(--safe-l)); background: rgba(11,24,38,.92); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
 .brand { text-decoration: none; color: var(--cream); line-height: 1.02; display: grid; }
-.brand .name { font-family: var(--display); font-size: 1.6rem; letter-spacing: .1em; }
+.brand .name { font-family: var(--display); font-size: 1.6rem; letter-spacing: .1em; white-space: nowrap; }
+.side .brand .name { white-space: normal; }
+@media (max-width: 360px) { .mtop .brand .name { font-size: 1.35rem; letter-spacing: .06em; } }
+.tile { min-width: 0; }
+.tile .n.long { font-size: clamp(1.5rem, 2.4vw, var(--t-xl)); }
 .brand .sub { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
 .page { padding: 24px max(16px, var(--safe-r)) calc(var(--tab-h) + var(--safe-b) + 32px) max(16px, var(--safe-l)); display: grid; gap: 28px; max-width: 1100px; margin: 0 auto; min-width: 0; }
 .tabbar { position: fixed; z-index: 12; left: 0; right: 0; bottom: 0; height: calc(var(--tab-h) + var(--safe-b)); padding: 0 var(--safe-r) var(--safe-b) var(--safe-l); display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(14,31,49,.96); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line-2); }

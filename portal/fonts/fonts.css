@@ -1,0 +1,5 @@
+/* Self-hosted fonts (SIL Open Font License; see OFL-*.txt). Cached by the offline helper so the app looks right with no signal. */
+@font-face { font-family: "Bebas Neue"; src: url("bebas-neue.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Work Sans"; src: url("work-sans.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("plex-mono-400.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("plex-mono-500.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }

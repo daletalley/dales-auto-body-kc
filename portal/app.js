@@ -107,6 +107,7 @@ function openModal(html, opts = {}) {
   const foot = $("modal").querySelector(".mbody .modalfoot");
   if (foot) { const form = foot.closest("form"); if (form) { form.id = form.id || "mform"; foot.querySelectorAll("button[type=submit]").forEach(b => b.setAttribute("form", form.id)); } $("modal").appendChild(foot); }
   $("modal").classList.toggle("hasfoot", !!foot);
+  { const mb = $("modal").querySelector(".mbody"); if (!mb.querySelector('button,a[href],input,select,textarea,[tabindex]')) { mb.tabIndex = 0; mb.setAttribute("role", "region"); mb.setAttribute("aria-label", h ? h.textContent : "Details"); } }
   $("overlay").hidden = false; document.body.style.overflow = "hidden"; modalDirty = false; modalOnClose = opts.onClose || null;
   $("modal").querySelector(".mbody").scrollTop = 0;
   const f = $("modal").querySelector("[autofocus]") || (!coarse && $("modal").querySelector(".mbody input:not([type=hidden]):not([type=file]):not([readonly]),.mbody select,.mbody textarea"));
@@ -606,6 +607,7 @@ function taskHtml(t, first) {
   return `<div class="task ${t.cls}"><div><div class="t">${esc(t.t)}</div><div class="s">${esc(t.s)}${t.chip ? ` <span class="chip ${t.chip.cls}">${esc(t.chip.txt)}</span>` : ""}</div></div>
     <div class="acts">${t.acts.map(btn).join("")}</div></div>`;
 }
+let showAllTasks = false;
 let tipOff = false; try { tipOff = !!localStorage.getItem("dab.tipoff"); } catch (e) { /* private mode */ }
 function renderHome() {
   const T = buildTasks();
@@ -626,17 +628,18 @@ function renderHome() {
           <button class="btn big" type="button" data-act="search">${icon("search")}Find</button>
         </div>
         <section aria-labelledby="todoH"><h2 id="todoH">${T.length ? `To do · ${T.length}` : "To do"}</h2>
-          <div class="todo">${T.length ? T.map((t, i) => taskHtml(t, i === 0)).join("") : `<div class="allclear"><span class="okbig">${icon("check")}</span>You're all caught up. Nothing needs you right now.</div>`}</div></section>
+          <div class="todo">${T.length ? T.slice(0, showAllTasks ? T.length : 10).map((t, i) => taskHtml(t, i === 0)).join("") : !S.jobs.length ? `<div class="allclear"><span class="okbig">${icon("check")}</span><span>Welcome! When a car comes in, tap <b>+ Add a job</b>. Everything you need to do shows up here.</span></div>` : `<div class="allclear"><span class="okbig">${icon("check")}</span>You're all caught up. Nothing needs you right now.</div>`}</div>
+          ${T.length > 10 ? `<div><button class="btn" type="button" data-act="all-tasks">${showAllTasks ? "Show only the top 10" : `Show all ${T.length}`}</button></div>` : ""}</section>
       </div>
       <aside class="aside" aria-label="Shop at a glance" style="display:grid;gap:16px;align-content:start">
         <h2 style="margin:0">At a glance</h2>
         <div class="tiles">
           <a class="tile" href="#jobs"><div class="n">${inShop}</div><div class="l">${inShop === 1 ? "Car" : "Cars"} in the shop</div></a>
-          <a class="tile" href="#money"><div class="n">${dollars(owedTotal)}</div><div class="l">Owed to you</div></a>
+          <a class="tile" href="#money"><div class="n ${dollars(owedTotal).length > 8 ? "long" : ""}">${dollars(owedTotal)}</div><div class="l">Owed to you</div></a>
           <a class="tile" href="#money"><div class="n">${unb.length}</div><div class="l">Not billed yet</div></a>
           <a class="tile ${old.length ? "alert" : ""}" href="#money"><div class="n">${old.length}</div><div class="l">Over 90 days</div></a>
         </div>
-        ${!big && !tipOff ? `<div class="box tip"><h3>Hard to read?</h3><div class="hint">Make every word and button bigger on this device.</div><div class="secondary"><button class="btn" type="button" data-act="big-text">Bigger text</button><button class="btn ghost" type="button" data-act="tip-off">No thanks</button></div></div>` : ""}
+        ${!big && !tipOff ? `<div class="box tip"><h2 class="bh">Hard to read?</h2><div class="hint">Make every word and button bigger on this device.</div><div class="secondary"><button class="btn" type="button" data-act="big-text">Bigger text</button><button class="btn ghost" type="button" data-act="tip-off">No thanks</button></div></div>` : ""}
       </aside>
     </div>`;
 }
@@ -735,14 +738,14 @@ function renderJob(id) {
       ${lien ? `<a class="btn" href="#lien/${lien.id}">Open lien case</a>` : anyLien ? `<a class="btn" href="#lien/${anyLien.id}">Lien case (closed)</a>` : ""}
     </div>
     <div class="twocol">
-      <div class="box"><h3>Money ${j.status !== "paid" ? `<button class="linkbtn" type="button" data-act="pay" data-id="${j.id}">${payLabel}</button>` : ""}</h3>
+      <div class="box"><h2 class="bh">Money ${j.status !== "paid" ? `<button class="linkbtn" type="button" data-act="pay" data-id="${j.id}">${payLabel}</button>` : ""}</h2>
         <dl class="kv"><dt>${isEst ? "Estimate" : "Price"}</dt><dd>${+j.amount ? money(j.amount) : `<button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Add the price</button>`}</dd>
           <dt>Paid</dt><dd>${money(j.amount_paid)}</dd>${billed ? `<dt>Still owed</dt><dd><b>${money(balance(j))}</b></dd>` : ""}
           ${j.last_reminded_on ? `<dt>Last reminder</dt><dd>${esc(K.fmt(K.D(j.last_reminded_on)))}</dd>` : ""}</dl>
         <div>${pays.length ? pays.map(pm => `<div class="pay ${pm.voided ? "void" : ""}"><div><b>${money(pm.amount)}</b> · ${esc(METHODS[pm.method] || "")}<div class="small">${esc(K.fmt(K.D(pm.paid_on)))}${pm.note ? " · " + esc(pm.note) : ""}</div>${pm.voided ? `<div class="small">Undone</div>` : ""}</div>
           ${pm.voided ? "" : pm._pending ? `<span class="chip soon">Waiting to upload</span>` : `<button class="linkbtn quiet" type="button" data-act="void-pay" data-id="${pm.id}">Undo</button>`}</div>`).join("") : `<div class="hint">No payments yet.</div>`}</div>
         ${owes(j) && !lien ? `<div class="hint" style="border-top:1px solid var(--line);padding-top:12px">Still not paid after a reminder or two? <button class="linkbtn" type="button" data-act="start-lien" data-id="${j.id}">Start a lien case</button></div>` : ""}</div>
-      <div class="box"><h3>Details <button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Edit</button></h3>
+      <div class="box"><h2 class="bh">Details <button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Edit</button></h2>
         <dl class="kv">
           <dt>Customer</dt><dd>${c ? `<a href="#customer/${c.id}">${esc(c.name)}</a>` : "None"}</dd>
           ${j.kind === "property" ? `<dt>Address</dt><dd>${esc(p.address || "—")}</dd><dt>County</dt><dd>${esc(p.county || "—")}</dd>`
@@ -896,7 +899,7 @@ function photoBox(j, pending) {
     ? `<label class="dropzone"><input type="file" accept="image/*" capture="environment" data-addphoto="${j.id}" hidden>${icon("camera")}<span>Take a photo (estimate or damage)</span></label>
        <label class="linkbtn"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>Or choose from your photos</label>`
     : `<label class="dropzone" data-drop="${j.id}"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>${icon("camera")}<span>Add photos from this computer</span><span class="small" style="font-weight:500">or drag them here</span></label>`;
-  return `<div class="box"><h3>Photos${ps.length ? ` · ${ps.length}` : ""}</h3>
+  return `<div class="box"><h2 class="bh">Photos${ps.length ? ` · ${ps.length}` : ""}</h2>
     ${ps.length ? `<div class="thumbs">${ps.map((p, i) => `<button type="button" class="thumb" data-viewphoto="${p.id}" aria-label="Open photo ${i + 1}"><img data-photo="${p.id}" alt="">${p._pending ? `<span class="tag">Uploading</span>` : ""}</button>`).join("")}</div>` : ""}
     ${pending ? "" : pick}</div>`;
 }
@@ -1188,7 +1191,7 @@ const INV_CSS = `body{margin:0;font:14px/1.5 "Work Sans",Arial,sans-serif;color:
 function printHtml(title, body, css, win) {
   const w = win || window.open("", "_blank");
   if (!w) { toast("Your browser blocked the print window. Allow pop-ups for daleskc.com."); return; }
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>${body}</body></html>`);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="${new URL("fonts/fonts.css", location.href).href}" rel="stylesheet"><style>${css}</style></head><body>${body}</body></html>`);
   w.document.close(); w.focus(); setTimeout(() => w.print(), 500);
 }
 function printText(title, text) { printHtml(title, esc(text), `body{font:15px/1.6 Georgia,"Times New Roman",serif;color:#111;max-width:7in;margin:0.8in auto;white-space:pre-wrap}@page{margin:0.7in}@media print{body{margin:0}}`); }
@@ -1391,9 +1394,9 @@ function renderCustomer(id) {
     <div class="head"><div><div class="eyebrow">Customer</div><h1>${esc(c.name)}</h1></div><div class="amount"><div class="l">Owes</div><div class="n">${money(o)}</div></div></div>
     <div class="quick"><button class="btn primary" type="button" data-act="new-job-for" data-id="${c.id}">+ Add a job for ${esc(c.name.split(" ")[0])}</button>
       ${tel ? `<a class="btn" href="tel:${esc(tel)}">${icon("phone")}Call</a><a class="btn" href="sms:${esc(tel)}">Text</a>` : ""}${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">Email</a>` : ""}</div>
-    <div class="twocol"><div class="box"><h3>Contact <button class="linkbtn" type="button" data-act="edit-customer" data-id="${c.id}">Edit</button></h3>
+    <div class="twocol"><div class="box"><h2 class="bh">Contact <button class="linkbtn" type="button" data-act="edit-customer" data-id="${c.id}">Edit</button></h2>
       <dl class="kv"><dt>Phone</dt><dd>${esc(c.phone || "—")}</dd><dt>Email</dt><dd>${esc(c.email || "—")}</dd><dt>Address</dt><dd>${esc(c.address || "—")}${!c.address ? `<div class="fwarn">Needed for lien letters</div>` : ""}</dd>${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}</dl></div>
-      <section class="box"><h3>Jobs · ${js.length}</h3>${js.length ? jobRows(js, "", true) : `<div class="hint">No jobs yet.</div>`}</section></div>
+      <section class="box"><h2 class="bh">Jobs · ${js.length}</h2>${js.length ? jobRows(js, "", true) : `<div class="hint">No jobs yet.</div>`}</section></div>
     <details class="dangerzone"><summary>${icon("trash")}Delete this customer</summary><div style="display:grid;gap:10px;padding:4px 0 8px"><div class="hint">${js.length ? `${esc(c.name)} has ${plural(js.length, "job")}. Move or delete those first. To move a job: open it, tap Edit, and pick a different customer.` : "This can't be undone."}</div><div><button class="btn danger" type="button" data-act="del-customer" data-id="${c.id}" ${js.length ? "disabled" : ""}>Delete customer</button></div></div></details>`;
   fillPhotos($("main"));
 }
@@ -1740,14 +1743,14 @@ function renderSettings() {
   $("main").innerHTML = `
     <div class="pagehead"><div><h1>Settings</h1><p class="lede">Signed in as ${esc(S.user.email)}</p></div></div>
     <div class="twocol">
-      <form class="box" id="shopForm" novalidate><h3>Shop info</h3><div class="hint">Printed on every bill, letter and lien form.</div>
+      <form class="box" id="shopForm" novalidate><h2 class="bh">Shop info</h2><div class="hint">Printed on every bill, letter and lien form.</div>
         <div class="field"><label for="stName">Business name</label><input id="stName" value="${esc(a.name)}" ${dis}></div>
         <div class="field"><label for="stAddr">Address</label><input id="stAddr" value="${esc(a.address)}" ${dis}></div>
         <div class="field"><label for="stPhone">Phone</label><input id="stPhone" type="tel" value="${esc(a.phone)}" ${dis}></div>
         ${S.isOwner ? `<div><button class="btn primary" type="submit">Save shop info</button></div>` : `<div class="hint">Only the owner or a co-owner can change this.</div>`}</form>
-      <div class="box"><h3>Easier to read</h3><div class="hint">Make every word and button bigger on this device.</div>
+      <div class="box"><h2 class="bh">Easier to read</h2><div class="hint">Make every word and button bigger on this device.</div>
         <div class="seg" role="group" aria-label="Text size"><button type="button" data-act="text-size" data-id="normal" aria-pressed="${!big}">Normal</button><button type="button" data-act="text-size" data-id="big" aria-pressed="${big}" style="font-size:1.15em">Bigger</button></div></div>
-      <div class="box"><h3>Team</h3>
+      <div class="box"><h2 class="bh">Team</h2>
         <div class="hint">People who can sign in and use the portal. Co-owners can also change shop info and the team.</div>
         <div class="members">
           <div class="member"><div class="memail"><b>Shop owner</b>${S.isDale ? ` · ${esc(S.user.email)} (you)` : ""}</div></div>
@@ -1756,18 +1759,18 @@ function renderSettings() {
           ${S.invites.filter(i => i.active).map(i => `<div class="member"><div class="memail">${esc(i.email)}</div><div class="small">Invited. Hasn't signed in yet.</div>${S.isOwner ? `<div class="secondary"><button class="linkbtn danger" type="button" data-act="rm-invite" data-id="${esc(i.email)}">Cancel invite</button></div>` : ""}</div>`).join("")}</div>
         ${S.isOwner ? `<form id="invForm" novalidate style="display:grid;gap:10px"><div class="field"><label for="invEmail">Add someone by email</label><input id="invEmail" type="email" inputmode="email" placeholder="name@gmail.com"></div><div><button class="btn" type="submit">Add to team</button></div>
           <div class="hint">Then tell them: open daleskc.com/portal, tap “Create your login”, use this same email, then tap the link in the email we send them.</div></form>` : ""}</div>
-      <div class="box"><h3>Put it on your phone</h3>
+      <div class="box"><h2 class="bh">Put it on your phone</h2>
         ${coarse ? `<div class="hint">Put a Dale's Shop icon on this phone's home screen so it opens like an app.</div><div><a class="btn" href="install.html">Add to my home screen</a></div>`
           : `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><img src="icons/qr-install.png" alt="QR code that installs the app" style="width:132px;height:132px;border-radius:10px;background:#fff;padding:6px">
           <div class="hint" style="flex:1;min-width:180px">Point a phone's camera at this code to put the app on that phone. <a href="qr.html" target="_blank" rel="noopener">Print it as a sign</a> for the staff area.</div></div>`}
         <div><button class="btn" type="button" data-act="install" id="installBtn" ${deferredInstall ? "" : "hidden"}>Install on this computer</button></div></div>
-      ${S.isOwner ? `<form class="box" id="helpForm" novalidate><h3>Who to call for help</h3><div class="hint">Shows a Call button on the Help page.</div>
+      ${S.isOwner ? `<form class="box" id="helpForm" novalidate><h2 class="bh">Who to call for help</h2><div class="hint">Shows a Call button on the Help page.</div>
         <div class="grid"><div class="field"><label for="hpName">Name</label><input id="hpName" value="${esc(a.help_name || "Dale Jr.")}"></div>
           <div class="field"><label for="hpPhone">Phone</label><input id="hpPhone" type="tel" inputmode="tel" value="${esc(a.help_phone || "")}" placeholder="(913) 555-0100"></div></div>
         <div><button class="btn" type="submit">Save</button></div></form>` : ""}
-      <div class="box"><h3>Backup</h3><div class="hint">Download a copy as spreadsheets. Everything is also backed up automatically every day.</div>
+      <div class="box"><h2 class="bh">Backup</h2><div class="hint">Download a copy as spreadsheets. Everything is also backed up automatically every day.</div>
         <div class="secondary"><button class="btn" type="button" data-act="backup" data-id="jobs">Jobs</button><button class="btn" type="button" data-act="backup" data-id="customers">Customers</button><button class="btn" type="button" data-act="backup" data-id="payments">Payments</button></div></div>
-      <form class="box" id="pwForm" novalidate><h3>Your login</h3>
+      <form class="box" id="pwForm" novalidate><h2 class="bh">Your login</h2>
         <input type="email" autocomplete="username" value="${esc(S.user.email)}" hidden>
         <div class="field"><label for="pw1">New password</label><input id="pw1" type="password" autocomplete="new-password"></div>
         <div class="field"><label for="pw2">Type it again</label><input id="pw2" type="password" autocomplete="new-password"></div>
@@ -1830,7 +1833,7 @@ document.addEventListener("click", async e => {
   if (t.dataset.viewphoto) { const p = S.photos.find(x => x.id === t.dataset.viewphoto); if (p) viewPhoto(p); return; }
   const act = t.dataset.act; if (!act) return;
   const j = id ? jobById(id) : null;
-  const OFFLINE_OK = new Set(["close", "new-job", "new-job-for", "search", "more-menu", "tip-off", "text-size", "aj-unpick", "print-doc", "copy-doc", "retry-queue", "discard-queue", "invoice", "print-invoice", "backup", "install", "print-help", "big-text"]);
+  const OFFLINE_OK = new Set(["close", "all-tasks", "new-job", "new-job-for", "search", "more-menu", "tip-off", "text-size", "aj-unpick", "print-doc", "copy-doc", "retry-queue", "discard-queue", "invoice", "print-invoice", "backup", "install", "print-help", "big-text"]);
   const QUEUE_OK = new Set(["stage-start", "stage-done", "stage-invoice", "stage-back", "pay", "pay-pick"]);
   if (!navigator.onLine && !OFFLINE_OK.has(act) && !QUEUE_OK.has(act)) { toast("You're offline. That one needs internet. Adding jobs, photos, payments and moving jobs along still work."); return; }
   if (j && j._pending && !OFFLINE_OK.has(act) && !QUEUE_OK.has(act)) { toast("This job is still uploading. Try again in a minute."); return; }
@@ -1844,6 +1847,7 @@ document.addEventListener("click", async e => {
     case "big-text": { const on = !document.documentElement.classList.contains("big"); setBig(on); if (!$("overlay").hidden) await closeModal(true); route(true); toast(on ? "Bigger text is on. Change it anytime in Settings." : "Text is back to normal size.", null, { ok: true }); return; }
     case "text-size": { setBig(id === "big"); route(true); return; }
     case "tip-off": { tipOff = true; try { localStorage.setItem("dab.tipoff", "1"); } catch (e2) { /* private mode */ } route(true); return; }
+    case "all-tasks": showAllTasks = !showAllTasks; return route(true);
     case "search": return openSearch();
     case "more-menu": return moreMenu();
     case "invoice": return j && invoiceModal(j);

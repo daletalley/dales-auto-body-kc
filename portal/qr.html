@@ -6,9 +6,9 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Staff: get the shop app | Dale's Auto Body</title>
 <link rel="icon" href="icons/icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="preload" as="font" type="font/woff2" href="fonts/bebas-neue.woff2" crossorigin>
+<link rel="preload" as="font" type="font/woff2" href="fonts/work-sans.woff2" crossorigin>
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
 * { box-sizing: border-box; }
 html, body { margin: 0; background: #fff; color: #0d1c2a; font-family: "Work Sans", Arial, sans-serif; }
@@ -24,14 +24,14 @@ h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size:
 .steps { font-size: 20px; line-height: 1.5; max-width: 6in; }
 .url { font-size: 18px; font-weight: 700; letter-spacing: .02em; }
 .small { font-size: 13px; color: #57606a; }
-.printbtn { font: inherit; font-weight: 700; font-size: 18px; padding: 14px 28px; border-radius: 999px; border: 0; background: #F54503; color: #fff; cursor: pointer; }
+.printbtn { font: inherit; font-weight: 700; font-size: 18px; padding: 14px 28px; border-radius: 999px; border: 0; background: #C93A00; color: #fff; cursor: pointer; }
 @page { size: letter; margin: 0; }
 @media print { .noprint { display: none; } .sheet { padding: 0.6in; } }
 @media (max-width: 9in) { .sheet { width: 100%; min-height: 0; padding: 24px 16px; } .qr { width: min(4.6in, 80vw); height: min(4.6in, 80vw); } .band .name { font-size: clamp(30px, 9vw, 44px); } h1 { font-size: clamp(30px, 8vw, 40px); } .staff { font-size: 22px; } }
 </style>
 </head>
 <body>
-<div class="sheet">
+<main class="sheet">
   <div class="band"><div class="sub">Family owned since 1975</div><div class="name">DALE'S AUTO BODY</div><div class="staff">STAFF ONLY</div></div>
   <h1>Staff: scan to get the shop app</h1>
   <div class="qr"><img src="icons/qr-install.png" alt="QR code for daleskc.com/portal/install.html"></div>
@@ -39,6 +39,6 @@ h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size:
   <div class="url">or type: daleskc.com/app</div>
   <div class="small">You'll need your shop login. Customers: you don't need this. Use the link we texted you.</div>
   <button class="printbtn noprint" type="button" onclick="window.print()">Print this sign</button>
-</div>
+</main>
 </body>
 </html>
