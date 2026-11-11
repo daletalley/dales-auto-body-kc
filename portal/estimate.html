@@ -47,7 +47,10 @@ input:focus { border-color: var(--amber); outline: none; box-shadow: 0 0 0 3px r
 .btn:disabled { opacity: .6; }
 .ok { background: rgba(95,211,154,.14); border-color: rgba(95,211,154,.6); }
 .ok b { font-size: 1.15rem; }
-.err { color: #ff8a70; font-size: .9rem; min-height: 1.2em; }
+.err { color: #ff8a70; font-size: .9rem; }
+.err:empty { display: none; }
+.printonly { display: none; }
+@media print { .printonly { display: block; } }
 .small { font-size: .875rem; color: var(--muted); }
 a { color: var(--amber); }
 </style>
@@ -83,7 +86,7 @@ a { color: var(--amber); }
         <div class="err" id="err" role="alert"></div>
       </form>
       <div class="card" id="noPrice" hidden><b>Price coming soon</b><div class="small">We'll send you the price before any work starts. Questions? Call us below.</div></div>
-      <div class="card"><h2>Questions?</h2><div id="contact" class="small"></div><a class="btn line" id="call" href="tel:+19133716654">Call (913) 371-6654</a></div>
+      <div class="card"><h2>Questions?</h2><div id="contact" class="small"></div><div id="contactPhone" class="small printonly"></div><a class="btn line" id="call" href="tel:+19133716654">Call (913) 371-6654</a></div>
     </div>
   </div>
   <div class="small noprint">This link is private to you.</div>
@@ -147,7 +150,7 @@ a { color: var(--amber); }
     } else if (isEst && j.amount) { $("approveCard").hidden = false; $("approve").textContent = `Approve ${money(j.amount)} repair`; }
     else if (isEst) $("noPrice").hidden = false;
     const phone = s.phone || "(913) 371-6654";
-    $("contact").textContent = [s.address, phone, "Monday–Friday 10am–6pm"].filter(Boolean).join(" · ");
+    $("contact").textContent = [s.address, "Monday–Friday 10am–6pm"].filter(Boolean).join(" · "); $("contactPhone").textContent = "Phone: " + phone;
     $("call").href = "tel:" + phone.replace(/[^\d+]/g, ""); $("call").textContent = "Call " + phone;
     $("loading").hidden = true; $("problem").hidden = true; $("content").hidden = false;
   }
