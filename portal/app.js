@@ -4,7 +4,7 @@
 const SB_URL = "https://uwhtxhxetjbkngjypkcx.supabase.co";
 const SB_KEY = "sb_publishable_aGD67KSXQybtbagP_DJfDQ_7TaFb4gI"; // public key; every row is protected by row-level security
 // every server call gives up after 45 seconds, so a hung connection can't freeze the app
-const fetchT = (url, opts = {}) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), 45000); if (opts.signal) opts.signal.addEventListener("abort", () => c.abort()); return fetch(url, { ...opts, signal: c.signal }).finally(() => clearTimeout(t)); };
+const fetchT = (url, opts = {}) => { const c = new AbortController(); const t = setTimeout(() => c.abort(), /\/storage\/v1\/object/.test(String(url)) ? 180000 : 45000); if (opts.signal) opts.signal.addEventListener("abort", () => c.abort()); return fetch(url, { ...opts, signal: c.signal }).finally(() => clearTimeout(t)); };
 const sb = window.supabase.createClient(SB_URL, SB_KEY, { global: { fetch: fetchT } });
 const K = window.KS;
 const $ = id => document.getElementById(id);
@@ -394,6 +394,11 @@ async function flushQueue() {
         else if (it.type === "update") {
           let q = sb.from("shop_jobs").update(it.row).eq("id", it.jobId); if (it.fromStatus) q = q.eq("status", it.fromStatus);
           const { data, error } = await q.select("id"); if (error) throw error;
+          if (it.fromStatus && Array.isArray(data) && !data.length) {
+            // an earlier try may have gone through just as it timed out: already at the new stage means it's done
+            const { data: cur } = await sb.from("shop_jobs").select("status").eq("id", it.jobId).maybeSingle();
+            if (cur && cur.status === it.row.status) { await IDB.del(it.qid); did++; continue; }
+          }
           if (it.fromStatus && Array.isArray(data) && !data.length) throw new Error("Someone else changed this job while you were offline, so this change wasn't applied. Open the job to check it.");
         }
         else if (it.type === "pay") { const { error } = await sb.from("shop_payments").upsert(it.row, { onConflict: "id", ignoreDuplicates: true }); if (error) throw error; }
@@ -1309,8 +1314,8 @@ function renderMoney() {
     <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${b.n ? money(b.amt) : "—"}</div><div class="c">${b.n ? plural(b.n, "bill") : "None"}</div></button>`).join("")}</div>
     <section aria-labelledby="owedH"><h2 id="owedH">${arBucket === "all" ? "Who owes" : `${esc(BUCKETS.find(b => b.key === arBucket).label)} · ${shown.length}`}${arBucket !== "all" ? ` <button class="linkbtn" type="button" data-bucket="all" style="min-height:0;margin-left:8px;letter-spacing:0;text-transform:none">Show all ${open.length}</button>` : ""}</h2>
     <div class="list">${shown.length ? shown.map(({ j, age, bal }) => { const c = cust(j.customer_id); const lien = openLien(j.id);
-      return `<div class="row mrow" data-href="job/${j.id}"><div><div class="tline"><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>${lien ? `<a class="chip over" href="#lien/${lien.id}">Lien open</a>` : ""}<span class="amt2 num">${money(bal)}</span></div>
-        <div class="s">${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${daysSince(j.last_reminded_on) === 0 ? "today" : plural(daysSince(j.last_reminded_on), "day") + " ago"}` : ""}</div></div>
+      return `<div class="row mrow" data-href="job/${j.id}"><div><div class="tline"><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>${lien ? `<a class="chip over lchip" href="#lien/${lien.id}">Lien open</a>` : ""}<span class="amt2 num">${money(bal)}</span></div>
+        <div class="s">${lien ? `<a class="chip over lchip2" href="#lien/${lien.id}">Lien open</a> ` : ""}${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${daysSince(j.last_reminded_on) === 0 ? "today" : plural(daysSince(j.last_reminded_on), "day") + " ago"}` : ""}</div></div>
         <div class="amt num">${money(bal)}</div>
         <div class="r"><div class="acts">
           <button class="btn sm" type="button" data-act="remind" data-id="${j.id}">Reminder</button>
