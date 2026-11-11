@@ -156,9 +156,10 @@ h1, h2, .brand-name { font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-se
 .map-card { display: grid; place-items: center; align-content: center; gap: 0.6rem; text-align: center; padding: 2rem; }
 .map-card svg { width: 44px; height: 44px; fill: none; stroke: var(--rust); stroke-width: 1.8; }
 .map-card p { margin: 0; font-size: 1.15rem; }
+.mapbtn { border-color: var(--amber); color: var(--amber); background: rgba(232, 191, 87, 0.08); }
+.mapbtn:hover { background: rgba(232, 191, 87, 0.16); }
 .map-card .map-sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 0.6rem; }
-.reviews-line { margin: 0.75rem 0 0; }
-.reviews-line a { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; color: var(--amber); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+.reviews-link { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; color: var(--amber); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
 .map iframe { display: block; width: 100%; height: 100%; min-height: 22rem; border: 0; }
 @media (max-width: 899px) { .visit-grid { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .visit .cta-row .btn { flex: 1 1 100%; } .map, .map iframe { min-height: 18rem; } }
