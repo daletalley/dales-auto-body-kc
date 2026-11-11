@@ -29,6 +29,7 @@ h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size:
 .k { color: var(--muted); flex: none; }
 .v { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
 .nw { white-space: nowrap; }
+@media (max-width: 520px) { .row { flex-direction: column; gap: 2px; } .v { text-align: left; } .k { font-size: .875rem; } }
 .total { font-family: "Bebas Neue", Impact, sans-serif; font-size: 2.75rem; line-height: 1; font-variant-numeric: tabular-nums; }
 .photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 8px; }
 @media (max-width: 520px) { .photos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

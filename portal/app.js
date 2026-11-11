@@ -620,13 +620,13 @@ function renderHome() {
   const summary = [T.length ? plural(T.length, "thing") + (T.length === 1 ? " needs" : " need") + " you" : "Nothing needs you", plural(inShop, "car") + " in the shop", owedTotal ? dollars(owedTotal) + " owed" : ""].filter(Boolean).join(" · ");
   $("main").innerHTML = `
     <div class="pagehead"><div><div class="eyebrow">${esc(K.longFmt ? K.longFmt(K.TODAY) : K.fmt(K.TODAY))}</div><h1>Good ${hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}${S.isDale ? ", Dale" : ""}</h1><p class="lede">${esc(summary)}.</p></div></div>
+    <div class="quick">
+      <button class="btn primary big" type="button" data-act="new-job">+ Add a job</button>
+      <button class="btn big" type="button" data-act="pay-pick">${icon("money")}Got paid</button>
+      <button class="btn big findpill" type="button" data-act="search">${icon("search")}Find</button>
+    </div>
     <div class="today">
       <div style="display:grid;gap:28px;min-width:0">
-        <div class="quick">
-          <button class="btn primary big" type="button" data-act="new-job">+ Add a job</button>
-          <button class="btn big" type="button" data-act="pay-pick">${icon("money")}Got paid</button>
-          <button class="btn big" type="button" data-act="search">${icon("search")}Find</button>
-        </div>
         <section aria-labelledby="todoH"><h2 id="todoH">${T.length ? `To do · ${T.length}` : "To do"}</h2>
           <div class="todo">${T.length ? T.slice(0, showAllTasks ? T.length : 10).map((t, i) => taskHtml(t, i === 0)).join("") : !S.jobs.length ? `<div class="allclear"><span class="okbig">${icon("check")}</span><span>Welcome! When a car comes in, tap <b>+ Add a job</b>. Everything you need to do shows up here.</span></div>` : `<div class="allclear"><span class="okbig">${icon("check")}</span>You're all caught up. Nothing needs you right now.</div>`}</div>
           ${T.length > 10 ? `<div><button class="btn" type="button" data-act="all-tasks">${showAllTasks ? "Show only the top 10" : `Show all ${T.length}`}</button></div>` : ""}</section>
@@ -678,7 +678,7 @@ function renderJobs() {
   const active = S.jobs.filter(j => j.status !== "paid" && !writtenOff(j));
   $("main").innerHTML = `
     <div class="pagehead"><div><h1>Jobs</h1><p class="lede">${plural(active.length, "open job")}${paid.length ? ` · ${paid.length} paid` : ""}</p></div>
-      <button class="btn primary addjob" type="button" data-act="new-job">+ Add a job</button></div>
+      <button class="btn primary big addjob" type="button" data-act="new-job">+ Add a job</button></div>
     ${!S.jobs.length ? `<div class="allclear">No jobs yet. Tap <b>+ Add a job</b> when a car comes in.</div>` : `
     <div class="board cols4">${JOB_GROUPS.map(g => { const list = active.filter(g.f);
       return `<section class="lane" aria-labelledby="lane-${g.key}"><h2 id="lane-${g.key}">${esc(g.title)} <span class="count">${list.length}</span></h2><div class="hint">${esc(g.hint)}</div>
@@ -693,7 +693,7 @@ function nextJobAction(j) {
   if (j.status === "in_progress") return { title: "Working on it", label: "Work is done", act: "stage-done", help: "Tap when the repair is finished and the car is ready to go." };
   if (j.status === "done") return { title: "Give them the bill", label: "Give the bill", act: "stage-invoice", help: +j.amount ? `Price so far: ${money(j.amount)}. Tap the button, check the price, then print, text or email it.` : "Tap the button, type the price, then print, text or email it." };
   if (writtenOff(j)) return { title: "Written off", label: "Got paid after all", act: "pay", help: `You closed the lien case without payment, so this ${money(balance(j))} isn't counted on Money owed. If they pay, tap the button. To try collecting again, tap "Lien case (closed)" below, then "Reopen case".` };
-  if (j.status === "invoiced") return { title: `${money(balance(j))} still owed`, label: "Got paid", act: "pay", help: (ageDays(j) ?? 0) >= 14 ? `Bill given ${plural(ageDays(j) ?? 0, "day")} ago. A friendly reminder usually does it.` : "Tap when they pay, even part of it." };
+  if (j.status === "invoiced") return { title: "Waiting on their payment", label: "Got paid", act: "pay", help: (ageDays(j) ?? 0) >= 14 ? `Bill given ${plural(ageDays(j) ?? 0, "day")} ago. A friendly reminder usually does it.` : "Tap when they pay, even part of it." };
   return null;
 }
 function trackHtml(j) {
@@ -722,7 +722,7 @@ function renderJob(id) {
   const payLabel = billed || j.status === "done" ? "+ Got paid" : "+ Take a deposit";
   $("main").innerHTML = `
     ${backLink("jobs", "All jobs")}
-    <div class="head"><div style="min-width:0"><div class="eyebrow">${esc(c?.name || "No customer")}</div><h1>${esc(vehicleText(j))}</h1><div class="small">${esc(j.title || "")}${c?.phone ? ` · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">${esc(c.phone)}</a>` : ""}</div></div>
+    <div class="head"><div style="min-width:0"><div class="eyebrow">${esc(c?.name || "No customer")}</div><h1>${esc(vehicleText(j))}</h1><div class="small">${esc(j.title || "")}${c?.phone ? `<span class="telsep"> · </span><a class="tel" href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">${esc(c.phone)}</a>` : ""}</div></div>
       <div class="amount"><div class="l">${amtLabel}</div><div class="n">${amtVal}</div></div></div>
     ${trackHtml(j)}
     ${j.approved_at && isEst ? `<div class="notice good">${esc(j.approved_name || "The customer")} approved the estimate on ${esc(K.fmt(new Date(j.approved_at)))}.</div>` : ""}
@@ -1333,8 +1333,8 @@ async function remSend(how, j) {
 // ================= MONEY OWED =================
 const BUCKETS = [
   { key: "b0", label: "Under 30 days", test: d => d <= 30, color: "var(--good)" },
-  { key: "b30", label: "30–60 days", test: d => d > 30 && d <= 60, color: "var(--stone)" },
-  { key: "b60", label: "60–90 days", test: d => d > 60 && d <= 90, color: "var(--amber)" },
+  { key: "b30", label: "30–60 days", test: d => d > 30 && d <= 60, color: "var(--amber)" },
+  { key: "b60", label: "60–90 days", test: d => d > 60 && d <= 90, color: "#F5803A" },
   { key: "b90", label: "Over 90 days", test: d => d > 90, color: "var(--rust)" }];
 let arBucket = "all";
 function renderMoney() {
@@ -1346,7 +1346,7 @@ function renderMoney() {
   $("main").innerHTML = `
     <div class="pagehead"><div><div class="eyebrow">Money owed to the shop</div><h1>${money(total)}</h1><p class="lede">${open.length ? `On ${plural(open.length, "bill")}. Oldest first.` : "Every bill is paid."}</p></div><button class="btn primary" type="button" data-act="pay-pick">${icon("money")}Got paid</button></div>
     ${total ? `<div class="agebar" role="img" aria-label="Money owed by age">${sums.map(b => b.amt ? `<span style="width:${(b.amt / total * 100).toFixed(2)}%;background:${b.color}"></span>` : "").join("")}</div>` : ""}
-    <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${b.n ? money(b.amt) : "—"}</div><div class="c">${b.n ? plural(b.n, "bill") : "None"}</div></button>`).join("")}</div>
+    <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${money(b.amt)}</div><div class="c">${plural(b.n, "bill")}</div></button>`).join("")}</div>
     <section aria-labelledby="owedH"><h2 id="owedH">${arBucket === "all" ? "Who owes" : `${esc(BUCKETS.find(b => b.key === arBucket).label)} · ${shown.length}`}${arBucket !== "all" ? ` <button class="linkbtn" type="button" data-bucket="all" style="min-height:0;margin-left:8px;letter-spacing:0;text-transform:none">Show all ${open.length}</button>` : ""}</h2>
     <div class="list">${shown.length ? shown.map(({ j, age, bal }) => { const c = cust(j.customer_id); const lien = openLien(j.id);
       return `<div class="row mrow" data-href="job/${j.id}"><div><div class="tline"><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>${lien ? `<a class="chip over lchip" href="#lien/${lien.id}">Lien open</a>` : ""}<span class="amt2 num">${money(bal)}</span></div>
@@ -1354,7 +1354,7 @@ function renderMoney() {
         <div class="amt num">${money(bal)}</div>
         <div class="r"><div class="acts">
           <button class="btn sm" type="button" data-act="remind" data-id="${j.id}">Send reminder</button>
-          <button class="btn sm" type="button" data-act="pay" data-id="${j.id}">Got paid</button>
+          <button class="btn sm outline" type="button" data-act="pay" data-id="${j.id}">Got paid</button>
         </div></div></div>`; }).join("") : `<div class="empty">${open.length ? "Nothing in this group." : "Nobody owes the shop money. When you tap Give the bill on a job, it shows up here until it's paid."}</div>`}</div></section>
     ${(() => { const wo = S.jobs.filter(writtenOff); if (!wo.length) return ""; const t = wo.reduce((a, j) => a + balance(j), 0);
       return `<details class="panel"><summary>Written off · ${wo.length} · ${money(t)}</summary><div class="inner"><div class="hint" style="margin-bottom:10px">Bills whose lien case you closed without payment. They're not counted above. To try collecting again, open the job, tap <b>Lien case (closed)</b>, then <b>Reopen case</b>.</div>
@@ -1392,7 +1392,7 @@ function renderCustomer(id) {
   $("main").innerHTML = `
     ${backLink("customers", "All customers")}
     <div class="head"><div><div class="eyebrow">Customer</div><h1>${esc(c.name)}</h1></div><div class="amount"><div class="l">Owes</div><div class="n">${money(o)}</div></div></div>
-    <div class="quick"><button class="btn primary" type="button" data-act="new-job-for" data-id="${c.id}">+ Add a job for ${esc(c.name.split(" ")[0])}</button>
+    <div class="quick"><button class="btn primary big" type="button" data-act="new-job-for" data-id="${c.id}">+ Add a job for ${esc(c.name.split(" ")[0])}</button>
       ${tel ? `<a class="btn" href="tel:${esc(tel)}">${icon("phone")}Call</a><a class="btn" href="sms:${esc(tel)}">Text</a>` : ""}${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">Email</a>` : ""}</div>
     <div class="twocol"><div class="box"><h2 class="bh">Contact <button class="linkbtn" type="button" data-act="edit-customer" data-id="${c.id}">Edit</button></h2>
       <dl class="kv"><dt>Phone</dt><dd>${esc(c.phone || "—")}</dd><dt>Email</dt><dd>${esc(c.email || "—")}</dd><dt>Address</dt><dd>${esc(c.address || "—")}${!c.address ? `<div class="fwarn">Needed for lien letters</div>` : ""}</dd>${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}</dl></div>
@@ -1542,7 +1542,7 @@ function renderLien(id) {
     : n ? `<div class="nextcard ${st && st.cls === "over" ? "" : "calm"}"><div class="eyebrow">Step ${all.indexOf(all.find(s => s.key === n.key)) + 1} of ${all.length}</div><div class="headline">${esc(n.title)}</div>
         <div class="hint">${esc(n.detail)}${ui.help ? " " + esc(ui.help) : ""}</div>
         ${n.date ? `<div><span class="date">Due ${esc(K.fmt(n.date))}</span> <span class="chip ${st.cls}">${esc(st.txt)}</span></div>` : ""}
-        ${n.key === "notice" && !closed ? `<div class="grid">${lfield(c, "dates.saleDate", "Sale date (prints on the letter)", { suffix: "-n" }).replace('type="text"', `type="date" min="${K.iso(earliestSale(c, todayISO()) || K.TODAY)}"`)}${lfield(c, "saleTime", "Sale time", { suffix: "-n" })}</div>
+        ${n.key === "notice" && !closed ? `<div class="grid">${lfield(c, "dates.saleDate", "Sale date (prints on the letter)", { suffix: "-n" }).replace('type="text"', `type="date" min="${K.iso(earliestSale(c, todayISO()) || K.TODAY)}"`)}${lfield(c, "saleTime", "Sale time", { suffix: "-n" }).replace("<input ", '<input placeholder="10:00 AM" ')}</div>
         <div class="hint">If you mail the notice today, the earliest legal sale date is <b>${esc(K.fmt(earliestSale(c, todayISO()) || K.TODAY))}</b>.</div>` : ""}
         ${ui.doc && miss.length ? `<div class="notice bad"><b>Fill these in before sending letters:</b><div class="grid" style="margin-top:10px">${miss.map(m => lfield(c, m.path, m.label)).join("")}</div></div>` : ""}
         <div class="row2">${ui.doc ? `<button class="btn" type="button" data-act="print-doc" data-doc="${ui.doc}">Print the ${esc(K.docsFor(c).find(d => d.key === ui.doc)?.label.toLowerCase() || "letter")}</button>` : ""}
@@ -1554,7 +1554,7 @@ function renderLien(id) {
         const allS = K.steps(c); const isSk = s => s.key === "extension" && c.done.extensionSkip;
         const done = allS.filter(s => c.done[s.key] || isSk(s)); const up = allS.filter(s => !c.done[s.key] && !isSk(s) && !(n && s.key === n.key)).sort((a, b) => (all.some(x => x.key === a.key) ? 1 : 0) - (all.some(x => x.key === b.key) ? 1 : 0));
         const li = s => { const stt = K.status(c, s); const skipped = isSk(s); const num = all.indexOf(all.find(x => x.key === s.key)) + 1;
-          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span class="snum ${num ? "" : s.kind === "info" ? "note" : "cal"}" aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : num || (s.kind === "info" ? "i" : icon("calendar"))}</span>
+          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span class="snum ${num ? "" : s.kind === "info" ? "note" : "cal"}" aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : num || (s.kind === "info" ? "i" : "•")}</span>
           <div><div class="t">${esc(s.title)}</div><div class="d">${esc(s.detail)}</div>${s.cite ? `<details class="why"><summary>Why?</summary><span class="cite">${esc(s.cite)}</span></details>` : ""}
           ${(c.done[s.key] || skipped) && !closed ? `<div class="undo"><button class="linkbtn" type="button" data-act="step-undo" data-step="${s.key}">Undo</button></div>` : ""}</div>
           <div class="when">${s.kind === "info" || !s.date ? "" : `<span class="wdate">${s.kind === "after" ? "not before " : ""}${esc(K.fmt(s.date))}</span>`}<span class="chip ${skipped ? "info" : stt.cls}">${esc(skipped ? "Skipped" : stt.txt)}</span></div></li>`; };
@@ -1598,6 +1598,7 @@ function renderDocs() {
   $("docs").innerHTML = docs.map(d => `<button class="btn sm docbtn" type="button" data-doc="${d.key}" aria-pressed="${d.key === currentDoc}">${esc(d.label)}</button>`).join("");
   const text = K.renderDoc(c, currentDoc);
   $("sheet").innerHTML = esc(text).replace(/⟦(.*?)⟧/g, '<span class="ph">[$1]</span>');
+  requestAnimationFrame(() => { const sh = $("sheet"); if (!sh) return; const upd = () => sh.classList.toggle("scrolls", sh.scrollHeight > sh.clientHeight + 4 && sh.scrollTop + sh.clientHeight < sh.scrollHeight - 4); upd(); sh.onscroll = upd; });
   const n = (text.match(/⟦/g) || []).length;
   $("missing").innerHTML = n ? `${plural(n, "blank")} to fill in, highlighted. <button class="linkbtn" type="button" data-act="fill-blanks">Fill them in</button>` : "Ready to print.";
   const pb = document.querySelector(".sheetbar [data-act=print-doc]"); if (pb) pb.textContent = n ? "Print draft" : "Print";
