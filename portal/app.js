@@ -369,7 +369,7 @@ function pendingBar() {
   bar.className = "pendbar" + (bad.length ? " bad" : "");
   bar.innerHTML = bad.length
     ? `${plural(bad.length, "saved item")} couldn't upload: ${esc(bad[0].error)} <button class="linkbtn" type="button" data-act="retry-queue">Try again</button> <button class="linkbtn danger" type="button" data-act="discard-queue">Throw away</button>`
-    : (() => { const jobs = new Set(queueCache.map(i => i.jobId || i.job?.id || i.row?.job_id)).size; return `Changes to ${plural(jobs, "job")} saved on this device. ${navigator.onLine ? "Uploading…" : "They upload by themselves when the internet is back."}`; })();
+    : (() => { const jobs = new Set(queueCache.map(i => i.jobId || i.job?.id || i.row?.job_id)).size; if (queueCache.some(i => i.held)) return `Changes to ${plural(jobs, "job")} saved on this device. Some are waiting on another change to the same job.`; return `Changes to ${plural(jobs, "job")} saved on this device. ${navigator.onLine ? "Uploading…" : "They upload by themselves when the internet is back."}`; })();
 }
 let flushing = false;
 async function flushQueue() {
@@ -379,7 +379,8 @@ async function flushQueue() {
     const items = (await IDB.all()).filter(i => i.accountId === S.account.id).sort((a, b) => a.created - b.created);
     const jobOf = i => i.jobId || i.job?.id || i.row?.job_id; const held = new Set();
     for (const it of items) {
-      if (held.has(jobOf(it))) { if (!it.error) { it.error = "Held back until the change above is sorted out."; await IDB.put(it); } continue; }
+      if (it.type !== "pay" && held.has(jobOf(it))) { if (!it.held) { it.held = true; await IDB.put(it); } continue; }
+      if (it.held) { delete it.held; await IDB.put(it); }
       if (it.error) { held.add(jobOf(it)); continue; }
       try {
         if (it.type === "job") {
@@ -464,7 +465,7 @@ let curDay = new Date().toDateString();
 function dayChanged() {
   if (new Date().toDateString() === curDay) return false;
   const oldISO = todayISO(); curDay = new Date().toDateString(); K.refreshToday(); const nowISO = todayISO();
-  document.querySelectorAll('#modal input[type=date]').forEach(i => { if (i.max === oldISO) i.max = nowISO; if (i.value === oldISO && i.defaultValue === oldISO) i.value = nowISO; });
+  document.querySelectorAll('#modal input[type=date]').forEach(i => { if (i.max === oldISO) i.max = nowISO; if (i.value === oldISO && !modalDirty) i.value = nowISO; });
   if (!$("appView").hidden && $("overlay").hidden) route(true);
   return false;
 }
@@ -623,7 +624,7 @@ function renderHome() {
 
 // ================= JOBS =================
 const JOB_GROUPS = [
-  { key: "estimate", title: "Estimates", hint: "Waiting for the customer to say yes.", f: j => j.status === "estimate" },
+  { key: "estimate", title: "Estimates", hint: "Waiting on a yes.", f: j => j.status === "estimate" },
   { key: "in_progress", title: "In shop", hint: "Being worked on now.", f: j => j.status === "in_progress" },
   { key: "done", title: "Work done", hint: "Ready. Give them the bill.", f: j => j.status === "done" },
   { key: "invoiced", title: "Bill given", hint: "Waiting on their money.", f: j => j.status === "invoiced" }
@@ -946,8 +947,9 @@ async function jobUpdate(j, row) {
   return { error };
 }
 async function unqueue(qid, ifUploaded) {
+  for (let i = 0; flushing && i < 150; i++) await new Promise(r => setTimeout(r, 100));
   let still = false; try { still = (await IDB.all()).some(i => i.qid === qid); } catch (e) { /* storage blocked */ }
-  if (!still) { if (ifUploaded) return ifUploaded(); toast("That already uploaded, so it can't be undone here. Open the job to change it."); return; }
+  if (!still) { if (ifUploaded) return ifUploaded(); toast("Too late to undo here. Open the job to fix it."); return; }
   try { await IDB.del(qid); } catch (e) { /* already gone */ }
   await mergePending(); saveSnapshot(); route(true); toast("Undone.");
 }
@@ -1299,7 +1301,7 @@ function renderMoney() {
     <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${b.n ? money(b.amt) : "—"}</div><div class="c">${b.n ? plural(b.n, "bill") : "None"}</div></button>`).join("")}</div>
     <section aria-labelledby="owedH"><h2 id="owedH">${arBucket === "all" ? "Who owes" : `${esc(BUCKETS.find(b => b.key === arBucket).label)} · ${shown.length}`}${arBucket !== "all" ? ` <button class="linkbtn" type="button" data-bucket="all" style="min-height:0;margin-left:8px;letter-spacing:0;text-transform:none">Show all ${open.length}</button>` : ""}</h2>
     <div class="list">${shown.length ? shown.map(({ j, age, bal }) => { const c = cust(j.customer_id); const lien = openLien(j.id);
-      return `<div class="row mrow" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>
+      return `<div class="row mrow" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}${lien ? ` <span class="chip over">Lien open</span>` : ""}</a>
         <div class="s">${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${daysSince(j.last_reminded_on) === 0 ? "today" : plural(daysSince(j.last_reminded_on), "day") + " ago"}` : ""}${lien ? ` · <a href="#lien/${lien.id}">Lien case</a>` : ""}</div></div>
         <div class="amt num">${money(bal)}</div>
         <div class="r"><div class="acts">
@@ -1474,7 +1476,7 @@ function renderLien(id) {
       <div class="small">${job ? `From job: <a href="#job/${job.id}">${esc(job.title || vehicleText(job))}</a>` : "Not linked to a job"}</div></div>
       <div class="amount"><div class="l">Amount owed</div><div class="n">${money(c.amount)}</div></div></div>
     ${closed ? `<div class="nextcard good"><div class="headline">This case is closed</div><div class="hint">${job && job.status === "paid" ? "The customer paid in full. Print the release below and give it to them." : "Closed without payment."}</div><div class="row2"><button class="btn" type="button" data-act="reopen-lien">Reopen case</button></div></div>`
-    : n ? `<div class="nextcard ${st && st.cls === "over" ? "" : "calm"}"><div class="eyebrow">Step ${doneCount + 1} of ${all.length}</div><div class="headline">${esc(n.title)}</div>
+    : n ? `<div class="nextcard ${st && st.cls === "over" ? "" : "calm"}"><div class="eyebrow">Step ${all.indexOf(all.find(s => s.key === n.key)) + 1} of ${all.length}</div><div class="headline">${esc(n.title)}</div>
         <div class="hint">${esc(n.detail)}${ui.help ? " " + esc(ui.help) : ""}</div>
         ${n.date ? `<div><span class="date">Due ${esc(K.fmt(n.date))}</span> <span class="chip ${st.cls}">${esc(st.txt)}</span></div>` : ""}
         ${ui.doc && miss.length ? `<div class="notice bad"><b>Fill these in before sending letters:</b><div class="grid" style="margin-top:10px">${miss.map(m => lfield(c, m.path, m.label)).join("")}</div></div>` : ""}
@@ -1485,13 +1487,13 @@ function renderLien(id) {
     <div class="cols">
       <section>${(() => {
         const allS = K.steps(c); const isSk = s => s.key === "extension" && c.done.extensionSkip;
-        const done = allS.filter(s => c.done[s.key] || isSk(s)); const up = allS.filter(s => !c.done[s.key] && !isSk(s) && !(n && s.key === n.key));
-        const li = s => { const stt = K.status(c, s); const skipped = isSk(s); const num = allS.indexOf(s) + 1;
-          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span class="snum" aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : num}</span>
+        const done = allS.filter(s => c.done[s.key] || isSk(s)); const up = allS.filter(s => !c.done[s.key] && !isSk(s) && !(n && s.key === n.key)).sort((a, b) => (all.some(x => x.key === a.key) ? 1 : 0) - (all.some(x => x.key === b.key) ? 1 : 0));
+        const li = s => { const stt = K.status(c, s); const skipped = isSk(s); const num = all.indexOf(all.find(x => x.key === s.key)) + 1;
+          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span class="snum ${num ? "" : "note"}" aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : num || "i"}</span>
           <div><div class="t">${esc(s.title)}</div><div class="d">${esc(s.detail)}</div>${s.cite ? `<details class="why"><summary>Why?</summary><span class="cite">${esc(s.cite)}</span></details>` : ""}
           ${(c.done[s.key] || skipped) && !closed ? `<div class="undo"><button class="linkbtn" type="button" data-act="step-undo" data-step="${s.key}">Undo</button></div>` : ""}</div>
           <div class="when">${s.kind === "info" || !s.date ? "" : `<span class="wdate">${s.kind === "after" ? "not before " : ""}${esc(K.fmt(s.date))}</span>`}<span class="chip ${skipped ? "info" : stt.cls}">${esc(skipped ? "Skipped" : stt.txt)}</span></div></li>`; };
-        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up · ${up.length}</summary><div class="inner">${n ? `<div class="nowline"><span class="snum now" aria-hidden="true">${allS.indexOf(allS.find(s => s.key === n.key)) + 1}</span>Now: ${esc(n.title)}</div>` : ""}${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
+        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up · ${up.length}</summary><div class="inner">${n ? `<div class="nowline"><span class="snum now" aria-hidden="true">${all.indexOf(all.find(s => s.key === n.key)) + 1}</span>Now: ${esc(n.title)}</div>` : ""}${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
           <details class="panel" style="margin-top:12px"><summary>Done · ${done.length}</summary><div class="inner">${done.length ? `<ul class="steps">${done.map(li).join("")}</ul>` : `<div class="hint">No steps done yet.</div>`}</div></details>`; })()}</section>
       <section class="stick"><h2>Letters and forms</h2><div class="docs" id="docs"></div><div class="sheet" id="sheet" tabindex="0" aria-label="Document preview"></div>
         <div class="sheetbar"><button class="btn outline" type="button" data-act="print-doc">Print</button><button class="btn" type="button" data-act="copy-doc">Copy text</button><span class="small" id="missing"></span></div></section>
