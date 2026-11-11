@@ -391,6 +391,8 @@ window.addEventListener("offline", () => netState());
 window.addEventListener("online", async () => { netState(); if (!S.account) return; toast("Back online. Updating…"); await flushQueue(); await reload(); netState(); route(true); });
 setInterval(() => { if (navigator.onLine && queueCache.length && !flushing) flushQueue(); }, 30000);
 if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+let deferredInstall = null;
+window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; const b = document.getElementById("installBtn"); if (b) b.hidden = false; });
 
 // ================= routing =================
 window.addEventListener("hashchange", () => route());
@@ -502,7 +504,7 @@ let jobFind = "";
 function jobMatches(j, q) {
   if (!q) return true; const c = cust(j.customer_id) || {}; const v = j.vehicle || {};
   const d = q.replace(/\D/g, "");
-  return [c.name, vehicleText(j), j.title, v.vin, v.plate].filter(Boolean).join(" ").toLowerCase().includes(q) || (d.length >= 3 && (c.phone || "").replace(/\D/g, "").includes(d));
+  return [c.name, vehicleText(j), j.title, v.vin, v.plate, j.insurance?.claim, j.insurance?.insurer].filter(Boolean).join(" ").toLowerCase().includes(q) || (d.length >= 3 && (c.phone || "").replace(/\D/g, "").includes(d));
 }
 function jobCard(j) {
   const c = cust(j.customer_id); const ph = jobPhotos(j)[0]; const a = CARD_ACTION[j.status];
@@ -567,8 +569,9 @@ function renderJob(id) {
       ${owes(j) ? `<button class="btn" type="button" data-act="remind" data-id="${j.id}">Send reminder</button>` : ""}
       ${owes(j) && !lien ? `<button class="btn" type="button" data-act="start-lien" data-id="${j.id}">Start lien${(a ?? 0) < 30 ? " (early)" : ""}</button>` : ""}
       ${lien ? `<a class="btn" href="#lien/${lien.id}">Open lien case</a>` : ""}
+      <button class="btn" type="button" data-act="invoice" data-id="${j.id}">${j.status === "estimate" ? "Print or email estimate" : "Print or email invoice"}</button>
       ${idx > 0 && j.status !== "paid" ? `<button class="linkbtn" type="button" data-act="stage-back" data-id="${j.id}">Undo: move back to “${STAGE_LABEL[STAGES[idx - 1].k]}”</button>` : ""}</div></div>`
-    : `<div class="nextcard good"><div class="headline">Paid in full${j.paid_on ? " on " + esc(K.fmt(K.D(j.paid_on))) : ""}</div><div class="hint">Nothing left to do on this job.${anyLien ? " Its lien case is closed. Send the release from the lien case." : ""}</div>${anyLien ? `<div class="row2"><a class="btn" href="#lien/${anyLien.id}">Open lien case</a></div>` : ""}</div>`}
+    : `<div class="nextcard good"><div class="headline">Paid in full${j.paid_on ? " on " + esc(K.fmt(K.D(j.paid_on))) : ""}</div><div class="hint">Nothing left to do on this job.${anyLien ? " Its lien case is closed. Send the release from the lien case." : ""}</div><div class="row2"><button class="btn" type="button" data-act="invoice" data-id="${j.id}">Print or email receipt</button>${anyLien ? `<a class="btn" href="#lien/${anyLien.id}">Open lien case</a>` : ""}</div></div>`}
     <div class="twocol">
       <div class="box"><h3>Money <button class="linkbtn" type="button" data-act="pay" data-id="${j.id}" ${j.status === "paid" ? "hidden" : ""}>+ Add payment</button></h3>
         <dl class="kv"><dt>Total</dt><dd>${+j.amount ? money(j.amount) : `<button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Enter the total</button>`}</dd>
@@ -582,6 +585,7 @@ function renderJob(id) {
           ${j.kind === "property" ? `<dt>Address</dt><dd>${esc(p.address || "—")}</dd><dt>County</dt><dd>${esc(p.county || "—")}</dd>`
           : `<dt>${j.kind === "equipment" ? "Equipment" : "Vehicle"}</dt><dd>${esc([v.year, v.make, v.model].filter(Boolean).join(" ") || "—")}</dd><dt>${j.kind === "equipment" ? "Serial" : "VIN"}</dt><dd>${esc(v.vin || "—")}</dd><dt>Plate</dt><dd>${esc(v.plate || "—")}</dd>`}
           <dt>Work</dt><dd>${esc(j.title || "—")}${j.description ? `<div class="small">${esc(j.description)}</div>` : ""}</dd>
+          ${j.insurance && (j.insurance.insurer || j.insurance.claim) ? `<dt>Insurance</dt><dd>${esc([j.insurance.insurer, j.insurance.claim && "Claim #" + j.insurance.claim].filter(Boolean).join(" · "))}${j.insurance.adjuster ? `<div class="small">Adjuster: ${esc([j.insurance.adjuster, j.insurance.adjuster_phone].filter(Boolean).join(" · "))}</div>` : ""}${+j.insurance.deductible ? `<div class="small">Deductible: ${money(j.insurance.deductible)}</div>` : ""}</dd>` : ""}
           <dt>Work done</dt><dd>${j.completed_on ? esc(K.fmt(K.D(j.completed_on))) : "—"}</dd><dt>Invoiced</dt><dd>${j.invoiced_on ? esc(K.fmt(K.D(j.invoiced_on))) : "—"}</dd>
         </dl>
         <div><button class="linkbtn danger" type="button" data-act="del-job" data-id="${j.id}">Delete this job</button></div></div>
@@ -624,6 +628,8 @@ function newJob(preCustomerId) {
       <div class="field"><label for="ajPlate">Plate</label><input id="ajPlate"></div>
       <div class="field"><label for="ajEmail">Email</label><input id="ajEmail" type="email"></div>
       <div class="field wide"><label for="ajAddr">Customer's mailing address</label><input id="ajAddr" placeholder="Street, city, state ZIP"></div>
+      <div class="field"><label for="ajIns">Insurance company</label><input id="ajIns" placeholder="If it's an insurance job"></div>
+      <div class="field"><label for="ajClaim">Claim #</label><input id="ajClaim"></div>
       <div class="field wide"><label for="ajNotes">Notes</label><textarea id="ajNotes" rows="2"></textarea></div></div></details>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary big" type="submit">Save job</button></div>
   </div></form>`);
@@ -683,7 +689,8 @@ async function saveNewJob(btn) {
     const jobId = uuid(); let customer = null; let customerId = AJ.customerId;
     if (!customerId) { customerId = uuid(); customer = { id: customerId, account_id: S.account.id, name: nm, phone: fmtPhone(phone), email, address: val("ajAddr"), notes: "" }; }
     const job = { id: jobId, account_id: S.account.id, customer_id: customerId, kind: "vehicle", title: val("ajWork") || "Estimate", description: val("ajNotes"),
-      vehicle: { year: car.year, make: car.make, model: car.model, vin: vin.value || "", plate: val("ajPlate") }, property: {}, amount: amt, status: AJ.start };
+      vehicle: { year: car.year, make: car.make, model: car.model, vin: vin.value || "", plate: val("ajPlate") }, property: {}, amount: amt, status: AJ.start,
+      insurance: (val("ajIns") || val("ajClaim")) ? { insurer: val("ajIns"), claim: val("ajClaim") } : {} };
     try { await enqueue({ type: "job", customer, job, photos: AJ.photos }); }
     catch (ex) { toast("Couldn't save on this device: " + friendly(ex)); return; }
     await closeModal(true); go("job/" + jobId);
@@ -738,6 +745,13 @@ function editJob(j) {
       : `<div class="field wide"><label class="req" for="ejAddr">Property address</label><input id="ejAddr" value="${esc(p.address || "")}"></div>
         <div class="field"><label for="ejCounty">County</label><input id="ejCounty" value="${esc(p.county || "")}"></div>
         <div class="field check"><input type="checkbox" id="ejRes" ${p.residential ? "checked" : ""}><label for="ejRes">Residential</label></div>`}
+      <div class="grouplabel">Insurance (if any)</div>
+      <div class="field"><label for="ejIns">Insurance company</label><input id="ejIns" value="${esc(j.insurance?.insurer || "")}"></div>
+      <div class="field"><label for="ejClaim">Claim #</label><input id="ejClaim" value="${esc(j.insurance?.claim || "")}"></div>
+      <div class="field"><label for="ejAdj">Adjuster</label><input id="ejAdj" value="${esc(j.insurance?.adjuster || "")}"></div>
+      <div class="field"><label for="ejAdjPh">Adjuster phone</label><input id="ejAdjPh" type="tel" value="${esc(j.insurance?.adjuster_phone || "")}"></div>
+      <div class="field"><label for="ejDed">Deductible ($)</label><input id="ejDed" inputmode="decimal" value="${esc(j.insurance?.deductible || "")}"></div>
+      <div class="grouplabel">Work</div>
       <div class="field wide"><label class="req" for="ejTitle">Short description</label><input id="ejTitle" value="${esc(j.title || "")}"></div>
       <div class="field wide"><label for="ejDesc">Notes</label><textarea id="ejDesc" rows="2">${esc(j.description || "")}</textarea></div>
       <div class="field"><label for="ejAmt">Total ($)</label><input id="ejAmt" inputmode="decimal" value="${esc(j.amount ?? "")}">${+j.amount_paid ? `<div class="hint">${money(j.amount_paid)} has been paid, so the total can't go below that.</div>` : ""}</div>
@@ -757,10 +771,13 @@ function editJob(j) {
     if ($("ejVin")) { const r = vinCheck(val("ejVin")); if (!r.ok) { fieldErr("ejVin", r.msg); ok = false; } vin = r.value || ""; }
     if ($("ejYear") && val("ejYear") && !/^\d{4}$/.test(val("ejYear"))) { fieldErr("ejYear", "Use a 4-digit year."); ok = false; }
     if ($("ejAddr") && !val("ejAddr")) { fieldErr("ejAddr", "Enter the property address."); ok = false; }
+    const ded = parseMoney(val("ejDed")); if (Number.isNaN(ded)) { fieldErr("ejDed", "Use a dollar amount."); ok = false; } else fieldErr("ejDed", "");
+    if (!phoneOk(val("ejAdjPh"))) { fieldErr("ejAdjPh", "Phone numbers have 10 digits."); ok = false; } else fieldErr("ejAdjPh", "");
     if ($("ejDone") && !dateRule("ejDone", { required: true })) ok = false;
     if ($("ejInv") && !dateRule("ejInv", { required: true, min: val("ejDone") || null, minLabel: "the day the work was done" })) ok = false;
     if (!ok) return;
-    const row = { customer_id: $("ejCust").value || null, title: val("ejTitle"), description: val("ejDesc"), amount: amt };
+    const row = { customer_id: $("ejCust").value || null, title: val("ejTitle"), description: val("ejDesc"), amount: amt,
+      insurance: { insurer: val("ejIns"), claim: val("ejClaim"), adjuster: val("ejAdj"), adjuster_phone: fmtPhone(val("ejAdjPh")), deductible: parseMoney(val("ejDed")) ?? "" } };
     if (j.kind !== "property") row.vehicle = { year: val("ejYear"), make: val("ejMake"), model: val("ejModel"), plate: val("ejPlate"), vin };
     else row.property = { ...p, address: val("ejAddr"), county: val("ejCounty"), residential: $("ejRes").checked };
     if ($("ejDone")) row.completed_on = val("ejDone"); if ($("ejInv")) row.invoiced_on = val("ejInv");
@@ -885,6 +902,74 @@ async function voidPayment(id, skipConfirm) {
   await reload(); route(true); toast("Payment undone.");
 }
 
+// ---- email (Resend via the shop-email function; falls back to the phone's mail app) ----
+async function sendEmail(to, subject, text) {
+  const { error } = await sb.functions.invoke("shop-email", { body: { to, subject, text } });
+  if (!error) return { ok: true };
+  let msg = error.message || "";
+  try { const b = await error.context?.json?.(); if (b?.error) msg = b.error; } catch (e) { /* not JSON */ }
+  if (/not_configured/.test(msg) || /404|not found/i.test(msg)) return { notConfigured: true };
+  throw new Error(msg);
+}
+async function emailOrMailto(to, subject, text) {
+  try { const r = await sendEmail(to, subject, text); if (r.ok) { toast(`Emailed to ${to}.`); return true; } }
+  catch (ex) { toast(friendly(ex) + " Opening your email app instead."); }
+  location.href = `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
+  return false;
+}
+
+// ---- invoice / estimate ----
+function invoiceText(j) {
+  const c = cust(j.customer_id) || {}; const v = j.vehicle || {}; const ins = j.insurance || {}; const a = S.account;
+  const isEst = j.status === "estimate"; const pays = jobPays(j).filter(p => !p.voided);
+  const L = [];
+  L.push(a.name.toUpperCase(), a.address, a.phone, "", `${isEst ? "ESTIMATE" : "INVOICE"}  ·  ${K.longFmt(K.TODAY)}`, "");
+  L.push("Customer:  " + (c.name || "—")); if (c.address) L.push("           " + c.address); if (c.phone) L.push("           " + c.phone);
+  L.push("", "Vehicle:   " + (vehicleText(j) || "—")); if (v.vin) L.push("VIN:       " + v.vin); if (v.plate) L.push("Plate:     " + v.plate);
+  if (ins.insurer || ins.claim) L.push("", "Insurance: " + [ins.insurer, ins.claim && "Claim #" + ins.claim].filter(Boolean).join(" · "));
+  L.push("", "Work:      " + (j.title || "—")); if (j.description) L.push(j.description);
+  L.push("", "—".repeat(36));
+  L.push(`${isEst ? "Estimate total" : "Total"}:  ${+j.amount ? money(j.amount) : "to be determined"}`);
+  if (!isEst && pays.length) { pays.forEach(p => L.push(`Paid ${K.fmt(K.D(p.paid_on))} (${METHODS[p.method]}):  ${money(p.amount)}`)); }
+  if (!isEst && +j.amount) L.push(`BALANCE DUE:  ${money(balance(j))}`);
+  L.push("—".repeat(36), "", isEst ? "This estimate is good for 30 days. Hidden damage found during repair may change the price; we'll call you first." : (balance(j) > 0 ? `Please pay at the shop or call ${a.phone}.` : "Paid in full. Thank you!"), "", "Thank you for choosing " + a.name + ".");
+  return L.join("\n");
+}
+function printText(title, text) {
+  const w = window.open("", "_blank");
+  if (!w) { toast("Your browser blocked the print window. Allow pop-ups for daleskc.com."); return; }
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font:15px/1.6 Georgia,"Times New Roman",serif;color:#111;max-width:7in;margin:0.8in auto;white-space:pre-wrap}@page{margin:0.7in}@media print{body{margin:0}}</style></head><body>${esc(text)}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(() => w.print(), 250);
+}
+function invoiceModal(j) {
+  const c = cust(j.customer_id) || {}; const isEst = j.status === "estimate"; const kind = isEst ? "estimate" : "invoice";
+  openModal(`<div style="display:grid;gap:14px"><h2>${isEst ? "Estimate" : "Invoice"}</h2>
+    <div class="sheet" style="max-height:50vh">${esc(invoiceText(j))}</div>
+    ${!+j.amount ? `<div class="notice">No price on this job yet. <button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Add the price</button></div>` : ""}
+    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close" style="margin-right:auto">Close</button>
+      ${c.email ? `<button class="btn" type="button" data-act="email-invoice" data-id="${j.id}">Email to ${esc(c.email)}</button>` : `<span class="small">Add the customer's email to send it.</span>`}
+      <button class="btn primary" type="button" data-act="print-invoice" data-id="${j.id}">Print ${kind}</button></div></div>`);
+}
+
+// ---- backups ----
+function csvDownload(name, rows) {
+  const cell = v => { const t = v == null ? "" : String(v); return /[",\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t; };
+  const text = "﻿" + rows.map(r => r.map(cell).join(",")).join("\r\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type: "text/csv" })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function backup(kind) {
+  const d = todayISO();
+  if (kind === "jobs") csvDownload(`dales-jobs-${d}.csv`, [["Customer", "Phone", "Year", "Make", "Model", "VIN", "Plate", "Work", "Stage", "Total", "Paid", "Owed", "Work done", "Invoiced", "Paid in full", "Insurer", "Claim #", "Created"],
+    ...S.jobs.filter(j => !j._pending).map(j => { const c = cust(j.customer_id) || {}; const v = j.vehicle || {}; const i = j.insurance || {};
+      return [c.name, c.phone, v.year, v.make, v.model, v.vin, v.plate, j.title, STAGE_LABEL[j.status], j.amount, j.amount_paid, balance(j), j.completed_on, j.invoiced_on, j.paid_on, i.insurer, i.claim, (j.created_at || "").slice(0, 10)]; })]);
+  if (kind === "customers") csvDownload(`dales-customers-${d}.csv`, [["Name", "Phone", "Email", "Address", "Notes", "Jobs", "Owes"],
+    ...S.customers.filter(c => !c._pending).map(c => { const js = S.jobs.filter(j => j.customer_id === c.id); return [c.name, c.phone, c.email, c.address, c.notes, js.length, js.filter(owes).reduce((a, j) => a + balance(j), 0)]; })]);
+  if (kind === "payments") csvDownload(`dales-payments-${d}.csv`, [["Date", "Customer", "Car", "Amount", "How", "Note", "Undone"],
+    ...S.payments.map(p => { const j = jobById(p.job_id) || {}; return [p.paid_on, cust(j.customer_id)?.name, j.id ? vehicleText(j) : "", p.amount, METHODS[p.method], p.note, p.voided ? "yes" : ""]; })]);
+  toast("Downloading. Open it with Excel, Numbers or Google Sheets.");
+}
+
 // ---- reminders ----
 function reminderText(j) {
   const c = cust(j.customer_id) || {}; const a = ageDays(j) ?? 0; const first = (c.name || "").split(" ")[0] || "there";
@@ -907,7 +992,7 @@ async function remSend(how, j) {
   const c = cust(j.customer_id) || {}; const text = $("remText").value;
   if (how === "copy") { try { await navigator.clipboard.writeText(text); toast("Copied. Paste it into a text or email."); } catch { $("remText").select(); toast("Selected. Press Ctrl+C or ⌘C to copy."); } }
   if (how === "sms") location.href = `sms:${c.phone.replace(/[^\d+]/g, "")}?&body=${encodeURIComponent(text)}`;
-  if (how === "email") location.href = `mailto:${c.email}?subject=${encodeURIComponent("Balance due: " + S.account.name)}&body=${encodeURIComponent(text)}`;
+  if (how === "email") await emailOrMailto(c.email, "Balance due: " + S.account.name, text);
   await sb.from("shop_jobs").update({ last_reminded_on: todayISO() }).eq("id", j.id);
   j.last_reminded_on = todayISO(); modalDirty = false;
 }
@@ -1279,6 +1364,11 @@ function renderSettings() {
           ${S.invites.filter(i => i.active).map(i => `<div class="pay" style="padding:10px 12px"><div>${esc(i.email)} <span class="small">· invited, hasn't signed in yet</span></div><button class="linkbtn danger" type="button" data-act="rm-invite" data-id="${esc(i.email)}">Cancel</button></div>`).join("")}</div>
         ${S.isOwner ? `<form id="invForm" novalidate style="display:grid;gap:8px"><div class="field"><label for="invEmail">Add someone by email</label><input id="invEmail" type="email" placeholder="name@gmail.com"></div><div><button class="btn" type="submit">Add to team</button></div>
           <div class="hint">Then tell them to go to daleskc.com/portal and tap “Create your login” with that same email.</div></form>` : ""}</div>
+      <div class="box"><h3>Backup</h3><div class="hint">Download everything as spreadsheets to keep a copy. The shop's data is also backed up automatically every day.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="backup" data-id="jobs">Jobs</button><button class="btn" type="button" data-act="backup" data-id="customers">Customers</button><button class="btn" type="button" data-act="backup" data-id="payments">Payments</button></div></div>
+      <div class="box"><h3>Put it on your phone</h3>
+        <div class="hint"><b>iPhone:</b> open daleskc.com/portal in Safari, tap the Share button (square with an arrow), then <b>Add to Home Screen</b>.<br><b>Android:</b> open it in Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</div>
+        <div><button class="btn" type="button" data-act="install" id="installBtn" ${deferredInstall ? "" : "hidden"}>Install the shop app</button></div></div>
       <form class="box" id="pwForm" novalidate><h3>Your login</h3><div class="hint">Signed in as <b>${esc(S.user.email)}</b></div>
         <div class="field"><label for="pw1">New password</label><input id="pw1" type="password" autocomplete="new-password"></div>
         <div class="field"><label for="pw2">Type it again</label><input id="pw2" type="password" autocomplete="new-password"></div>
@@ -1331,12 +1421,17 @@ document.addEventListener("click", async e => {
   if (t.dataset.viewphoto) { const p = S.photos.find(x => x.id === t.dataset.viewphoto); if (p) viewPhoto(p); return; }
   const act = t.dataset.act; if (!act) return;
   const j = id ? jobById(id) : null;
-  const OFFLINE_OK = new Set(["close", "new-job", "new-job-for", "find", "aj-unpick", "clear-find", "print-doc", "copy-doc", "retry-queue", "discard-queue"]);
+  const OFFLINE_OK = new Set(["close", "new-job", "new-job-for", "find", "aj-unpick", "clear-find", "print-doc", "copy-doc", "retry-queue", "discard-queue", "invoice", "print-invoice", "backup", "install"]);
   if (!navigator.onLine && !OFFLINE_OK.has(act)) { toast("You're offline. That needs internet. Adding jobs and photos still works."); return; }
   if (j && j._pending && !OFFLINE_OK.has(act)) { toast("This job is still uploading. Try again in a minute."); return; }
   switch (act) {
     case "close": e.preventDefault(); if (t.tagName === "A") { await closeModal(true); location.hash = t.getAttribute("href").slice(1); } else closeModal(); return;
     case "new-job": return newJob();
+    case "invoice": return j && invoiceModal(j);
+    case "print-invoice": return j && printText((j.status === "estimate" ? "Estimate" : "Invoice") + " - " + (cust(j.customer_id)?.name || ""), invoiceText(j));
+    case "email-invoice": { if (!j) return; const c = cust(j.customer_id); if (!c?.email) return; return busy(t, () => emailOrMailto(c.email, `${j.status === "estimate" ? "Estimate" : "Invoice"} from ${S.account.name}: ${vehicleText(j)}`, invoiceText(j))); }
+    case "backup": return backup(id);
+    case "install": if (deferredInstall) { deferredInstall.prompt(); deferredInstall = null; t.hidden = true; } return;
     case "aj-unpick": return ajUnpick();
     case "clear-find": jobFind = ""; return renderJobs();
     case "del-photo": { const p = S.photos.find(x => x.id === id); return p && deletePhoto(p); }
