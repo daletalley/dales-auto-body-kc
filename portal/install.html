@@ -113,7 +113,14 @@ ol li::before { content: counter(s); width: 38px; height: 38px; border-radius: 5
     deferred.prompt(); const r = await deferred.userChoice.catch(() => null); deferred = null;
     if (r && r.outcome === "accepted") { $("promptCard").hidden = true; show("already"); }
   });
-  if (iOS) { if (safari) { show("iosCard"); $("arrow").hidden = false; } else show("iosOther"); }
+  if (iOS) {
+    show("iosCard");
+    if (safari) $("arrow").hidden = false;
+    else {
+      $("iosCard").querySelector(".note").innerHTML = "In Chrome, the <b>Share</b> button is at the <b>top right</b> next to the address. Don't see <b>Add to Home Screen</b>? Open this page in <b>Safari</b> instead.";
+      show("iosOther");
+    }
+  }
   else {
     // give Chrome/Edge a moment to offer its install prompt before showing manual steps
     setTimeout(() => {
