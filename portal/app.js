@@ -187,7 +187,7 @@ const jobName = j => `${cust(j.customer_id)?.name || "No customer"} · ${vehicle
 function stageChip(j) {
   if (j.status === "paid") return `<span class="chip paid">Paid</span>`;
   if (j.status === "done") return `<span class="chip soon">Needs a bill</span>`;
-  if (owes(j)) { const a = ageDays(j) ?? 0; return `<span class="chip ${a >= 30 ? "over" : "soon"}">${a >= 30 ? `${plural(a, "day")} unpaid` : "Waiting on money"}</span>`; }
+  if (owes(j)) { const a = ageDays(j) ?? 0; return `<span class="chip ${a >= 30 ? "over" : "up"}">${a >= 30 ? `${plural(a, "day")} unpaid` : a === 0 ? "Billed today" : plural(a, "day")}</span>`; }
   return `<span class="chip up">${esc(STAGE_LABEL[j.status])}</span>`;
 }
 
@@ -369,7 +369,7 @@ function pendingBar() {
   bar.className = "pendbar" + (bad.length ? " bad" : "");
   bar.innerHTML = bad.length
     ? `${plural(bad.length, "saved item")} couldn't upload: ${esc(bad[0].error)} <button class="linkbtn" type="button" data-act="retry-queue">Try again</button> <button class="linkbtn danger" type="button" data-act="discard-queue">Throw away</button>`
-    : `${plural(n, "change")} saved on this device. ${navigator.onLine ? "Uploading…" : "They upload by themselves when the internet is back."}`;
+    : (() => { const jobs = new Set(queueCache.map(i => i.jobId || i.job?.id || i.row?.job_id)).size; return `Changes to ${plural(jobs, "job")} saved on this device. ${navigator.onLine ? "Uploading…" : "They upload by themselves when the internet is back."}`; })();
 }
 let flushing = false;
 async function flushQueue() {
@@ -377,7 +377,10 @@ async function flushQueue() {
   flushing = true; let did = 0;
   try {
     const items = (await IDB.all()).filter(i => i.accountId === S.account.id).sort((a, b) => a.created - b.created);
+    const jobOf = i => i.jobId || i.job?.id || i.row?.job_id; const held = new Set();
     for (const it of items) {
+      if (held.has(jobOf(it))) { if (!it.error) { it.error = "Held back until the change above is sorted out."; await IDB.put(it); } continue; }
+      if (it.error) { held.add(jobOf(it)); continue; }
       try {
         if (it.type === "job") {
           if (it.customer) { const { error } = await sb.from("shop_customers").upsert(it.customer, { onConflict: "id", ignoreDuplicates: true }); if (error) throw error; }
@@ -393,7 +396,7 @@ async function flushQueue() {
         await IDB.del(it.qid); did++;
       } catch (ex) {
         if (isNetErr(ex)) break; // try again when back online
-        it.error = friendly(ex); await IDB.put(it); // real problem: show it, don't loop
+        it.error = friendly(ex); await IDB.put(it); held.add(jobOf(it)); // real problem: show it, don't loop
       }
     }
   } catch (ex) { /* device storage unavailable */ }
@@ -460,7 +463,8 @@ document.addEventListener("visibilitychange", async () => {
 let curDay = new Date().toDateString();
 function dayChanged() {
   if (new Date().toDateString() === curDay) return false;
-  curDay = new Date().toDateString(); K.refreshToday();
+  const oldISO = todayISO(); curDay = new Date().toDateString(); K.refreshToday(); const nowISO = todayISO();
+  document.querySelectorAll('#modal input[type=date]').forEach(i => { if (i.max === oldISO) i.max = nowISO; if (i.value === oldISO && i.defaultValue === oldISO) i.value = nowISO; });
   if (!$("appView").hidden && $("overlay").hidden) route(true);
   return false;
 }
@@ -668,7 +672,7 @@ function nextJobAction(j) {
 }
 function trackHtml(j) {
   const idx = STAGES.findIndex(s => s.k === j.status);
-  return `<ol class="track" aria-label="Job progress">${STAGES.map((s, i) => `<li class="${i < idx || j.status === "paid" ? "done" : i === idx ? "now" : ""}" ${i === idx ? 'aria-current="step"' : ""}><span class="dot" aria-hidden="true">${i < idx || j.status === "paid" ? "✓" : i + 1}</span><span class="tl">${s.label}</span>${i < idx || j.status === "paid" ? '<span class="sr">(done)</span>' : ""}</li>`).join("")}</ol>`;
+  return `<ol class="track" aria-label="Job progress">${STAGES.map((s, i) => `<li class="${i < idx || j.status === "paid" ? "done" : i === idx ? "now" : ""}" ${i === idx ? 'aria-current="step"' : ""}><span class="dot" aria-hidden="true">${i < idx || j.status === "paid" ? "✓" : i + 1}</span><span class="tl">${s.k === "done" ? `<span class="lg">${s.label}</span><span class="sh">Done</span>` : s.label}</span>${i < idx || j.status === "paid" ? '<span class="sr">(done)</span>' : ""}</li>`).join("")}</ol>`;
 }
 function renderJob(id) {
   const j = jobById(id);
@@ -941,7 +945,9 @@ async function jobUpdate(j, row) {
   if (error && isNetErr(error)) return queue();
   return { error };
 }
-async function unqueue(qid) {
+async function unqueue(qid, ifUploaded) {
+  let still = false; try { still = (await IDB.all()).some(i => i.qid === qid); } catch (e) { /* storage blocked */ }
+  if (!still) { if (ifUploaded) return ifUploaded(); toast("That already uploaded, so it can't be undone here. Open the job to change it."); return; }
   try { await IDB.del(qid); } catch (e) { /* already gone */ }
   await mergePending(); saveSnapshot(); route(true); toast("Undone.");
 }
@@ -949,15 +955,17 @@ async function setStage(j, row, msg, undoRow) {
   const before = { status: j.status, updated_at: j.updated_at };
   const r = await jobUpdate(j, row);
   if (r.error) { toast(friendly(r.error)); return false; }
-  if (r.queued) { route(true); toast(msg + " Will upload when online.", { label: "Undo", run: () => unqueue(r.qid) }, { ok: true }); return true; }
-  await reload(); route(true);
-  toast(msg, undoRow ? { label: "Undo", run: async () => {
+  const onlineUndo = async () => {
+    if (navigator.onLine) await reload();
     const now = jobById(j.id);
     if (!now || now.status !== row.status) { toast("That job has changed since, so there's nothing to undo."); return; }
-    const { error } = await sb.from("shop_jobs").update(undoRow).eq("id", j.id);
-    if (error) return toast(friendly(error));
-    await reload(); route(true); toast(`Undone. Back to “${STAGE_LABEL[before.status]}”.`);
-  } } : null, { ok: true });
+    const r2 = await jobUpdate(now, undoRow);
+    if (r2.error) return toast(friendly(r2.error));
+    if (!r2.queued) await reload(); route(true); toast(`Undone. Back to “${STAGE_LABEL[before.status]}”.`);
+  };
+  if (r.queued) { route(true); toast(msg + " Will upload when online.", { label: "Undo", run: () => unqueue(r.qid, undoRow ? onlineUndo : null) }, { ok: true }); return true; }
+  await reload(); route(true);
+  toast(msg, undoRow ? { label: "Undo", run: onlineUndo } : null, { ok: true });
   return true;
 }
 function stageDone(j) {
@@ -1065,7 +1073,7 @@ function payModal(j) {
       const nj = jobById(j.id);
       const left = nj ? balance(nj) : 0;
       toast((nj?.status === "paid" ? (wasLien && !queued ? "Paid in full. The lien case closed itself. Print the release from the lien case." : "Paid in full. Nice work.") : `Payment saved. ${money(left)} left.`) + (queued ? " Will upload when online." : ""),
-        { label: "Undo", run: () => queued ? unqueue(qid) : voidPayment(row.id, true) }, { ok: true });
+        { label: "Undo", run: () => queued ? unqueue(qid, async () => { await reload(); return voidPayment(row.id, true); }) : voidPayment(row.id, true) }, { ok: true });
     });
   });
 }
@@ -1249,18 +1257,20 @@ let askedReminder = null;
 async function askReminderSent() {
   const j = askedReminder && jobById(askedReminder); askedReminder = null; if (!j) return;
   const c = cust(j.customer_id) || {};
-  if (await confirmBox({ title: "Did the reminder go out?", body: `Tap Yes if you sent it to ${esc(c.name || "the customer")}. That way the app knows not to nag you for a week.`, ok: "Yes, I sent it", cancel: "No" })) { await markReminded(j); route(true); toast("Logged as reminded today.", null, { ok: true }); }
+  if (await confirmBox({ title: "Did the reminder go out?", body: `Tap Yes if you sent it to ${esc(c.name || "the customer")}. That way the app knows not to nag you for a week.`, ok: "Yes, I sent it", cancel: "No" })) { if (await markReminded(j)) { route(true); toast("Logged as reminded today.", null, { ok: true }); } }
 }
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && askedReminder) setTimeout(askReminderSent, 300); });
 async function markReminded(j) {
-  const { error } = await sb.from("shop_jobs").update({ last_reminded_on: todayISO() }).eq("id", j.id);
-  if (!error) j.last_reminded_on = todayISO();
+  const r = await jobUpdate(j, { last_reminded_on: todayISO() });
+  if (r.error) { toast("Couldn't log the reminder: " + friendly(r.error)); return false; }
+  if (!r.queued) j.last_reminded_on = todayISO();
+  return true;
 }
 async function remSend(how, j) {
   const c = cust(j.customer_id) || {}; const text = $("remText").value; modalDirty = false;
   if (how === "copy") {
     let copied = true; try { await navigator.clipboard.writeText(text); } catch { copied = false; $("remText").select(); }
-    toast(copied ? "Copied. Paste it into a text or email." : "Selected. Press Ctrl+C or ⌘C to copy it.", { label: "I sent it", run: async () => { await markReminded(j); route(true); toast("Logged as reminded today.", null, { ok: true }); } });
+    toast(copied ? "Copied. Paste it into a text or email." : "Selected. Press Ctrl+C or ⌘C to copy it.", { label: "I sent it", run: async () => { if (await markReminded(j)) { route(true); toast("Logged as reminded today.", null, { ok: true }); } } });
     return;
   }
   if (how === "email") { const sent = await emailOrMailto(c.email, "Balance due: " + S.account.name, text); if (sent) { await markReminded(j); await closeModal(true); route(true); return; } }
@@ -1286,16 +1296,15 @@ function renderMoney() {
   $("main").innerHTML = `
     <div class="pagehead"><div><div class="eyebrow">Money owed to the shop</div><h1>${money(total)}</h1><p class="lede">${open.length ? `On ${plural(open.length, "bill")}. Oldest first.` : "Every bill is paid."}</p></div><button class="btn primary" type="button" data-act="pay-pick">${icon("money")}Got paid</button></div>
     ${total ? `<div class="agebar" role="img" aria-label="Money owed by age">${sums.map(b => b.amt ? `<span style="width:${(b.amt / total * 100).toFixed(2)}%;background:${b.color}"></span>` : "").join("")}</div>` : ""}
-    <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${money(b.amt)}</div><div class="c">${plural(b.n, "bill")}</div></button>`).join("")}</div>
+    <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${b.n ? money(b.amt) : "—"}</div><div class="c">${b.n ? plural(b.n, "bill") : "None"}</div></button>`).join("")}</div>
     <section aria-labelledby="owedH"><h2 id="owedH">${arBucket === "all" ? "Who owes" : `${esc(BUCKETS.find(b => b.key === arBucket).label)} · ${shown.length}`}${arBucket !== "all" ? ` <button class="linkbtn" type="button" data-bucket="all" style="min-height:0;margin-left:8px;letter-spacing:0;text-transform:none">Show all ${open.length}</button>` : ""}</h2>
     <div class="list">${shown.length ? shown.map(({ j, age, bal }) => { const c = cust(j.customer_id); const lien = openLien(j.id);
       return `<div class="row mrow" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>
-        <div class="s">${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${esc(K.fmt(K.D(j.last_reminded_on)))}` : ""}</div></div>
+        <div class="s">${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${daysSince(j.last_reminded_on) === 0 ? "today" : plural(daysSince(j.last_reminded_on), "day") + " ago"}` : ""}${lien ? ` · <a href="#lien/${lien.id}">Lien case</a>` : ""}</div></div>
         <div class="amt num">${money(bal)}</div>
         <div class="r"><div class="acts">
           <button class="btn sm" type="button" data-act="remind" data-id="${j.id}">Reminder</button>
           <button class="btn sm" type="button" data-act="pay" data-id="${j.id}">Got paid</button>
-          ${lien ? `<a class="btn sm" href="#lien/${lien.id}">Lien case</a>` : ""}
         </div></div></div>`; }).join("") : `<div class="empty">${open.length ? "Nothing in this group." : "Nobody owes the shop money. When you tap Bill given on a job, it shows up here until it's paid."}</div>`}</div></section>
     ${unb.length ? `<section aria-labelledby="unbH"><h2 id="unbH">Not billed yet · ${unb.length}${unbTotal ? ` · ${money(unbTotal)}` : ""}</h2><div class="hint" style="margin:-6px 0 12px">Work is done but they don't have the bill yet, so it isn't counted above.</div>
       <div class="list">${unb.map(j => `<div class="row" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(cust(j.customer_id)?.name || "No customer")}</a><div class="s">${esc(vehicleText(j))}${+j.amount ? " · " + money(j.amount) : " · no price yet"}${j.completed_on ? " · done " + esc(K.fmt(K.D(j.completed_on))) : ""}</div></div>
@@ -1477,12 +1486,12 @@ function renderLien(id) {
       <section>${(() => {
         const allS = K.steps(c); const isSk = s => s.key === "extension" && c.done.extensionSkip;
         const done = allS.filter(s => c.done[s.key] || isSk(s)); const up = allS.filter(s => !c.done[s.key] && !isSk(s) && !(n && s.key === n.key));
-        const li = s => { const stt = K.status(c, s); const skipped = isSk(s);
-          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : "○"}</span>
+        const li = s => { const stt = K.status(c, s); const skipped = isSk(s); const num = allS.indexOf(s) + 1;
+          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span class="snum" aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : num}</span>
           <div><div class="t">${esc(s.title)}</div><div class="d">${esc(s.detail)}</div>${s.cite ? `<details class="why"><summary>Why?</summary><span class="cite">${esc(s.cite)}</span></details>` : ""}
           ${(c.done[s.key] || skipped) && !closed ? `<div class="undo"><button class="linkbtn" type="button" data-act="step-undo" data-step="${s.key}">Undo</button></div>` : ""}</div>
           <div class="when">${s.kind === "info" || !s.date ? "" : `<span class="wdate">${s.kind === "after" ? "not before " : ""}${esc(K.fmt(s.date))}</span>`}<span class="chip ${skipped ? "info" : stt.cls}">${esc(skipped ? "Skipped" : stt.txt)}</span></div></li>`; };
-        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up · ${up.length}</summary><div class="inner">${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
+        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up · ${up.length}</summary><div class="inner">${n ? `<div class="nowline"><span class="snum now" aria-hidden="true">${allS.indexOf(allS.find(s => s.key === n.key)) + 1}</span>Now: ${esc(n.title)}</div>` : ""}${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
           <details class="panel" style="margin-top:12px"><summary>Done · ${done.length}</summary><div class="inner">${done.length ? `<ul class="steps">${done.map(li).join("")}</ul>` : `<div class="hint">No steps done yet.</div>`}</div></details>`; })()}</section>
       <section class="stick"><h2>Letters and forms</h2><div class="docs" id="docs"></div><div class="sheet" id="sheet" tabindex="0" aria-label="Document preview"></div>
         <div class="sheetbar"><button class="btn outline" type="button" data-act="print-doc">Print</button><button class="btn" type="button" data-act="copy-doc">Copy text</button><span class="small" id="missing"></span></div></section>
@@ -1523,8 +1532,8 @@ function renderDocs() {
   const text = K.renderDoc(c, currentDoc);
   $("sheet").innerHTML = esc(text).replace(/⟦(.*?)⟧/g, '<span class="ph">[$1]</span>');
   const n = (text.match(/⟦/g) || []).length;
-  $("missing").textContent = n ? `${plural(n, "blank")} to fill in (highlighted). Fill them under Case details.` : "Ready to print.";
-  const pb = document.querySelector(".sheetbar [data-act=print-doc]"); if (pb) pb.textContent = n ? `Print draft (${plural(n, "blank")})` : "Print";
+  $("missing").innerHTML = n ? `${plural(n, "blank")} to fill in, highlighted. <button class="linkbtn" type="button" data-act="fill-blanks">Fill them in</button>` : "Ready to print.";
+  const pb = document.querySelector(".sheetbar [data-act=print-doc]"); if (pb) pb.textContent = n ? "Print draft" : "Print";
 }
 function showSave() {
   const el = $("saveState"); if (!el) return;
@@ -1795,6 +1804,7 @@ document.addEventListener("click", async e => {
     case "print-doc": return printDoc(t.dataset.doc);
     case "copy-doc": { const text = K.renderDoc(lienData(currentLien), currentDoc).replace(/⟦(.*?)⟧/g, "[$1]"); try { await navigator.clipboard.writeText(text); toast("Copied."); } catch { const r = document.createRange(); r.selectNodeContents($("sheet")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Press Ctrl+C or ⌘C."); } return; }
     case "retry-save": return saveLienSoon(0);
+    case "fill-blanks": { const d = $("factsPanel"); if (!d) return; d.open = true; const empty = [...d.querySelectorAll("input[data-path]:not([type=checkbox]),textarea[data-path]")].find(i => !i.value.trim()); d.scrollIntoView({ behavior: "smooth", block: "start" }); if (empty) setTimeout(() => empty.focus({ preventScroll: true }), 350); return; }
     case "close-lien": return closeLienCase();
     case "reopen-lien": { const { error } = await sb.from("shop_liens").update({ status: "open" }).eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); route(true); return toast("Case reopened."); }
     case "del-lien": { if (!(await confirmBox({ title: "Delete this lien case?", body: "Its steps and dates are lost for good. The job and payments stay.", ok: "Delete case", danger: true }))) return; const { error } = await sb.from("shop_liens").delete().eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); go("liens"); return toast("Lien case deleted."); }
@@ -1802,7 +1812,7 @@ document.addEventListener("click", async e => {
     case "toggle-coowner": { const m = S.members.find(x => x.user_id === id); if (!m) return; if (!(await confirmBox({ title: m.co_owner ? "Remove co-owner?" : "Make co-owner?", body: m.co_owner ? "They keep using the portal but can't change shop info or the team." : "They'll be able to change shop info and add or remove team members.", ok: m.co_owner ? "Remove co-owner" : "Make co-owner" }))) return; const { error } = await sb.from("shop_members").update({ co_owner: !m.co_owner }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Saved."); }
     case "rm-invite": { const { error } = await sb.from("shop_invites").update({ active: false }).eq("account_id", S.account.id).eq("email", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Invite cancelled."); }
     case "sign-out": {
-      const n = queueCache.length;
+      await mergePending(); const n = queueCache.length;
       if (!(await confirmBox({ title: "Sign out?", body: n ? `<b>${plural(n, "change")} on this device ${n === 1 ? "hasn't" : "haven't"} uploaded yet</b> and will be lost. Get online first if you can.` : "", ok: n ? "Sign out anyway" : "Sign out", danger: !!n }))) return;
       for (const it of queueCache) await IDB.del(it.qid).catch(() => {});
       try { localStorage.removeItem(SNAP_KEY); } catch {}
