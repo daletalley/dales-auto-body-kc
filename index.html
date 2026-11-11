@@ -2,127 +2,159 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dale's Auto Body KC | Since 1975</title>
-    <meta name="description" content="Family-owned auto body and upholstery shop in Kansas City, KS. Old-school craftsmanship from Dale since 1968.">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Dale's Auto Body | Collision, Paint &amp; Upholstery in Kansas City, KS</title>
+    <meta name="description" content="Family-owned auto body shop at 1310 State Avenue, Kansas City, KS since 1975. Collision and frame repair, paint, custom motorcycle work and upholstery. Call (913) 371-6654.">
+    <link rel="canonical" href="https://daleskc.com/">
+    <meta name="theme-color" content="#0f2740">
+    <link rel="icon" href="portal/icons/icon-192.png">
+    <link rel="apple-touch-icon" href="portal/icons/apple-touch-icon.png">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Dale's Auto Body · Kansas City, KS · Since 1975">
+    <meta property="og:description" content="Collision, paint, custom motorcycle work and upholstery. Family owned on State Avenue since 1975.">
+    <meta property="og:url" content="https://daleskc.com/">
+    <meta property="og:image" content="https://daleskc.com/images/web/og.jpg">
+    <meta name="twitter:card" content="summary_large_image">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="images/web/shop.webp" fetchpriority="high">
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/script.js" defer></script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "AutoBodyShop",
+      "name": "Dale's Auto Body",
+      "url": "https://daleskc.com/",
+      "telephone": "+1-913-371-6654",
+      "email": "dalesautobody@gmail.com",
+      "foundingDate": "1975",
+      "image": "https://daleskc.com/images/web/og.jpg",
+      "address": { "@type": "PostalAddress", "streetAddress": "1310 State Avenue", "addressLocality": "Kansas City", "addressRegion": "KS", "postalCode": "66102", "addressCountry": "US" },
+      "openingHoursSpecification": [{ "@type": "OpeningHoursSpecification", "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"], "opens": "10:00", "closes": "18:00" }],
+      "areaServed": "Kansas City metro",
+      "priceRange": "$$"
+    }
+    </script>
 </head>
 <body>
+    <a class="skip" href="#main">Skip to content</a>
     <header class="top-nav">
         <div class="container nav-inner">
-            <div class="brand">
-                <div class="brand-text">
-                    <p class="eyebrow">Family owned since 1975</p>
-                    <p class="brand-name">DALE'S AUTO BODY</p>
-                    <p class="brand-sub">Kansas City, KS</p>
-                </div>
-            </div>
-            <nav class="nav-links" aria-label="Main navigation">
-                <a href="#about">About</a>
+            <a class="brand" href="#top" aria-label="Dale's Auto Body, back to top">
+                <span class="eyebrow">Family owned since 1975</span>
+                <span class="brand-name">DALE'S AUTO BODY</span>
+                <span class="brand-sub">Kansas City, KS</span>
+            </a>
+            <nav class="nav-links" aria-label="Main">
+                <a href="#work">Our work</a>
                 <a href="#services">Services</a>
-                <a href="#visit">Visit</a>
-                <span class="status-pill" id="navStatus" aria-live="polite">Checking hours…</span>
+                <a href="#visit">Hours &amp; directions</a>
             </nav>
+            <a class="btn solid nav-call" href="tel:+19133716654">Call</a>
         </div>
     </header>
 
-    <main>
-        <section class="hero" id="about">
+    <main id="main">
+        <section class="hero" id="top">
             <div class="container hero-grid">
                 <div class="hero-copy">
-                    <p class="eyebrow">1310 State Avenue, Kansas City, KS • Est. 1975</p>
-                    <h1>Honest auto body care since 1975.</h1>
-                    <p class="lede">Dale straightens metal, lays down clean paint, and keeps KC cars moving.</p>
+                    <p class="eyebrow">1310 State Avenue · Kansas City, KS · Est. 1975</p>
+                    <h1>Honest auto body work since 1975.</h1>
+                    <p class="lede">Dale straightens metal, lays down clean paint and keeps Kansas City cars and bikes on the road. Owner on site, every job.</p>
                     <div class="cta-row">
-                        <a class="btn solid" href="tel:913-371-6654">Call (913) 371-6654</a>
-                        <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
+                        <a class="btn solid" href="tel:+19133716654">Call (913) 371-6654</a>
+                        <a class="btn outline" href="https://www.google.com/maps/dir/?api=1&amp;destination=1310+State+Ave,+Kansas+City,+KS+66102" target="_blank" rel="noopener">Get directions</a>
                     </div>
-                    <div class="hero-tags">
-                        <span>Collision + frame</span>
-                        <span>Paint + polish</span>
-                        <span>Upholstery + interiors</span>
-                    </div>
+                    <p class="hours-line"><span class="status-dot" id="navStatus">Open weekdays 10am–6pm</span><span class="hours-sub">Weekends by appointment</span></p>
                 </div>
-                <div class="hero-showcase hero-slider">
-                    <button class="hero-arrow" data-hero-prev aria-label="Previous photo">‹</button>
-                    <div class="hero-photo">
-                        <img src="images/Screenshot 2025-12-09 at 10.21.36 PM.png" alt="Auto body work at Dale's shop" data-hero-img>
-                    </div>
-                    <button class="hero-arrow" data-hero-next aria-label="Next photo">›</button>
-                </div>
+                <figure class="hero-photo">
+                    <img src="images/web/shop.webp" width="741" height="544" alt="Dale's Auto Body: the white shop building and parking lot on State Avenue" fetchpriority="high">
+                </figure>
             </div>
         </section>
 
-        <section class="services" id="services">
+        <section class="work" id="work" aria-labelledby="workH">
+            <div class="container">
+                <div class="section-header">
+                    <p class="eyebrow">Our work</p>
+                    <h2 id="workH">Paint, metal and custom builds from the shop floor.</h2>
+                    <p class="lede">A few recent jobs. Tap any photo to see it larger.</p>
+                </div>
+                <ul class="gallery" id="gallery">
+                    <li><button type="button" data-full="images/web/work-00018.webp"><img src="images/web/work-00018-sm.webp" width="480" height="360" loading="lazy" alt="Road Glide in custom peach paint with a matching fairing and bags"></button></li>
+                    <li><button type="button" data-full="images/web/work-00025.webp"><img src="images/web/work-00025-sm.webp" width="480" height="360" loading="lazy" alt="Bagger in candy copper with gold pinstripe flames and a two-tone seat"></button></li>
+                    <li><button type="button" data-full="images/web/work-00068.webp"><img src="images/web/work-00068-sm.webp" width="480" height="360" loading="lazy" alt="Orange and black flamed Road Glide with a big custom front wheel"></button></li>
+                    <li><button type="button" data-full="images/web/work-00051.webp"><img src="images/web/work-00051-sm.webp" width="480" height="360" loading="lazy" alt="Close-up of a red fender with a Chiefs arrowhead graphic"></button></li>
+                    <li><button type="button" data-full="images/web/work-00042.webp"><img src="images/web/work-00042-sm.webp" width="480" height="360" loading="lazy" alt="Yellow bagger with black pinstripes on the lift in the shop"></button></li>
+                    <li><button type="button" data-full="images/web/work-00029.webp"><img src="images/web/work-00029-sm.webp" width="480" height="360" loading="lazy" alt="Maroon touring bike with a tan seat and chrome trim"></button></li>
+                    <li><button type="button" data-full="images/web/work-00023.webp"><img src="images/web/work-00023-sm.webp" width="480" height="360" loading="lazy" alt="Copper and gold bagger with stretched bags, side view"></button></li>
+                    <li><button type="button" data-full="images/web/work-00057.webp"><img src="images/web/work-00057-sm.webp" width="480" height="360" loading="lazy" alt="Black Road Glide with stretched bags and chrome wheel"></button></li>
+                    <li><button type="button" data-full="images/web/work-00033.webp"><img src="images/web/work-00033-sm.webp" width="480" height="360" loading="lazy" alt="Candy blue rear fender with a built-in red LED light strip"></button></li>
+                    <li><button type="button" data-full="images/web/work-00005.webp"><img src="images/web/work-00005-sm.webp" width="480" height="360" loading="lazy" alt="Gloss black bags with a purple and green custom graphic"></button></li>
+                    <li><button type="button" data-full="images/web/work-00010.webp"><img src="images/web/work-00010-sm.webp" width="480" height="360" loading="lazy" alt="Copper bagger finished and parked outside the shop"></button></li>
+                    <li><button type="button" data-full="images/web/work-00020.webp"><img src="images/web/work-00020-sm.webp" width="480" height="360" loading="lazy" alt="Peach-painted fairing and bags from above"></button></li>
+                    <li><button type="button" data-full="images/web/work-00055.webp"><img src="images/web/work-00055-sm.webp" width="480" height="360" loading="lazy" alt="Black bagger with long stretched bags, parked by a white fence"></button></li>
+                    <li><button type="button" data-full="images/web/work-00035.webp"><img src="images/web/work-00035-sm.webp" width="480" height="360" loading="lazy" alt="Pleated black seat upholstery"></button></li>
+                    <li><button type="button" data-full="images/web/work-00074.webp"><img src="images/web/work-00074-sm.webp" width="480" height="360" loading="lazy" alt="Chrome engine detail on a black touring bike"></button></li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="services" id="services" aria-labelledby="servH">
             <div class="container">
                 <div class="section-header">
                     <p class="eyebrow">What we fix</p>
-                    <h2>Collision, paint, and upholstery done right.</h2>
-                    <p class="lede">Small shop focus with the tools to handle frame work, booth paint, and interior repair.</p>
+                    <h2 id="servH">Collision, paint and upholstery done right.</h2>
+                    <p class="lede">A small shop with the tools for frame work, booth paint and interior repair.</p>
                 </div>
                 <div class="service-grid">
                     <article class="card">
-                        <h3>Collision & frame</h3>
-                        <p>Structural straightening, panel alignment, weld repair, and rust remediation that keeps you safe.</p>
+                        <h3>Collision &amp; frame</h3>
+                        <p>Straightening, panel alignment, weld repair and rust repair that keeps you safe.</p>
                     </article>
                     <article class="card">
-                        <h3>Paint & finish</h3>
-                        <p>Prep, primer, and booth work with careful color matching and clean tapelines.</p>
+                        <h3>Paint &amp; finish</h3>
+                        <p>Prep, primer and booth paint with careful color matching and clean tape lines.</p>
                     </article>
                     <article class="card">
-                        <h3>Upholstery & trim</h3>
-                        <p>Seat rebuilds, headliners, carpet kits, and dash refreshes stitched clean and tight.</p>
+                        <h3>Custom &amp; motorcycles</h3>
+                        <p>Candy colors, flames, pinstripes and one-off graphics for bikes and show cars.</p>
                     </article>
                     <article class="card">
-                        <h3>Insurance-friendly</h3>
-                        <p>Estimates that speak insurance language without the dealership runaround.</p>
+                        <h3>Upholstery &amp; trim</h3>
+                        <p>Seats, headliners, carpet and dash work, stitched clean and tight.</p>
                     </article>
                 </div>
-                <div class="trust-grid">
-                    <article class="card">
-                        <p class="eyebrow">Trusted locally</p>
-                        <h3>Owner on site</h3>
-                        <p>Dale answers the phone, looks at the car, and signs off every job.</p>
-                    </article>
-                    <article class="card">
-                        <p class="eyebrow">Quality first</p>
-                        <h3>Checked under bright light</h3>
-                        <p>Panels are inspected for straight lines and even clear before they leave.</p>
-                    </article>
-                    <article class="card">
-                        <p class="eyebrow">Straight talk</p>
-                        <h3>Clear estimates</h3>
-                        <p>Plain language on parts, paint, and timeframes.</p>
-                    </article>
-                </div>
+                <ul class="trust">
+                    <li><b>Owner on site.</b> Dale answers the phone, looks at the car and signs off every job.</li>
+                    <li><b>Insurance welcome.</b> We work with your insurance company and write estimates they understand.</li>
+                    <li><b>Straight talk.</b> Plain language on parts, paint and how long it takes. No surprises.</li>
+                </ul>
             </div>
         </section>
 
-        <section class="visit" id="visit">
+        <section class="visit" id="visit" aria-labelledby="visitH">
             <div class="container visit-grid">
                 <div class="visit-card card">
-                    <p class="eyebrow">Come by</p>
-                    <h2>1310 State Avenue, Kansas City, KS</h2>
-                    <p>Pull into the lot off State Avenue and step into the bay. Call ahead if you're towing.</p>
-                    <div class="contact-list">
-                        <a href="tel:913-371-6654">Call (913) 371-6654</a>
-                        <a href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
-                        <span>Weekdays 10a – 6p • Weekends by appointment</span>
+                    <p class="eyebrow">Hours &amp; directions</p>
+                    <h2 id="visitH">1310 State Avenue<br>Kansas City, KS 66102</h2>
+                    <p>Pull into the lot off State Avenue. Call ahead if you're towing a car in.</p>
+                    <dl class="hours">
+                        <dt>Monday–Friday</dt><dd>10am–6pm</dd>
+                        <dt>Saturday–Sunday</dt><dd>By appointment</dd>
+                    </dl>
+                    <div class="cta-row">
+                        <a class="btn solid" href="tel:+19133716654">Call (913) 371-6654</a>
+                        <a class="btn outline" href="https://www.google.com/maps/dir/?api=1&amp;destination=1310+State+Ave,+Kansas+City,+KS+66102" target="_blank" rel="noopener">Get directions</a>
                     </div>
+                    <p class="email-line">Or email <a href="mailto:dalesautobody@gmail.com">dalesautobody@gmail.com</a></p>
                 </div>
                 <div class="map">
-                    <iframe 
-                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&output=embed" 
-                        width="100%" 
-                        height="100%" 
-                        style="border:0;" 
-                        allowfullscreen="" 
-                        loading="lazy" 
-                        referrerpolicy="no-referrer-when-downgrade">
-                    </iframe>
+                    <iframe title="Map showing Dale's Auto Body at 1310 State Avenue, Kansas City, KS"
+                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&amp;output=embed"
+                        loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
                 </div>
             </div>
         </section>
@@ -132,16 +164,21 @@
         <div class="container footer-inner">
             <div>
                 <p class="eyebrow">Thank you, Kansas City</p>
-                <p>Independent since 1975—serving neighbors who keep us busy.</p>
-                <p class="footer-login"><a href="portal/">Shop login</a></p>
+                <p>Independent since 1975, serving the neighbors who keep us busy.</p>
+                <p class="footer-login"><a href="portal/">Shop login (staff)</a></p>
             </div>
             <div class="footer-cta">
-                <a class="btn solid" href="tel:913-371-6654">Call (913) 371-6654</a>
-                <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email dalesautobody@gmail.com</a>
+                <a class="btn solid" href="tel:+19133716654">Call (913) 371-6654</a>
+                <a class="btn outline" href="mailto:dalesautobody@gmail.com">Email us</a>
             </div>
         </div>
     </footer>
 
-    <script src="js/script.js"></script>
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Photo viewer" hidden>
+        <button class="lb-close" type="button" aria-label="Close photo">&times;</button>
+        <button class="lb-nav lb-prev" type="button" aria-label="Previous photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <figure><img id="lbImg" alt=""><figcaption id="lbCap"></figcaption></figure>
+        <button class="lb-nav lb-next" type="button" aria-label="Next photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
 </body>
 </html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /portal/
+Sitemap: https://daleskc.com/sitemap.xml

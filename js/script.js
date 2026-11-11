@@ -1,58 +1,57 @@
-document.addEventListener('DOMContentLoaded', () => {
-    initHeroSlider();
+// Dale's Auto Body: open/closed status and the work gallery viewer
+(() => {
+    // ---- open now? (Kansas City time; weekdays 10am–6pm, weekends by appointment) ----
+    function updateOpenStatus() {
+        const el = document.getElementById('navStatus');
+        if (!el) return;
+        const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short', hour: 'numeric', minute: 'numeric', hour12: false }).formatToParts(new Date());
+        const get = t => parts.find(p => p.type === t)?.value;
+        const day = get('weekday'); const mins = (+get('hour') % 24) * 60 + +get('minute');
+        const weekday = !['Sat', 'Sun'].includes(day);
+        let text, cls;
+        if (!weekday) { text = 'Weekends by appointment. Call to set a time'; cls = 'appt'; }
+        else if (mins >= 600 && mins < 1080) { text = 'Open now until 6pm'; cls = 'open'; }
+        else if (mins < 600) { text = 'Closed now. Opens today at 10am'; cls = 'closed'; }
+        else { text = day === 'Fri' ? 'Closed now. Opens Monday at 10am' : 'Closed now. Opens tomorrow at 10am'; cls = 'closed'; }
+        el.textContent = text;
+        el.className = 'status-dot ' + cls;
+    }
     updateOpenStatus();
     setInterval(updateOpenStatus, 60 * 1000);
-});
 
-// Single source of truth for hero gallery imagery
-const galleryImages = [
-    'Screenshot 2025-12-09 at 10.21.36\u202fPM.png',
-    'daleskc.com - 00020.JPG',
-    'daleskc.com - 00010.JPG',
-    'daleskc.com - 00005.jpg',
-    'daleskc.com - 00018.JPG',
-    'daleskc.com - 00023.JPG',
-    'daleskc.com - 00025.JPG',
-    'daleskc.com - 00029.JPG',
-    'daleskc.com - 00033.jpg',
-    'daleskc.com - 00035.JPG',
-    'daleskc.com - 00042.JPG',
-    'daleskc.com - 00051.jpg',
-    'daleskc.com - 00055.JPG',
-    'daleskc.com - 00057.JPG',
-    'daleskc.com - 00068.JPG',
-    'daleskc.com - 00074.JPG'
-];
-
-function initHeroSlider() {
-    const heroImg = document.querySelector('[data-hero-img]');
-    if (!heroImg || !galleryImages.length) return;
-
-    let index = 0;
-
-    const showImage = (i) => {
-        const bounded = (i + galleryImages.length) % galleryImages.length;
-        heroImg.src = `images/${galleryImages[bounded]}`;
-        index = bounded;
+    // ---- gallery lightbox: tap to enlarge, arrows / swipe / keyboard, focus returns on close ----
+    const gallery = document.getElementById('gallery');
+    const box = document.getElementById('lightbox');
+    if (!gallery || !box) return;
+    const items = [...gallery.querySelectorAll('button[data-full]')];
+    const img = document.getElementById('lbImg'), cap = document.getElementById('lbCap');
+    let at = 0, opener = null;
+    const show = i => {
+        at = (i + items.length) % items.length;
+        const b = items[at], alt = b.querySelector('img').alt;
+        img.src = b.dataset.full; img.alt = alt;
+        cap.textContent = `${alt} (${at + 1} of ${items.length})`;
+        const next = new Image(); next.src = items[(at + 1) % items.length].dataset.full; // preload the next one
     };
-
-    document.querySelector('[data-hero-prev]')?.addEventListener('click', () => showImage(index - 1));
-    document.querySelector('[data-hero-next]')?.addEventListener('click', () => showImage(index + 1));
-
-    showImage(index);
-}
-
-function updateOpenStatus() {
-    const statusEl = document.getElementById('navStatus');
-    if (!statusEl) return;
-
-    const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Chicago' }));
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-    const isOpen = hour >= 10 && (hour < 18 || (hour === 18 && minute === 0));
-
-    statusEl.textContent = isOpen ? 'Open now • 10a–6p CST' : 'Closed • 10a–6p CST';
-    statusEl.classList.toggle('open', isOpen);
-    statusEl.classList.toggle('closed', !isOpen);
-    statusEl.setAttribute('aria-label', statusEl.textContent);
-}
+    const open = i => { opener = document.activeElement; show(i); box.hidden = false; document.body.style.overflow = 'hidden'; box.querySelector('.lb-close').focus(); };
+    const close = () => { box.hidden = true; document.body.style.overflow = ''; img.removeAttribute('src'); if (opener) opener.focus(); };
+    items.forEach((b, i) => b.addEventListener('click', () => open(i)));
+    box.querySelector('.lb-close').addEventListener('click', close);
+    box.querySelector('.lb-prev').addEventListener('click', () => show(at - 1));
+    box.querySelector('.lb-next').addEventListener('click', () => show(at + 1));
+    box.addEventListener('click', e => { if (e.target === box) close(); });
+    document.addEventListener('keydown', e => {
+        if (box.hidden) return;
+        if (e.key === 'Escape') close();
+        else if (e.key === 'ArrowLeft') show(at - 1);
+        else if (e.key === 'ArrowRight') show(at + 1);
+        else if (e.key === 'Tab') { // keep focus inside the viewer
+            const f = [...box.querySelectorAll('button')]; const first = f[0], last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+    });
+    let x0 = null;
+    box.addEventListener('touchstart', e => { x0 = e.touches[0].clientX; }, { passive: true });
+    box.addEventListener('touchend', e => { if (x0 == null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 50) show(at + (dx < 0 ? 1 : -1)); x0 = null; });
+})();
