@@ -466,6 +466,7 @@ function dayChanged() {
   if (new Date().toDateString() === curDay) return false;
   const oldISO = todayISO(); curDay = new Date().toDateString(); K.refreshToday(); const nowISO = todayISO();
   document.querySelectorAll('#modal input[type=date]').forEach(i => { if (i.max === oldISO) i.max = nowISO; if (i.value === oldISO && !modalDirty) i.value = nowISO; });
+  if (modalDirty && document.querySelector("#modal input[type=date]")) toast("It's past midnight. Check the date before you save.");
   if (!$("appView").hidden && $("overlay").hidden) route(true);
   return false;
 }
@@ -947,10 +948,13 @@ async function jobUpdate(j, row) {
   return { error };
 }
 async function unqueue(qid, ifUploaded) {
-  for (let i = 0; flushing && i < 150; i++) await new Promise(r => setTimeout(r, 100));
-  let still = false; try { still = (await IDB.all()).some(i => i.qid === qid); } catch (e) { /* storage blocked */ }
+  while (flushing) await new Promise(r => setTimeout(r, 100));
+  flushing = true; let still = false;
+  try {
+    try { still = (await IDB.all()).some(i => i.qid === qid); } catch (e) { /* storage blocked */ }
+    if (still) { try { await IDB.del(qid); } catch (e) { /* already gone */ } }
+  } finally { flushing = false; }
   if (!still) { if (ifUploaded) return ifUploaded(); toast("Too late to undo here. Open the job to fix it."); return; }
-  try { await IDB.del(qid); } catch (e) { /* already gone */ }
   await mergePending(); saveSnapshot(); route(true); toast("Undone.");
 }
 async function setStage(j, row, msg, undoRow) {
@@ -1301,8 +1305,8 @@ function renderMoney() {
     <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${b.n ? money(b.amt) : "—"}</div><div class="c">${b.n ? plural(b.n, "bill") : "None"}</div></button>`).join("")}</div>
     <section aria-labelledby="owedH"><h2 id="owedH">${arBucket === "all" ? "Who owes" : `${esc(BUCKETS.find(b => b.key === arBucket).label)} · ${shown.length}`}${arBucket !== "all" ? ` <button class="linkbtn" type="button" data-bucket="all" style="min-height:0;margin-left:8px;letter-spacing:0;text-transform:none">Show all ${open.length}</button>` : ""}</h2>
     <div class="list">${shown.length ? shown.map(({ j, age, bal }) => { const c = cust(j.customer_id); const lien = openLien(j.id);
-      return `<div class="row mrow" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}${lien ? ` <span class="chip over">Lien open</span>` : ""}</a>
-        <div class="s">${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${daysSince(j.last_reminded_on) === 0 ? "today" : plural(daysSince(j.last_reminded_on), "day") + " ago"}` : ""}${lien ? ` · <a href="#lien/${lien.id}">Lien case</a>` : ""}</div></div>
+      return `<div class="row mrow" data-href="job/${j.id}"><div><div class="tline"><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>${lien ? `<a class="chip over" href="#lien/${lien.id}">Lien open</a>` : ""}</div>
+        <div class="s">${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${daysSince(j.last_reminded_on) === 0 ? "today" : plural(daysSince(j.last_reminded_on), "day") + " ago"}` : ""}</div></div>
         <div class="amt num">${money(bal)}</div>
         <div class="r"><div class="acts">
           <button class="btn sm" type="button" data-act="remind" data-id="${j.id}">Reminder</button>
@@ -1493,7 +1497,7 @@ function renderLien(id) {
           <div><div class="t">${esc(s.title)}</div><div class="d">${esc(s.detail)}</div>${s.cite ? `<details class="why"><summary>Why?</summary><span class="cite">${esc(s.cite)}</span></details>` : ""}
           ${(c.done[s.key] || skipped) && !closed ? `<div class="undo"><button class="linkbtn" type="button" data-act="step-undo" data-step="${s.key}">Undo</button></div>` : ""}</div>
           <div class="when">${s.kind === "info" || !s.date ? "" : `<span class="wdate">${s.kind === "after" ? "not before " : ""}${esc(K.fmt(s.date))}</span>`}<span class="chip ${skipped ? "info" : stt.cls}">${esc(skipped ? "Skipped" : stt.txt)}</span></div></li>`; };
-        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up · ${up.length}</summary><div class="inner">${n ? `<div class="nowline"><span class="snum now" aria-hidden="true">${all.indexOf(all.find(s => s.key === n.key)) + 1}</span>Now: ${esc(n.title)}</div>` : ""}${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
+        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up · ${up.filter(s => all.some(x => x.key === s.key)).length} ${up.length && up.length === up.filter(s => all.some(x => x.key === s.key)).length ? "" : "· plus notes"}</summary><div class="inner">${n ? `<div class="nowline"><span class="snum now" aria-hidden="true">${all.indexOf(all.find(s => s.key === n.key)) + 1}</span>Now: ${esc(n.title)}</div>` : ""}${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
           <details class="panel" style="margin-top:12px"><summary>Done · ${done.length}</summary><div class="inner">${done.length ? `<ul class="steps">${done.map(li).join("")}</ul>` : `<div class="hint">No steps done yet.</div>`}</div></details>`; })()}</section>
       <section class="stick"><h2>Letters and forms</h2><div class="docs" id="docs"></div><div class="sheet" id="sheet" tabindex="0" aria-label="Document preview"></div>
         <div class="sheetbar"><button class="btn outline" type="button" data-act="print-doc">Print</button><button class="btn" type="button" data-act="copy-doc">Copy text</button><span class="small" id="missing"></span></div></section>
@@ -1783,7 +1787,13 @@ document.addEventListener("click", async e => {
     case "aj-unpick": return ajUnpick();
     case "del-photo": { const p = S.photos.find(x => x.id === id); return p && deletePhoto(p); }
     case "retry-queue": { for (const it of await IDB.all()) if (it.error) { delete it.error; await IDB.put(it); } await mergePending(); route(true); return flushQueue(); }
-    case "discard-queue": { const bad = (await IDB.all()).filter(i => i.error); if (!(await confirmBox({ title: `Throw away ${plural(bad.length, "item")}?`, body: "Changes that couldn't upload will be deleted from this device.", ok: "Throw away", danger: true }))) return; for (const it of bad) await IDB.del(it.qid); await mergePending(); saveSnapshot(); if (navigator.onLine) await reload(); return route(true); }
+    case "discard-queue": {
+      const all = await IDB.all(); const jobOf = i => i.jobId || i.job?.id || i.row?.job_id;
+      const deadJobs = new Set(all.filter(i => i.error && i.type === "job").map(i => i.job.id));
+      const bad = all.filter(i => i.error || deadJobs.has(jobOf(i)));
+      const extra = bad.length - all.filter(i => i.error).length;
+      if (!(await confirmBox({ title: `Throw away ${plural(bad.length, "change")}?`, body: `Changes that couldn't upload will be deleted from this device.${extra ? ` That includes ${plural(extra, "photo or payment")} added to a job that never uploaded.` : ""}`, ok: "Throw away", danger: true }))) return;
+      for (const it of bad) await IDB.del(it.qid); await mergePending(); saveSnapshot(); if (navigator.onLine) await reload(); return route(true); }
     case "new-job-for": return newJob(id);
     case "find": return openSearch();
     case "pay-pick": return payPick();
