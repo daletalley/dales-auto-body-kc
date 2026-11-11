@@ -52,7 +52,10 @@ img { max-width: 100%; }
 .wrap { padding-left: max(16px, var(--safe-l)); padding-right: max(16px, var(--safe-r)); }
 
 /* ---------- type ---------- */
-h1, .eyebrow, .row .t, .jname, .ccard .t, .task .t, .kv dd { overflow-wrap: anywhere; }
+h1, .eyebrow, .row .t, .jname, .ccard .t, .task .t, .kv dd, .hint, .small, .headline { overflow-wrap: anywhere; }
+.nextcard, .nextcard > *, .grid > .field { min-width: 0; }
+@media (max-width: 400px) { html .btn { white-space: normal; text-align: center; line-height: 1.25; min-width: 0; overflow-wrap: anywhere; } }
+.field input[type=date] { min-width: 0; max-width: 100%; }
 .head > div, .pagehead > div { min-width: 0; }
 h1 { font-family: var(--display); font-weight: 400; letter-spacing: .02em; font-size: clamp(2.25rem, 4vw, var(--t-2xl)); line-height: 1; margin: 0; text-wrap: balance; }
 h2 { font-size: var(--t-xs); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 12px; }
@@ -161,7 +164,7 @@ a[href^="tel:"] { white-space: nowrap; }
 .tile { min-width: 0; }
 .tile .n.long { font-size: clamp(1.5rem, 2.4vw, var(--t-xl)); }
 .brand .sub { font-size: .6875rem; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
-.page { padding: 24px max(16px, var(--safe-r)) calc(var(--tab-h) + var(--safe-b) + 32px) max(16px, var(--safe-l)); display: grid; gap: 28px; max-width: 1100px; margin: 0 auto; min-width: 0; }
+.page { grid-template-columns: minmax(0, 1fr); padding: 24px max(16px, var(--safe-r)) calc(var(--tab-h) + var(--safe-b) + 32px) max(16px, var(--safe-l)); display: grid; gap: 28px; max-width: 1100px; margin: 0 auto; min-width: 0; }
 .tabbar { position: fixed; z-index: 12; left: 0; right: 0; bottom: 0; height: calc(var(--tab-h) + var(--safe-b)); padding: 0 var(--safe-r) var(--safe-b) var(--safe-l); display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(14,31,49,.96); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 1px solid var(--line-2); }
 .tabbar a, .tabbar button { display: grid; place-items: center; align-content: center; gap: 3px; color: var(--muted); text-decoration: none; font-size: .75rem; font-weight: 600; background: none; border: 0; cursor: pointer; padding: 6px 2px; min-width: 0; }
 .tabbar svg { width: 24px; height: 24px; }

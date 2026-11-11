@@ -373,6 +373,8 @@ async function mergePending() {
         if (+jj.amount > 0 && jj.amount_paid >= +jj.amount && ["done", "invoiced", "paid"].includes(jj.status)) { jj.status = "paid"; jj.paid_on = jj.paid_on || it.row.paid_on || todayISO(); } }
     }
   }
+  // same rule as the server: a job touched offline is Paid once the work is done and it's fully paid
+  S.jobs.forEach(jj => { if (jj._orig && +jj.amount > 0 && (+jj.amount_paid || 0) >= +jj.amount && ["done", "invoiced"].includes(jj.status)) { keep(jj, ["status", "paid_on"]); jj.status = "paid"; jj.paid_on = jj.paid_on || todayISO(); } });
   S.customers.sort((a, b) => a.name.localeCompare(b.name));
   pendingBar();
 }
@@ -501,7 +503,19 @@ window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferr
 // ================= routing =================
 const LEGAL = `<p class="legal">Private shop portal for Dale's Auto Body. Lien letters are drafts for Dale to review and sign. This is not legal advice. Kansas deadlines summarized November 2026 from K.S.A. 58-201 et seq., 8-1101 et seq., 60-1101 et seq. and Division of Vehicles forms.</p>`;
 const backLink = (href, label) => `<a class="back" href="#${href}">${icon("back")}${esc(label)}</a>`;
-window.addEventListener("hashchange", () => { if (!$("overlay").hidden) closeModal(true); if (!$("confirmOverlay").hidden) confirmDone(null); route(false, true); });
+let lastHash = location.hash;
+window.addEventListener("hashchange", () => {
+  if (!$("confirmOverlay").hidden) confirmDone(null);
+  if (!$("overlay").hidden) {
+    if (modalDirty) { // Back with unsaved typing: stay put and ask first
+      const want = location.hash; history.replaceState(null, "", lastHash || "#home");
+      closeModal().then(() => { if ($("overlay").hidden) location.hash = want; });
+      return;
+    }
+    closeModal(true);
+  }
+  lastHash = location.hash; route(false, true);
+});
 function route(keepScroll, fromNav) {
   if ($("appView").hidden) return;
   if (/type=recovery|access_token/.test(location.hash)) return;
@@ -992,12 +1006,12 @@ async function setStage(j, row, msg, undoRow) {
   const onlineUndo = async () => {
     if (navigator.onLine) await reload();
     const now = jobById(j.id);
-    if (!now || now.status !== row.status) { toast("That job has changed since, so there's nothing to undo."); return; }
+    if (!now || (now.status !== row.status && !(now.status === "paid" && ["done", "invoiced"].includes(row.status)))) { toast("That job has changed since, so there's nothing to undo."); return; }
     const r2 = await jobUpdate(now, undoRow);
     if (r2.error) return toast(friendly(r2.error));
     if (!r2.queued) await reload(); route(true); toast(`Undone. Back to “${STAGE_LABEL[before.status]}”.`);
   };
-  if (r.queued) { route(true); toast(msg + " Will upload when online.", { label: "Undo", run: () => unqueue(r.qid, undoRow ? onlineUndo : null) }, { ok: true }); return true; }
+  if (r.queued) { route(true); if (row.status !== "paid" && jobById(j.id)?.status === "paid") msg = msg.replace(/\..*$/, ".") + " It was already paid in full, so it's marked Paid."; toast(msg + " Will upload when online.", { label: "Undo", run: () => unqueue(r.qid, undoRow ? onlineUndo : null) }, { ok: true }); return true; }
   await reload(); route(true);
   if (row.status !== "paid" && jobById(j.id)?.status === "paid") msg = msg.replace(/\..*$/, ".") + " It was already paid in full, so it's marked Paid.";
   toast(msg, undoRow ? { label: "Undo", run: onlineUndo } : null, { ok: true });
@@ -1397,7 +1411,7 @@ function renderCustomer(id) {
   $("main").innerHTML = `
     ${backLink("customers", "All customers")}
     <div class="head"><div><div class="eyebrow">Customer</div><h1>${esc(c.name)}</h1></div><div class="amount"><div class="l">Owes</div><div class="n">${money(o)}</div></div></div>
-    <div class="quick"><button class="btn primary big" type="button" data-act="new-job-for" data-id="${c.id}">+ Add a job for ${esc(c.name.split(" ")[0])}</button>
+    <div class="quick"><button class="btn primary big" type="button" data-act="new-job-for" data-id="${c.id}">+ Add a job for ${esc((f => f.length > 14 ? f.slice(0, 13) + "…" : f)(c.name.split(" ")[0]))}</button>
       ${tel ? `<a class="btn" href="tel:${esc(tel)}">${icon("phone")}Call</a><a class="btn" href="sms:${esc(tel)}">Text</a>` : ""}${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">Email</a>` : ""}</div>
     <div class="twocol"><div class="box"><h2 class="bh">Contact <button class="linkbtn" type="button" data-act="edit-customer" data-id="${c.id}">Edit</button></h2>
       <dl class="kv"><dt>Phone</dt><dd>${esc(c.phone || "—")}</dd><dt>Email</dt><dd>${esc(c.email || "—")}</dd><dt>Address</dt><dd>${esc(c.address || "—")}${!c.address ? `<div class="fwarn">Needed for lien letters</div>` : ""}</dd>${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}</dl></div>
