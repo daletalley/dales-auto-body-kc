@@ -30,7 +30,10 @@ h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size:
 .v { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
 .nw { white-space: nowrap; }
 .total { font-family: "Bebas Neue", Impact, sans-serif; font-size: 2.75rem; line-height: 1; font-variant-numeric: tabular-nums; }
-.photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); gap: 8px; }
+.photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 8px; }
+@media (max-width: 520px) { .photos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.jump { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; }
+@media print { body { background: #fff; color: #111; } .card { background: #fff; border-color: #ccc; color: #111; } .k, .small { color: #444; } .btn, #photoCard, .noprint { display: none !important; } .brand .sub { color: #8a5a00; } }
 .photos a { display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #000; }
 .photos img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 label { font-size: .875rem; color: var(--stone); font-weight: 600; }
@@ -62,13 +65,14 @@ a { color: var(--amber); }
       <div><div class="small" id="hello"></div><h1 id="heading">Your estimate</h1></div>
       <div class="card ok" id="approved" role="status" tabindex="-1" hidden></div>
       <div class="card">
+        <div class="row" id="dateRow" hidden><span class="k" id="dateK">Estimate date</span><span class="v" id="dateV"></span></div>
         <div class="row"><span class="k">Vehicle</span><span class="v" id="car"></span></div>
         <div class="row" id="vinRow"><span class="k">VIN</span><span class="v" id="vin"></span></div>
         <div class="row"><span class="k">Work</span><span class="v" id="work"></span></div>
         <div class="row" id="claimRow"><span class="k">Insurance</span><span class="v" id="claim"></span></div>
         <div class="row" id="notesRow"><span class="k">Notes</span><span class="v" id="notes"></span></div>
       </div>
-      <div class="card"><div class="k" id="totalLabel">Estimate total</div><div class="total" id="total"></div><div class="small" id="totalNote"></div><div class="small" id="payHow" hidden>Pay at the shop with cash, card or check, Monday to Friday 10am–6pm, or call to pay by card.</div></div>
+      <div class="card"><div class="k" id="totalLabel">Estimate total</div><div class="total" id="total"></div><div class="small" id="totalNote"></div><a class="jump" id="jump" href="#approveCard" hidden>Ready to approve? Jump to the Approve button ↓</a><button class="btn line" id="printRc" type="button" hidden>Save or print this receipt</button><div class="small" id="payHow" hidden>Pay at the shop with cash, card or check, Monday to Friday 10am–6pm, or call to pay by card.</div></div>
       <div class="card" id="photoCard" hidden><h2>Estimate pages and photos</h2><div class="small">Tap a photo to see it full size.</div><div class="photos" id="photos"></div></div>
       <form class="card" id="approveCard" hidden novalidate>
         <h2>Ready to go ahead?</h2>
@@ -81,7 +85,7 @@ a { color: var(--amber); }
       <div class="card"><h2>Questions?</h2><div id="contact" class="small"></div><a class="btn line" id="call" href="tel:+19133716654">Call (913) 371-6654</a></div>
     </div>
   </div>
-  <div class="small">This link is private to you.</div>
+  <div class="small noprint">This link is private to you.</div>
 </main>
 <script>
 (() => {
@@ -118,11 +122,15 @@ a { color: var(--amber); }
     if (j.claim) { const n = document.createElement("span"); n.className = "nw"; n.textContent = "Claim #" + j.claim; $("claim").append(n); }
     $("notesRow").hidden = !j.description; $("notes").textContent = j.description || "";
     $("payHow").hidden = j.status !== "invoiced";
+    const dRow = isEst ? j.created_at : j.status === "paid" ? j.paid_on : j.invoiced_on;
+    $("dateRow").hidden = !dRow; $("dateK").textContent = isEst ? "Estimate date" : j.status === "paid" ? "Paid on" : "Bill date"; if (dRow) $("dateV").textContent = fmtDate(String(dRow).length === 10 ? dRow + "T12:00:00" : dRow);
+    $("jump").hidden = !(isEst && !j.approved_at && j.amount && (d.photos || []).length);
+    $("printRc").hidden = j.status !== "paid";
     if (isEst) {
       $("totalLabel").textContent = "Estimate total"; $("total").textContent = j.amount ? money(j.amount) : "Price coming soon";
       const from = j.created_at ? new Date(j.created_at) : null;
-      $("totalNote").textContent = from ? `This price is good until ${fmtDate(from.getTime() + 30 * 864e5)}.` : "This price is good for 30 days from the estimate date.";
-    } else if (j.status === "paid") { $("totalLabel").textContent = "Total"; $("total").textContent = money(j.amount); $("totalNote").textContent = "Paid in full. Thank you!"; }
+      $("totalNote").textContent = j.approved_at ? "" : from ? `This price is good until ${fmtDate(from.getTime() + 30 * 864e5)}.` : "This price is good for 30 days from the estimate date.";
+    } else if (j.status === "paid") { $("totalLabel").textContent = "Total"; $("total").textContent = money(j.amount); $("totalNote").textContent = j.paid_on ? `Paid in full on ${fmtDate(j.paid_on + "T12:00:00")}. Thank you!` : "Paid in full. Thank you!"; }
     else if (j.status === "invoiced") { $("totalLabel").textContent = "Balance due"; $("total").textContent = money(j.balance); $("totalNote").textContent = j.paid ? `${money(j.paid)} paid so far, of ${money(j.amount)} total.` : `Total ${money(j.amount)}.`; }
     else { $("totalLabel").textContent = "Repair total"; $("total").textContent = j.amount ? money(j.amount) : "To be confirmed"; $("totalNote").textContent = j.paid ? `${money(j.paid)} paid so far. We'll let you know when it's ready.` : "We'll let you know when it's ready."; }
     const ph = d.photos || [];
@@ -132,7 +140,7 @@ a { color: var(--amber); }
     if (isEst && j.approved_at) {
       $("approved").hidden = false;
       $("approved").innerHTML = "<b></b><div></div>";
-      $("approved").querySelector("b").textContent = `You approved ${j.amount ? money(j.amount) : "this estimate"} on ${fmtDate(j.approved_at)}${j.approved_name ? " (" + j.approved_name + ")" : ""}.`;
+      $("approved").querySelector("b").textContent = `You approved this ${j.amount ? money(j.amount) + " " : ""}repair on ${fmtDate(j.approved_at)}.${j.approved_name ? " Signed: " + j.approved_name + "." : ""}`;
       $("approved").querySelector("div").textContent = "What happens next: Dale will call you to set a day to bring the car in. Nothing to pay until the work is done.";
       if (justApproved) { justApproved = false; $("approved").scrollIntoView({ block: "center", behavior: "smooth" }); $("approved").focus({ preventScroll: true }); }
     } else if (isEst && j.amount) { $("approveCard").hidden = false; $("approve").textContent = `Approve ${money(j.amount)} repair`; }
@@ -142,6 +150,7 @@ a { color: var(--amber); }
     $("call").href = "tel:" + phone.replace(/[^\d+]/g, ""); $("call").textContent = "Call " + phone;
     $("loading").hidden = true; $("problem").hidden = true; $("content").hidden = false;
   }
+  $("printRc").addEventListener("click", () => window.print());
   $("approveCard").addEventListener("submit", async e => {
     e.preventDefault();
     const name = $("nm").value.trim();

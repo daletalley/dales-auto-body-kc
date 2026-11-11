@@ -114,7 +114,7 @@ h1, h2, .brand-name { font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-se
 
 /* ---------- work gallery ---------- */
 .work { background: rgba(255, 255, 255, 0.02); border-block: 1px solid var(--line); }
-.gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.75rem; }
+.gallery { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; }
 @media (max-width: 899px) { .gallery { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; } }
 @media (max-width: 380px) { .gallery button { border-radius: 10px; } }
 .gallery button { display: block; width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #13283f; cursor: zoom-in; aspect-ratio: 4 / 3; }
@@ -123,7 +123,7 @@ h1, h2, .brand-name { font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-se
 
 .lightbox { position: fixed; inset: 0; z-index: 40; background: rgba(4, 10, 18, 0.94); display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.5rem; padding: max(16px, env(safe-area-inset-top, 0px)) max(12px, var(--safe-r)) max(16px, env(safe-area-inset-bottom, 0px)) max(12px, var(--safe-l)); }
 .lightbox figure { margin: 0; display: grid; gap: 0.75rem; justify-items: center; }
-.lightbox img { max-height: 80vh; max-height: 80dvh; width: auto; border-radius: 12px; }
+.lightbox img { max-height: 80vh; max-height: 80dvh; width: auto; border-radius: 12px; background: #13283f; padding: 6px; box-shadow: 0 24px 60px rgba(0,0,0,.6); }
 .lightbox figcaption { color: var(--stone); text-align: center; font-size: 0.95rem; max-width: 40rem; }
 .lb-close { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, var(--safe-r)); width: 48px; height: 48px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.12); color: #fff; font-size: 2rem; line-height: 1; cursor: pointer; }
 .lb-nav { width: 52px; height: 52px; border-radius: 50%; border: 0; background: rgba(255, 255, 255, 0.12); color: #fff; cursor: pointer; display: grid; place-items: center; }
@@ -136,6 +136,7 @@ h1, h2, .brand-name { font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-se
 .card { background: #13283f; border: 1px solid var(--line); border-radius: 18px; padding: 1.5rem 1.4rem; }
 .card h3 { margin: 0 0 0.5rem; font-size: 1.25rem; }
 .card p { margin: 0; color: var(--stone); }
+.services { padding-bottom: clamp(2.5rem, 5vw, 4rem); }
 .trust { list-style: none; margin: 2rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr)); gap: 1rem 2rem; }
 .trust li { border-top: 3px solid var(--amber); padding-top: 1rem; color: var(--stone); }
 .trust b { display: block; color: var(--cream); font-size: 1.15rem; margin-bottom: 0.25rem; }
@@ -147,7 +148,7 @@ h1, h2, .brand-name { font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-se
 .hours { display: grid; grid-template-columns: max-content 1fr; gap: 0.4rem 1.5rem; margin: 0 0 1.5rem; }
 .hours dt { color: var(--muted); }
 .hours dd { margin: 0; font-weight: 700; }
-.email-line { margin: 1.1rem 0 0; color: var(--muted); }
+.email-line { margin: 1.25rem 0 0; color: var(--muted); }
 .email-line a { color: var(--amber); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .map { border-radius: 18px; overflow: hidden; border: 1px solid var(--line); min-height: 22rem; background: #13283f; }
 .map iframe { display: block; width: 100%; height: 100%; min-height: 22rem; border: 0; }

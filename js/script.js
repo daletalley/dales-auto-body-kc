@@ -9,12 +9,22 @@
         const day = get('weekday'); const mins = (+get('hour') % 24) * 60 + +get('minute');
         const weekday = !['Sat', 'Sun'].includes(day);
         let text, cls;
-        if (!weekday) { text = 'Weekends by appointment. Call to set a time'; cls = 'appt'; }
+        if (isHoliday()) { text = 'Holiday today. Call before you come by'; cls = 'appt'; }
+        else if (!weekday) { text = 'Weekends by appointment. Call to set a time'; cls = 'appt'; }
         else if (mins >= 600 && mins < 1080) { text = 'Open now until 6pm'; cls = 'open'; }
         else if (mins < 600) { text = 'Closed now. Opens today at 10am'; cls = 'closed'; }
         else { text = day === 'Fri' ? 'Closed now. Opens Monday at 10am' : 'Closed now. Opens tomorrow at 10am'; cls = 'closed'; }
         el.textContent = text;
         el.className = 'status-dot ' + cls;
+    }
+    // big US holidays: we don't promise open or closed, we ask people to call
+    function isHoliday() {
+        const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(new Date());
+        const y = +p.find(x => x.type === 'year').value, m = +p.find(x => x.type === 'month').value, d = +p.find(x => x.type === 'day').value;
+        const nth = (mo, dow, n) => { const f = new Date(y, mo - 1, 1).getDay(); return 1 + ((dow - f + 7) % 7) + (n - 1) * 7; };
+        const last = (mo, dow) => { const l = new Date(y, mo, 0); return l.getDate() - ((l.getDay() - dow + 7) % 7); };
+        const days = [[1, 1], [7, 4], [12, 24], [12, 25], [12, 31], [5, last(5, 1)], [9, nth(9, 1, 1)], [11, nth(11, 4, 4)], [11, nth(11, 4, 4) + 1]];
+        return days.some(([mo, dd]) => mo === m && dd === d);
     }
     updateOpenStatus();
     setInterval(updateOpenStatus, 60 * 1000);

@@ -176,7 +176,9 @@ const STAGE_LABEL = Object.fromEntries(STAGES.map(s => [s.k, s.label]));
 const METHODS = { cash: "Cash", card: "Card", check: "Check", insurance: "Insurance", other: "Other" };
 const balance = j => Math.max(0, Math.round(((+j.amount || 0) - (+j.amount_paid || 0)) * 100) / 100);
 const ageDays = j => daysSince(j.invoiced_on || j.completed_on);
-const owes = j => j.status === "invoiced" && (+j.amount || 0) > 0 && balance(j) > 0; // only billed work counts as owed
+// a bill whose lien case was closed without payment is written off: kept as a record, not counted as owed
+const writtenOff = j => j.status === "invoiced" && balance(j) > 0 && !S.liens.some(l => l.job_id === j.id && l.status === "open") && S.liens.some(l => l.job_id === j.id && l.status !== "open" && l.data?.writtenOff);
+const owes = j => j.status === "invoiced" && (+j.amount || 0) > 0 && balance(j) > 0 && !writtenOff(j); // only billed work counts as owed
 const unbilled = j => j.status === "done" && !j._pending;
 const cust = id => S.customers.find(c => c.id === id);
 const jobById = id => S.jobs.find(j => j.id === id);
@@ -190,6 +192,7 @@ const jobName = j => `${cust(j.customer_id)?.name || "No customer"} · ${vehicle
 function stageChip(j) {
   if (j.status === "paid") return `<span class="chip paid">Paid</span>`;
   if (j.status === "done") return `<span class="chip soon">Needs a bill</span>`;
+  if (writtenOff(j)) return `<span class="chip up">Written off</span>`;
   if (owes(j)) { const a = ageDays(j) ?? 0; return `<span class="chip ${a >= 30 ? "over" : "up"}">${a === 0 ? "Billed today" : `${plural(a, "day")} unpaid`}</span>`; }
   return `<span class="chip up">${esc(STAGE_LABEL[j.status])}</span>`;
 }
@@ -581,7 +584,6 @@ function buildTasks() {
     const c = cust(j.customer_id); const who = c?.name || "No customer";
     if (owes(j)) {
       const a = ageDays(j) ?? 0, lien = openLien(j.id), rem = daysSince(j.last_reminded_on);
-      if (!lien && S.liens.some(l => l.job_id === j.id && l.status !== "open")) return; // lien closed without payment: written off, no more reminders
       const remTxt = rem != null ? ` · last reminder ${rem === 0 ? "today" : plural(rem, "day") + " ago"}` : " · no reminder sent yet";
       if (a >= 30 && !lien) T.push({ rank: 10, cls: "urgent", t: `${who} owes ${money(balance(j)).replace(/\s/g, "\u00a0")}`, s: `${vehicleText(j)} · ${plural(a, "day")} since the bill${remTxt}`,
         acts: [{ label: "Send reminder", act: "remind", id: j.id, primary: rem == null || rem >= 7 }, { label: "Start lien", act: "start-lien", id: j.id, primary: rem != null && rem < 7 }] });
@@ -682,9 +684,10 @@ function renderJobs() {
 }
 
 function nextJobAction(j) {
-  if (j.status === "estimate") return { title: j.approved_at ? "They said yes. Is the car here?" : "Waiting on the customer", label: "Car is here", act: "stage-start", help: j.approved_at ? "Tap when the car is in the bay and you're starting work." : "Text them the estimate so they can approve it. When the car is here, tap the button." };
+  if (j.status === "estimate") return { title: j.approved_at ? "They said yes. Ready to start?" : "Waiting on the customer", label: "Start work", act: "stage-start", help: j.approved_at ? "Tap Start work when the car is in the bay and you're starting on it." : "Text them the estimate so they can approve it. When you start the work, tap Start work." };
   if (j.status === "in_progress") return { title: "Working on it", label: "Work is done", act: "stage-done", help: "Tap when the repair is finished and the car is ready to go." };
   if (j.status === "done") return { title: "Give them the bill", label: "Give the bill", act: "stage-invoice", help: +j.amount ? `Price so far: ${money(j.amount)}. Tap the button, check the price, then print, text or email it.` : "Tap the button, type the price, then print, text or email it." };
+  if (writtenOff(j)) return { title: "Written off", label: "Got paid after all", act: "pay", help: `You closed the lien case without payment, so this ${money(balance(j))} isn't counted on Money owed. If they pay, tap the button. To try collecting again, reopen the lien case.` };
   if (j.status === "invoiced") return { title: `${money(balance(j))} still owed`, label: "Got paid", act: "pay", help: (ageDays(j) ?? 0) >= 14 ? `Bill given ${plural(ageDays(j) ?? 0, "day")} ago. A friendly reminder usually does it.` : "Tap when they pay, even part of it." };
   return null;
 }
@@ -1004,13 +1007,13 @@ function stageInvoice(j) {
   const needAmt = !(+j.amount > 0); const c = cust(j.customer_id) || {};
   openModal(`<form id="siForm" novalidate><div style="display:grid;gap:16px"><h2>Give them the bill</h2><div class="hint">${esc(jobName(j))}</div>
     <div class="grid"><div class="field"><label class="req" for="siAmt">1. Price on the bill ($)</label><input id="siAmt" inputmode="decimal" value="${esc(+j.amount ? j.amount : "")}" ${needAmt ? "autofocus" : ""}></div>
-      <div class="field"><label for="siDate">Date</label><input id="siDate" type="date" max="${todayISO()}" min="${esc(j.completed_on || "")}" value="${todayISO()}"></div></div>
+      <div class="field"><label for="siDate">Date given</label><input id="siDate" type="date" max="${todayISO()}" min="${esc(j.completed_on || "")}" value="${todayISO()}"></div></div>
     <div class="field"><span style="font-size:var(--t-sm);color:var(--stone);font-weight:600">2. How are you giving it to them?</span>
       <div class="choices">
-        <button type="submit" class="choice" data-how="print"><b>Print it</b><span>Opens the bill to print or hand over</span></button>
-        ${c.phone && coarse ? `<button type="submit" class="choice" data-how="text"><b>Text it</b><span>Sends a link to ${esc(c.phone)}</span></button>` : ""}
-        ${c.email ? `<button type="submit" class="choice" data-how="email"><b>Email it</b><span>To ${esc(c.email)}</span></button>` : ""}
         <button type="submit" class="choice" data-how="done"><b>They already have it</b><span>Just mark it as given</span></button>
+        <button type="submit" class="choice" data-how="print"><b>Print it</b><span>Opens the bill to print or hand over</span></button>
+        ${c.phone && coarse && navigator.onLine ? `<button type="submit" class="choice" data-how="text"><b>Text it</b><span>Opens a text to ${esc(c.phone)} with a link to the bill</span></button>` : ""}
+        ${c.email && navigator.onLine ? `<button type="submit" class="choice" data-how="email"><b>Email it</b><span>To ${esc(c.email)}</span></button>` : ""}
       </div></div>
     <div class="hint">Either way, the job moves to <b>Bill given</b> and shows on Money owed until they pay.</div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button></div></div></form>`);
@@ -1255,9 +1258,9 @@ async function linkOff(j) {
 
 // ---- help ----
 const HELP = [
-  ["A car comes in", "Tap + Add a job. Snap a photo of the estimate, type the customer's name and the car, and tap Save job."],
+  ["A car comes in", "Tap + Add a job. Snap a photo of the estimate or the damage, type the customer's name and the car, and tap Save job."],
   ["You finish the work", "On Jobs, tap Work is done on that car."],
-  ["You give them the bill", "Tap Bill given. Type the price if it isn't there yet."],
+  ["You give them the bill", "Tap Give the bill. Check the price, then pick Print it, Text it, Email it or They already have it."],
   ["They pay", "Tap Got paid, tap Paid it all (or type part of it), pick cash, card or check, and save. When it's all paid, the job moves to Paid by itself."],
   ["Send the estimate to a customer", "Open the job and tap Text estimate to customer. They can see it with the photos and tap Approve on their phone."],
   ["Someone hasn't paid", "The Today screen reminds you. Tap Send reminder. If they still don't pay after 30 days, open the job and tap Start a lien case. It walks you through each step."],
@@ -1347,7 +1350,10 @@ function renderMoney() {
         <div class="r"><div class="acts">
           <button class="btn sm" type="button" data-act="remind" data-id="${j.id}">Send reminder</button>
           <button class="btn sm" type="button" data-act="pay" data-id="${j.id}">Got paid</button>
-        </div></div></div>`; }).join("") : `<div class="empty">${open.length ? "Nothing in this group." : "Nobody owes the shop money. When you tap Bill given on a job, it shows up here until it's paid."}</div>`}</div></section>
+        </div></div></div>`; }).join("") : `<div class="empty">${open.length ? "Nothing in this group." : "Nobody owes the shop money. When you tap Give the bill on a job, it shows up here until it's paid."}</div>`}</div></section>
+    ${(() => { const wo = S.jobs.filter(writtenOff); if (!wo.length) return ""; const t = wo.reduce((a, j) => a + balance(j), 0);
+      return `<details class="panel"><summary>Written off · ${wo.length} · ${money(t)}</summary><div class="inner"><div class="hint" style="margin-bottom:10px">Bills whose lien case you closed without payment. They're not counted above. To try collecting again, open the job and reopen its lien case.</div>
+        <div class="list">${wo.map(j => `<div class="row" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(cust(j.customer_id)?.name || "No customer")}</a><div class="s">${esc(vehicleText(j))} · ${money(balance(j))} unpaid</div></div></div>`).join("")}</div></div></details>`; })()}
     ${unb.length ? `<section aria-labelledby="unbH"><h2 id="unbH">Not billed yet · ${unb.length}${unbTotal ? ` · ${money(unbTotal)}` : ""}</h2><div class="hint" style="margin:-6px 0 12px">Work is done but they don't have the bill yet, so it isn't counted above.</div>
       <div class="list">${unb.map(j => `<div class="row" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(cust(j.customer_id)?.name || "No customer")}</a><div class="s">${esc(vehicleText(j))}${+j.amount ? " · " + money(j.amount) : " · no price yet"}${j.completed_on ? " · done " + esc(K.fmt(K.D(j.completed_on))) : ""}</div></div>
         <div class="r"><div class="acts"><button class="btn sm outline" type="button" data-act="stage-invoice" data-id="${j.id}">Give the bill</button></div></div></div>`).join("")}</div></section>` : ""}`;
@@ -1460,11 +1466,12 @@ function missingFor(c) {
 }
 async function startLien(j) {
   if (j.status === "paid" || !(balance(j) > 0)) return toast("This job is paid. There's nothing to collect.");
-  if (!["done", "invoiced"].includes(j.status)) { await confirmBox({ title: "Give them the bill first", body: "A lien is for work that's done and billed but unpaid. Tap Work is done, then Bill given, first.", ok: "Got it", cancel: "" }); return; }
+  if (!["done", "invoiced"].includes(j.status)) { await confirmBox({ title: "Give them the bill first", body: "A lien is for work that's done and billed but unpaid. Tap Work is done, then Give the bill, first.", ok: "Got it", cancel: "" }); return; }
   if (openLien(j.id)) return go("lien/" + openLien(j.id).id);
   const old = S.liens.find(l => l.job_id === j.id && l.status !== "open");
   if (old && await confirmBox({ title: "Reopen the earlier lien case?", body: "This job already had a lien case. Reopening keeps every step and date you entered.", ok: "Reopen it", cancel: "Start a new one" })) {
-    const { error } = await sb.from("shop_liens").update({ status: "open" }).eq("id", old.id); if (error) return toast(friendly(error));
+    const od = JSON.parse(JSON.stringify(old.data || {})); delete od.track; delete od.writtenOff;
+    const { error } = await sb.from("shop_liens").update({ status: "open", data: od }).eq("id", old.id); if (error) return toast(friendly(error));
     await reload(); go("lien/" + old.id); toast("Lien case reopened."); return;
   }
   const a = ageDays(j) ?? 0;
@@ -1495,7 +1502,7 @@ async function startLien(j) {
       vehicle: j.kind === "property" ? {} : { ...(j.vehicle || {}) },
       property: j.kind === "property" ? { address: j.property?.address || "", county: j.property?.county || "", legal: "" } : {},
       residential: !!j.property?.residential, newResidential: false, amount: String(balance(j)), description: j.title || j.description || "",
-      dates: { lastWork: j.completed_on || "", ...(track === "tow" ? { possession: j.completed_on || "" } : {}), ...(have === false ? { released: val("lnRel") } : {}) }, saleTime: "", done: {} };
+      dates: { lastWork: j.completed_on || "", ...(track === "tow" ? { possession: j.completed_on || "" } : {}), ...(have === false ? { released: val("lnRel") } : {}) }, saleTime: "10:00 AM", done: {} };
     const { data: row, error } = await sb.from("shop_liens").insert({ account_id: S.account.id, job_id: j.id, track, data }).select().single();
     if (error) return toast(friendly(error));
     await reload(); await closeModal(true); go("lien/" + row.id); toast("Lien case started. Follow the steps from the top.");
@@ -1530,7 +1537,8 @@ function renderLien(id) {
     : n ? `<div class="nextcard ${st && st.cls === "over" ? "" : "calm"}"><div class="eyebrow">Step ${all.indexOf(all.find(s => s.key === n.key)) + 1} of ${all.length}</div><div class="headline">${esc(n.title)}</div>
         <div class="hint">${esc(n.detail)}${ui.help ? " " + esc(ui.help) : ""}</div>
         ${n.date ? `<div><span class="date">Due ${esc(K.fmt(n.date))}</span> <span class="chip ${st.cls}">${esc(st.txt)}</span></div>` : ""}
-        ${n.key === "notice" && !closed ? `<div class="grid">${lfield(c, "dates.saleDate", "Sale date (prints on the letter)", { suffix: "-n" }).replace('type="text"', `type="date" min="${todayISO()}"`)}${lfield(c, "saleTime", "Sale time", { suffix: "-n" })}</div>` : ""}
+        ${n.key === "notice" && !closed ? `<div class="grid">${lfield(c, "dates.saleDate", "Sale date (prints on the letter)", { suffix: "-n" }).replace('type="text"', `type="date" min="${K.iso(earliestSale(c, todayISO()) || K.TODAY)}"`)}${lfield(c, "saleTime", "Sale time", { suffix: "-n" })}</div>
+        <div class="hint">If you mail the notice today, the earliest legal sale date is <b>${esc(K.fmt(earliestSale(c, todayISO()) || K.TODAY))}</b>.</div>` : ""}
         ${ui.doc && miss.length ? `<div class="notice bad"><b>Fill these in before sending letters:</b><div class="grid" style="margin-top:10px">${miss.map(m => lfield(c, m.path, m.label)).join("")}</div></div>` : ""}
         <div class="row2">${ui.doc ? `<button class="btn" type="button" data-act="print-doc" data-doc="${ui.doc}">Print the ${esc(K.docsFor(c).find(d => d.key === ui.doc)?.label.toLowerCase() || "letter")}</button>` : ""}
           <button class="btn primary big" type="button" data-act="step-done" data-step="${n.key}">${esc(ui.label)}</button>
@@ -1634,7 +1642,7 @@ function stepDone(key) {
   }
   if (ui.ask === "lienholders") {
     openModal(`<form id="slForm" novalidate><div style="display:grid;gap:16px"><h2>Who are the lienholders?</h2>
-      <div class="hint">From the title record. Every one of them gets the notice of sale. If there are none, type None.</div>
+      <div class="hint">A lienholder is the bank or lender listed on the title (if the car has a loan). Every one of them gets the notice of sale. If the title shows none, type None.</div>
       <div class="field"><label class="req" for="slText">Lienholder names and mailing addresses</label><textarea id="slText" rows="3">${esc(c.lienholders || "")}</textarea></div>
       <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button></div></div></form>`);
     $("slForm").addEventListener("submit", e => { e.preventDefault(); if (!val("slText")) return fieldErr("slText", "Type the lienholders, or None."); finish({ lienholders: val("slText") }, e.submitter); });
@@ -1704,8 +1712,9 @@ async function closeLienCase() {
   $("clGive").addEventListener("click", async () => {
     await closeModal(true);
     if (!(await confirmBox({ title: "Close without payment?", body: "The bill stays on Money owed as a record, but Today won't remind you about it anymore. You can reopen the case later.", ok: "Close case" }))) return;
-    const { error } = await sb.from("shop_liens").update({ status: "closed" }).eq("id", l.id); if (error) return toast(friendly(error));
-    await reload(); route(true); toast("Case closed.");
+    const data = JSON.parse(JSON.stringify(l.data)); delete data.track; data.writtenOff = true;
+    const { error } = await sb.from("shop_liens").update({ status: "closed", data }).eq("id", l.id); if (error) return toast(friendly(error));
+    await reload(); route(true); toast("Case closed. The bill is under Written off on Money owed.");
   });
 }
 function printDoc(key) {
@@ -1875,7 +1884,7 @@ document.addEventListener("click", async e => {
     case "retry-save": return saveLienSoon(0);
     case "fill-blanks": { const d = $("factsPanel"); if (!d) return; d.open = true; const empty = [...d.querySelectorAll("input[data-path]:not([type=checkbox]),textarea[data-path]")].find(i => !i.value.trim()); d.scrollIntoView({ behavior: "smooth", block: "start" }); if (empty) setTimeout(() => empty.focus({ preventScroll: true }), 350); return; }
     case "close-lien": return closeLienCase();
-    case "reopen-lien": { const { error } = await sb.from("shop_liens").update({ status: "open" }).eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); route(true); return toast("Case reopened."); }
+    case "reopen-lien": { const rd = JSON.parse(JSON.stringify(currentLien.data)); delete rd.track; delete rd.writtenOff; const { error } = await sb.from("shop_liens").update({ status: "open", data: rd }).eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); route(true); return toast("Case reopened."); }
     case "del-lien": { if (!(await confirmBox({ title: "Delete this lien case?", body: "Its steps and dates are lost for good. The job and payments stay.", ok: "Delete case", danger: true }))) return; const { error } = await sb.from("shop_liens").delete().eq("id", currentLien.id); if (error) return toast(friendly(error)); await reload(); go("liens"); return toast("Lien case deleted."); }
     case "rm-member": { if (!(await confirmBox({ title: "Remove from the team?", body: "They won't be able to sign in to the shop portal anymore.", ok: "Remove", danger: true }))) return; const { error } = await sb.from("shop_members").update({ active: false }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Removed."); }
     case "toggle-coowner": { const m = S.members.find(x => x.user_id === id); if (!m) return; if (!(await confirmBox({ title: m.co_owner ? "Remove co-owner?" : "Make co-owner?", body: m.co_owner ? "They keep using the portal but can't change shop info or the team." : "They'll be able to change shop info and add or remove team members.", ok: m.co_owner ? "Remove co-owner" : "Make co-owner" }))) return; const { error } = await sb.from("shop_members").update({ co_owner: !m.co_owner }).eq("account_id", S.account.id).eq("user_id", id); if (error) return toast(friendly(error)); await reload(); renderSettings(); return toast("Saved."); }
