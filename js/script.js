@@ -29,6 +29,16 @@
     updateOpenStatus();
     setInterval(updateOpenStatus, 60 * 1000);
 
+    // map loads only when asked (saves ~500 KB of Google scripts on phones)
+    const mapBtn = document.getElementById('showMap');
+    if (mapBtn) mapBtn.addEventListener('click', () => {
+        const f = document.createElement('iframe');
+        f.title = "Map showing Dale's Auto Body at 1310 State Avenue, Kansas City, KS";
+        f.src = 'https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&output=embed';
+        f.referrerPolicy = 'no-referrer-when-downgrade'; f.allowFullscreen = true;
+        const m = document.getElementById('map'); m.innerHTML = ''; m.appendChild(f); f.focus();
+    });
+
     // ---- gallery lightbox: tap to enlarge, arrows / swipe / keyboard, focus returns on close ----
     const gallery = document.getElementById('gallery');
     const box = document.getElementById('lightbox');

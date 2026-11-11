@@ -16,9 +16,8 @@
     <meta property="og:url" content="https://daleskc.com/">
     <meta property="og:image" content="https://daleskc.com/images/web/og.jpg">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="font" type="font/woff2" href="fonts/bebas-neue.woff2" crossorigin>
+    <link rel="preload" as="font" type="font/woff2" href="fonts/work-sans.woff2" crossorigin>
     <link rel="preload" as="image" href="images/web/shop.webp" imagesrcset="images/web/shop-sm.webp 480w, images/web/shop.webp 741w" imagesizes="(max-width: 899px) 100vw, 45vw" fetchpriority="high">
     <link rel="stylesheet" href="css/style.css">
     <script src="js/script.js" defer></script>
@@ -50,8 +49,8 @@
                 <span class="brand-sub">Kansas City, KS</span>
             </a>
             <nav class="nav-links" aria-label="Main">
-                <a href="#work">Our work</a>
                 <a href="#services">Services</a>
+                <a href="#work">Our work</a>
                 <a href="#visit">Hours &amp; directions</a>
             </nav>
             <a class="btn solid nav-call" href="tel:+19133716654">Call</a>
@@ -70,6 +69,7 @@
                         <a class="btn outline" href="https://www.google.com/maps/dir/?api=1&amp;destination=1310+State+Ave,+Kansas+City,+KS+66102" target="_blank" rel="noopener">Get directions</a>
                     </div>
                     <p class="hours-line"><span class="status-dot" id="navStatus">Open weekdays 10am–6pm</span><span class="hours-sub">Weekends by appointment</span></p>
+                    <p class="reviews-line"><a href="https://www.google.com/maps/search/?api=1&amp;query=Dale%27s+Auto+Body+1310+State+Ave+Kansas+City+KS+66102" target="_blank" rel="noopener"><span aria-hidden="true">★</span> See our Google reviews</a></p>
                 </div>
                 <figure class="hero-photo">
                     <img src="images/web/shop.webp" srcset="images/web/shop-sm.webp 480w, images/web/shop.webp 741w" sizes="(max-width: 899px) 100vw, 45vw" width="741" height="544" alt="Dale's Auto Body: the white shop building and parking lot on State Avenue" fetchpriority="high">
@@ -77,35 +77,11 @@
             </div>
         </section>
 
-        <section class="work" id="work" aria-labelledby="workH">
-            <div class="container">
-                <div class="section-header">
-                    <p class="eyebrow">Our work</p>
-                    <h2 id="workH">Custom paint and bike builds from the shop floor.</h2>
-                    <p class="lede">Candy paint, flames, pinstripes and full builds. Tap any photo to see it larger.</p>
-                </div>
-                <ul class="gallery" id="gallery">
-                    <li><button type="button" data-full="images/web/work-00018.webp"><img src="images/web/work-00018-sm.webp" width="480" height="360" loading="lazy" alt="Road Glide in custom peach paint with a matching fairing and bags"></button></li>
-                    <li><button type="button" data-full="images/web/work-00025.webp"><img src="images/web/work-00025-sm.webp" width="480" height="360" loading="lazy" alt="Bagger in candy copper with gold pinstripe flames and a two-tone seat"></button></li>
-                    <li><button type="button" data-full="images/web/work-00068.webp"><img src="images/web/work-00068-sm.webp" width="480" height="360" loading="lazy" alt="Orange and black flamed Road Glide with a big custom front wheel"></button></li>
-                    <li><button type="button" data-full="images/web/work-00051.webp"><img src="images/web/work-00051-sm.webp" width="480" height="360" loading="lazy" alt="Close-up of a red fender with a Chiefs arrowhead graphic"></button></li>
-                    <li><button type="button" data-full="images/web/work-00029.webp"><img src="images/web/work-00029-sm.webp" width="480" height="360" loading="lazy" alt="Maroon touring bike with a tan seat and chrome trim"></button></li>
-                    <li><button type="button" data-full="images/web/work-00023.webp"><img src="images/web/work-00023-sm.webp" width="480" height="360" loading="lazy" alt="Copper and gold bagger with stretched bags, side view"></button></li>
-                    <li><button type="button" data-full="images/web/work-00057.webp"><img src="images/web/work-00057-sm.webp" width="480" height="360" loading="lazy" alt="Black Road Glide with stretched bags and chrome wheel"></button></li>
-                    <li><button type="button" data-full="images/web/work-00033.webp"><img src="images/web/work-00033-sm.webp" width="480" height="360" loading="lazy" alt="Candy blue rear fender with a built-in red LED light strip"></button></li>
-                    <li><button type="button" data-full="images/web/work-00010.webp"><img src="images/web/work-00010-sm.webp" width="480" height="360" loading="lazy" alt="Copper bagger finished and parked outside the shop"></button></li>
-                    <li><button type="button" data-full="images/web/work-00020.webp"><img src="images/web/work-00020-sm.webp" width="480" height="360" loading="lazy" alt="Peach-painted fairing and bags from above"></button></li>
-                    <li><button type="button" data-full="images/web/work-00055.webp"><img src="images/web/work-00055-sm.webp" width="480" height="360" loading="lazy" alt="Black bagger with long stretched bags, parked by a white fence"></button></li>
-                    <li><button type="button" data-full="images/web/work-00074.webp"><img src="images/web/work-00074-sm.webp" width="480" height="360" loading="lazy" alt="Chrome engine detail on a black touring bike"></button></li>
-                </ul>
-            </div>
-        </section>
-
         <section class="services" id="services" aria-labelledby="servH">
             <div class="container">
                 <div class="section-header">
                     <p class="eyebrow">What we fix</p>
-                    <h2 id="servH">Collision, paint and upholstery done right.</h2>
+                    <h2 id="servH">Collision, paint, custom and upholstery done right.</h2>
                     <p class="lede">A small shop with the tools for frame work, booth paint and interior repair.</p>
                 </div>
                 <div class="service-grid">
@@ -134,6 +110,30 @@
             </div>
         </section>
 
+        <section class="work" id="work" aria-labelledby="workH">
+            <div class="container">
+                <div class="section-header">
+                    <p class="eyebrow">Our work</p>
+                    <h2 id="workH">Custom paint and bike builds from the shop floor.</h2>
+                    <p class="lede">Candy paint, flames, pinstripes and full builds. Tap any photo to see it larger.</p>
+                </div>
+                <ul class="gallery" id="gallery">
+                    <li><button type="button" data-full="images/web/work-00018.webp"><img src="images/web/work-00018-sm.webp" width="480" height="360" loading="lazy" alt="Road Glide in custom peach paint with a matching fairing and bags"></button></li>
+                    <li><button type="button" data-full="images/web/work-00025.webp"><img src="images/web/work-00025-sm.webp" width="480" height="360" loading="lazy" alt="Bagger in candy copper with gold pinstripe flames and a two-tone seat"></button></li>
+                    <li><button type="button" data-full="images/web/work-00068.webp"><img src="images/web/work-00068-sm.webp" width="480" height="360" loading="lazy" alt="Orange and black flamed Road Glide with a big custom front wheel"></button></li>
+                    <li><button type="button" data-full="images/web/work-00051.webp"><img src="images/web/work-00051-sm.webp" width="480" height="360" loading="lazy" alt="Close-up of a red fender with a Chiefs arrowhead graphic"></button></li>
+                    <li><button type="button" data-full="images/web/work-00029.webp"><img src="images/web/work-00029-sm.webp" width="480" height="360" loading="lazy" alt="Maroon touring bike with a tan seat and chrome trim"></button></li>
+                    <li><button type="button" data-full="images/web/work-00023.webp"><img src="images/web/work-00023-sm.webp" width="480" height="360" loading="lazy" alt="Copper and gold bagger with stretched bags, side view"></button></li>
+                    <li><button type="button" data-full="images/web/work-00057.webp"><img src="images/web/work-00057-sm.webp" width="480" height="360" loading="lazy" alt="Black Road Glide with stretched bags and chrome wheel"></button></li>
+                    <li><button type="button" data-full="images/web/work-00033.webp"><img src="images/web/work-00033-sm.webp" width="480" height="360" loading="lazy" alt="Candy blue rear fender with a built-in red LED light strip"></button></li>
+                    <li><button type="button" data-full="images/web/work-00010.webp"><img src="images/web/work-00010-sm.webp" width="480" height="360" loading="lazy" alt="Copper bagger finished and parked outside the shop"></button></li>
+                    <li><button type="button" data-full="images/web/work-00020.webp"><img src="images/web/work-00020-sm.webp" width="480" height="360" loading="lazy" alt="Peach-painted fairing and bags from above"></button></li>
+                    <li><button type="button" data-full="images/web/work-00055.webp"><img src="images/web/work-00055-sm.webp" width="480" height="360" loading="lazy" alt="Black bagger with long stretched bags, parked by a white fence"></button></li>
+                    <li><button type="button" data-full="images/web/work-00074.webp"><img src="images/web/work-00074-sm.webp" width="480" height="360" loading="lazy" alt="Chrome engine detail on a black touring bike"></button></li>
+                </ul>
+            </div>
+        </section>
+
         <section class="visit" id="visit" aria-labelledby="visitH">
             <div class="container visit-grid">
                 <div class="visit-card card">
@@ -151,10 +151,13 @@
                     <p class="email-line">Or email <a href="mailto:dalesautobody@gmail.com">dalesautobody@gmail.com</a></p>
                     <p class="email-line"><a href="https://www.google.com/maps/search/?api=1&amp;query=Dale%27s+Auto+Body+1310+State+Ave+Kansas+City+KS+66102" target="_blank" rel="noopener">See our Google reviews and photos</a></p>
                 </div>
-                <div class="map">
-                    <iframe title="Map showing Dale's Auto Body at 1310 State Avenue, Kansas City, KS"
-                        src="https://www.google.com/maps?q=1310+State+Avenue+Kansas+City+KS+66102&amp;output=embed"
-                        loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+                <div class="map" id="map">
+                    <div class="map-card">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                        <p><b>1310 State Avenue</b><br>Kansas City, KS 66102</p>
+                        <p class="map-sub">On State Avenue, west of downtown Kansas City, Kansas.</p>
+                        <button class="btn outline" type="button" id="showMap">Show the map here</button>
+                    </div>
                 </div>
             </div>
         </section>

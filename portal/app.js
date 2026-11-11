@@ -671,7 +671,8 @@ function jobRows(list, empty, byCar) {
 }
 function renderJobs() {
   const paid = S.jobs.filter(j => j.status === "paid");
-  const active = S.jobs.filter(j => j.status !== "paid");
+  const wo = S.jobs.filter(writtenOff);
+  const active = S.jobs.filter(j => j.status !== "paid" && !writtenOff(j));
   $("main").innerHTML = `
     <div class="pagehead"><div><h1>Jobs</h1><p class="lede">${plural(active.length, "open job")}${paid.length ? ` · ${paid.length} paid` : ""}</p></div>
       <button class="btn primary addjob" type="button" data-act="new-job">+ Add a job</button></div>
@@ -679,6 +680,7 @@ function renderJobs() {
     <div class="board cols4">${JOB_GROUPS.map(g => { const list = active.filter(g.f);
       return `<section class="lane" aria-labelledby="lane-${g.key}"><h2 id="lane-${g.key}">${esc(g.title)} <span class="count">${list.length}</span></h2><div class="hint">${esc(g.hint)}</div>
         ${list.length ? jobRows(list) : `<div class="laneempty">None right now</div>`}</section>`; }).join("")}</div>`}
+    ${wo.length ? `<details class="panel"><summary>Written off · ${wo.length}</summary><div class="inner"><div class="hint" style="margin-bottom:10px">Bills you stopped chasing (lien case closed without payment). To try again, open the job, tap <b>Lien case (closed)</b>, then <b>Reopen case</b>.</div>${jobRows(wo)}</div></details>` : ""}
     ${paid.length ? `<details class="panel"><summary>Paid jobs · ${paid.length}</summary><div class="inner">${jobRows(paid.slice(0, 100))}${paid.length > 100 ? `<div class="hint" style="margin-top:10px">Showing the newest 100. Use Find to look up older ones.</div>` : ""}</div></details>` : ""}`;
   fillPhotos($("main"));
 }
@@ -687,7 +689,7 @@ function nextJobAction(j) {
   if (j.status === "estimate") return { title: j.approved_at ? "They said yes. Ready to start?" : "Waiting on the customer", label: "Start work", act: "stage-start", help: j.approved_at ? "Tap Start work when the car is in the bay and you're starting on it." : "Text them the estimate so they can approve it. When you start the work, tap Start work." };
   if (j.status === "in_progress") return { title: "Working on it", label: "Work is done", act: "stage-done", help: "Tap when the repair is finished and the car is ready to go." };
   if (j.status === "done") return { title: "Give them the bill", label: "Give the bill", act: "stage-invoice", help: +j.amount ? `Price so far: ${money(j.amount)}. Tap the button, check the price, then print, text or email it.` : "Tap the button, type the price, then print, text or email it." };
-  if (writtenOff(j)) return { title: "Written off", label: "Got paid after all", act: "pay", help: `You closed the lien case without payment, so this ${money(balance(j))} isn't counted on Money owed. If they pay, tap the button. To try collecting again, reopen the lien case.` };
+  if (writtenOff(j)) return { title: "Written off", label: "Got paid after all", act: "pay", help: `You closed the lien case without payment, so this ${money(balance(j))} isn't counted on Money owed. If they pay, tap the button. To try collecting again, tap "Lien case (closed)" below, then "Reopen case".` };
   if (j.status === "invoiced") return { title: `${money(balance(j))} still owed`, label: "Got paid", act: "pay", help: (ageDays(j) ?? 0) >= 14 ? `Bill given ${plural(ageDays(j) ?? 0, "day")} ago. A friendly reminder usually does it.` : "Tap when they pay, even part of it." };
   return null;
 }
@@ -712,7 +714,7 @@ function renderJob(id) {
   const v = j.vehicle || {}, p = j.property || {};
   const isEst = j.status === "estimate"; const docWord = isEst ? "estimate" : j.status === "paid" ? "receipt" : "bill";
   const billed = ["invoiced", "paid"].includes(j.status);
-  const amtLabel = j.status === "paid" ? "Paid in full" : billed ? "Still owed" : "Price";
+  const amtLabel = j.status === "paid" ? "Paid in full" : writtenOff(j) ? "Written off" : billed ? "Still owed" : "Price";
   const amtVal = !+j.amount ? "—" : j.status === "paid" ? money(j.amount) : billed ? money(balance(j)) : money(j.amount);
   const payLabel = billed || j.status === "done" ? "+ Got paid" : "+ Take a deposit";
   $("main").innerHTML = `
@@ -1352,7 +1354,7 @@ function renderMoney() {
           <button class="btn sm" type="button" data-act="pay" data-id="${j.id}">Got paid</button>
         </div></div></div>`; }).join("") : `<div class="empty">${open.length ? "Nothing in this group." : "Nobody owes the shop money. When you tap Give the bill on a job, it shows up here until it's paid."}</div>`}</div></section>
     ${(() => { const wo = S.jobs.filter(writtenOff); if (!wo.length) return ""; const t = wo.reduce((a, j) => a + balance(j), 0);
-      return `<details class="panel"><summary>Written off · ${wo.length} · ${money(t)}</summary><div class="inner"><div class="hint" style="margin-bottom:10px">Bills whose lien case you closed without payment. They're not counted above. To try collecting again, open the job and reopen its lien case.</div>
+      return `<details class="panel"><summary>Written off · ${wo.length} · ${money(t)}</summary><div class="inner"><div class="hint" style="margin-bottom:10px">Bills whose lien case you closed without payment. They're not counted above. To try collecting again, open the job, tap <b>Lien case (closed)</b>, then <b>Reopen case</b>.</div>
         <div class="list">${wo.map(j => `<div class="row" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(cust(j.customer_id)?.name || "No customer")}</a><div class="s">${esc(vehicleText(j))} · ${money(balance(j))} unpaid</div></div></div>`).join("")}</div></div></details>`; })()}
     ${unb.length ? `<section aria-labelledby="unbH"><h2 id="unbH">Not billed yet · ${unb.length}${unbTotal ? ` · ${money(unbTotal)}` : ""}</h2><div class="hint" style="margin:-6px 0 12px">Work is done but they don't have the bill yet, so it isn't counted above.</div>
       <div class="list">${unb.map(j => `<div class="row" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(cust(j.customer_id)?.name || "No customer")}</a><div class="s">${esc(vehicleText(j))}${+j.amount ? " · " + money(j.amount) : " · no price yet"}${j.completed_on ? " · done " + esc(K.fmt(K.D(j.completed_on))) : ""}</div></div>
@@ -1533,7 +1535,7 @@ function renderLien(id) {
     <div class="head"><div><div class="eyebrow">${esc(K.TRACKS[c.track].label)} lien · ${esc(K.TRACKS[c.track].law)}${closed ? " · CLOSED" : ""}</div><h1>${esc(lienLabel(l))}</h1>
       <div class="small">${job ? `From job: <a href="#job/${job.id}">${esc(job.title || vehicleText(job))}</a>` : "Not linked to a job"}</div></div>
       <div class="amount"><div class="l">Amount owed</div><div class="n">${money(c.amount)}</div></div></div>
-    ${closed ? `<div class="nextcard good"><div class="headline">This case is closed</div><div class="hint">${job && job.status === "paid" ? "The customer paid in full. Print the release below and give it to them." : "Closed without payment."}</div><div class="row2"><button class="btn" type="button" data-act="reopen-lien">Reopen case</button></div></div>`
+    ${closed ? `<div class="nextcard good"><div class="headline">This case is closed</div><div class="hint">${job && job.status === "paid" ? "The customer paid in full. Print the release below and give it to them." : (l.data?.writtenOff ? "Written off: closed without payment. Tap Reopen case to try collecting again." : "Closed without payment.")}</div><div class="row2"><button class="btn" type="button" data-act="reopen-lien">Reopen case</button></div></div>`
     : n ? `<div class="nextcard ${st && st.cls === "over" ? "" : "calm"}"><div class="eyebrow">Step ${all.indexOf(all.find(s => s.key === n.key)) + 1} of ${all.length}</div><div class="headline">${esc(n.title)}</div>
         <div class="hint">${esc(n.detail)}${ui.help ? " " + esc(ui.help) : ""}</div>
         ${n.date ? `<div><span class="date">Due ${esc(K.fmt(n.date))}</span> <span class="chip ${st.cls}">${esc(st.txt)}</span></div>` : ""}

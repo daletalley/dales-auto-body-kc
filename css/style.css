@@ -1,4 +1,6 @@
-/* Dale's Auto Body: public site. Brand: navy / rust / amber / cream, Bebas Neue + Work Sans. */
+/* Dale's Auto Body: public site. Brand: navy / rust / amber / cream, Bebas Neue + Work Sans (self-hosted, OFL). */
+@font-face { font-family: 'Bebas Neue'; src: url('../fonts/bebas-neue.woff2') format('woff2'); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Work Sans'; src: url('../fonts/work-sans.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
 :root {
     --ink: #0d1c2a;
     --navy: #0f2740;
@@ -148,9 +150,15 @@ h1, h2, .brand-name { font-family: 'Bebas Neue', Impact, 'Arial Narrow', sans-se
 .hours { display: grid; grid-template-columns: max-content 1fr; gap: 0.4rem 1.5rem; margin: 0 0 1.5rem; }
 .hours dt { color: var(--muted); }
 .hours dd { margin: 0; font-weight: 700; }
-.email-line { margin: 1.25rem 0 0; color: var(--muted); }
+.visit-card > .email-line { margin: 1.25rem 0 0; color: var(--muted); }
 .email-line a { color: var(--amber); text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
-.map { border-radius: 18px; overflow: hidden; border: 1px solid var(--line); min-height: 22rem; background: #13283f; }
+.map { border-radius: 18px; overflow: hidden; border: 1px solid var(--line); min-height: 22rem; background: radial-gradient(600px 300px at 30% 20%, #1c3958, #13283f); display: grid; }
+.map-card { display: grid; place-items: center; align-content: center; gap: 0.6rem; text-align: center; padding: 2rem; }
+.map-card svg { width: 44px; height: 44px; fill: none; stroke: var(--rust); stroke-width: 1.8; }
+.map-card p { margin: 0; font-size: 1.15rem; }
+.map-card .map-sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 0.6rem; }
+.reviews-line { margin: 0.75rem 0 0; }
+.reviews-line a { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; color: var(--amber); font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
 .map iframe { display: block; width: 100%; height: 100%; min-height: 22rem; border: 0; }
 @media (max-width: 899px) { .visit-grid { grid-template-columns: 1fr; } }
 @media (max-width: 520px) { .visit .cta-row .btn { flex: 1 1 100%; } .map, .map iframe { min-height: 18rem; } }

@@ -25,7 +25,7 @@ h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size:
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 10px; }
 .card h2 { font-size: 1.1rem; margin: 0; }
 .row { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
-.row:first-child { border-top: 0; padding-top: 0; }
+.row:first-child, .row[hidden] + .row { border-top: 0; padding-top: 0; }
 .k { color: var(--muted); flex: none; }
 .v { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
 .nw { white-space: nowrap; }
@@ -72,7 +72,7 @@ a { color: var(--amber); }
         <div class="row" id="claimRow"><span class="k">Insurance</span><span class="v" id="claim"></span></div>
         <div class="row" id="notesRow"><span class="k">Notes</span><span class="v" id="notes"></span></div>
       </div>
-      <div class="card"><div class="k" id="totalLabel">Estimate total</div><div class="total" id="total"></div><div class="small" id="totalNote"></div><a class="jump" id="jump" href="#approveCard" hidden>Ready to approve? Jump to the Approve button ↓</a><button class="btn line" id="printRc" type="button" hidden>Save or print this receipt</button><div class="small" id="payHow" hidden>Pay at the shop with cash, card or check, Monday to Friday 10am–6pm, or call to pay by card.</div></div>
+      <div class="card"><div class="k" id="totalLabel">Estimate total</div><div class="total" id="total"></div><div class="small" id="totalNote"></div><a class="jump" id="jump" href="#approveCard" hidden>Ready? Jump to Approve ↓</a><button class="btn line" id="printRc" type="button" hidden>Save or print this receipt</button><div class="small" id="payHow" hidden>Pay at the shop with cash, card or check, Monday to Friday 10am–6pm, or call to pay by card.</div></div>
       <div class="card" id="photoCard" hidden><h2>Estimate pages and photos</h2><div class="small">Tap a photo to see it full size.</div><div class="photos" id="photos"></div></div>
       <form class="card" id="approveCard" hidden novalidate>
         <h2>Ready to go ahead?</h2>
