@@ -122,7 +122,7 @@ function dateRule(id, { required = false, notFuture = true, min = null, minLabel
 }
 
 // ================= state =================
-const S = { user: null, account: null, isOwner: false, isDale: false, customers: [], jobs: [], liens: [], payments: [], members: [], invites: [], photos: [], offlineSince: null };
+const S = { user: null, account: null, isOwner: false, isDale: false, customers: [], jobs: [], liens: [], payments: [], members: [], invites: [], photos: [], links: [], offlineSince: null };
 const STAGES = [
   { k: "estimate", label: "Estimate" }, { k: "in_progress", label: "In the shop" }, { k: "done", label: "Work done" },
   { k: "invoiced", label: "Invoiced" }, { k: "paid", label: "Paid" }];
@@ -249,7 +249,7 @@ async function startApp() {
   showOnly("appView"); route(); flushQueue();
 }
 async function startOffline(snap) {
-  Object.assign(S, { account: snap.account, isDale: snap.isDale, isOwner: snap.isOwner, customers: snap.customers, jobs: snap.jobs, liens: snap.liens, payments: snap.payments, members: snap.members, invites: snap.invites, photos: snap.photos || [] });
+  Object.assign(S, { account: snap.account, isDale: snap.isDale, isOwner: snap.isOwner, customers: snap.customers, jobs: snap.jobs, liens: snap.liens, payments: snap.payments, members: snap.members, invites: snap.invites, photos: snap.photos || [], links: snap.links || [] });
   S.offlineSince = snap.at; await mergePending();
   showOnly("appView"); netState(); route();
 }
@@ -261,11 +261,12 @@ async function loadAll() {
     q("shop_payments", ["created_at", false]), q("shop_members", ["created_at", true]),
     S.isOwner ? q("shop_invites", ["created_at", true]) : Promise.resolve({ data: [] }),
     q("shop_job_photos", ["created_at", true]),
+    q("shop_job_links", ["created_at", false]),
     sb.from("shop_accounts").select("*").eq("id", a).maybeSingle()
   ]);
   const bad = res.find(r => r.error); if (bad) throw bad.error;
-  [S.customers, S.jobs, S.liens, S.payments, S.members, S.invites, S.photos] = res.slice(0, 7).map(r => r.data || []);
-  if (res[7].data) S.account = res[7].data;
+  [S.customers, S.jobs, S.liens, S.payments, S.members, S.invites, S.photos, S.links] = res.slice(0, 8).map(r => r.data || []);
+  if (res[8].data) S.account = res[8].data;
   S.offlineSince = null; saveSnapshot(); await mergePending();
 }
 async function reload() { try { await loadAll(); } catch (ex) { if (isNetErr(ex)) { await mergePending(); netState(); } else toast(friendly(ex)); } }
@@ -274,7 +275,7 @@ async function reload() { try { await loadAll(); } catch (ex) { if (isNetErr(ex)
 const SNAP_KEY = "dab.snapshot.v1";
 const isNetErr = e => /Failed to fetch|NetworkError|network|load failed|fetch/i.test(String(e?.message || e || "")) || !navigator.onLine;
 function saveSnapshot() {
-  try { localStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), uid: S.user.id, account: S.account, isDale: S.isDale, isOwner: S.isOwner, customers: S.customers, jobs: S.jobs.filter(j => !j._pending), liens: S.liens, payments: S.payments, members: S.members, invites: S.invites, photos: S.photos.filter(p => !p._pending) })); } catch (e) { /* storage full or blocked: offline view just won't have data */ }
+  try { localStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), uid: S.user.id, account: S.account, isDale: S.isDale, isOwner: S.isOwner, customers: S.customers, jobs: S.jobs.filter(j => !j._pending), liens: S.liens, payments: S.payments, members: S.members, invites: S.invites, photos: S.photos.filter(p => !p._pending), links: S.links })); } catch (e) { /* storage full or blocked: offline view just won't have data */ }
 }
 function loadSnapshot(uid) { try { const s = JSON.parse(localStorage.getItem(SNAP_KEY) || "null"); return s && s.uid === uid ? s : null; } catch { return null; } }
 const IDB = (() => {
@@ -402,7 +403,7 @@ function route(keepScroll) {
   const [view, id] = (location.hash.slice(1) || "home").split("/");
   const navKey = { job: "jobs", customer: "customers", lien: "liens" }[view] || view;
   document.querySelectorAll("#nav a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + navKey ? "page" : "false"));
-  const views = { home: renderHome, jobs: renderJobs, job: () => renderJob(id), money: renderMoney, customers: renderCustomers, customer: () => renderCustomer(id), liens: renderLiens, lien: () => renderLien(id), settings: renderSettings };
+  const views = { home: renderHome, jobs: renderJobs, job: () => renderJob(id), money: renderMoney, customers: renderCustomers, customer: () => renderCustomer(id), liens: renderLiens, lien: () => renderLien(id), settings: renderSettings, help: renderHelp };
   (views[view] || renderHome)();
   if (!keepScroll) window.scrollTo(0, 0);
 }
@@ -456,8 +457,9 @@ function buildTasks() {
         acts: [{ label: "Send reminder", act: "remind", id: j.id }, { label: "Start lien", act: "start-lien", id: j.id, primary: true }] });
       else if (a >= 14 && !lien && (rem == null || rem >= 7)) T.push({ rank: 20, cls: "soon", t: `Remind ${who} about ${money(balance(j))}`, s: `${vehicleText(j)} · ${a} days unpaid`, acts: [{ label: "Send reminder", act: "remind", id: j.id, primary: true }, { label: "Record payment", act: "pay", id: j.id }] });
     }
+    if (j.status === "estimate" && j.approved_at) T.push({ rank: 8, cls: "easy", t: `${who} approved the estimate`, s: `${vehicleText(j)}${+j.amount ? " · " + money(j.amount) : ""} · approved ${K.fmt(new Date(j.approved_at))}. Call them to bring it in.`, acts: [{ label: "Car is here", act: "stage-start", id: j.id, primary: true }, { label: "Open job", href: "job/" + j.id }] });
     if (j.status === "done") T.push({ rank: 15, cls: "easy", t: `Invoice ${who}`, s: `${vehicleText(j)} · work finished ${j.completed_on ? K.fmt(K.D(j.completed_on)) : ""}${+j.amount ? ` · ${money(j.amount)}` : " · no total entered yet"}`, acts: [{ label: "Mark invoiced", act: "stage-invoice", id: j.id, primary: true }, { label: "Open job", href: "job/" + j.id }] });
-    if (j.status === "estimate" && (daysSince(j.created_at?.slice(0, 10)) ?? 0) >= 14) T.push({ rank: 60, cls: "", t: `Follow up on ${who}'s estimate`, s: `${vehicleText(j)} · estimate is ${daysSince(j.created_at.slice(0, 10))} days old`, acts: [{ label: "Open job", href: "job/" + j.id, primary: true }] });
+    if (j.status === "estimate" && !j.approved_at && (daysSince(j.created_at?.slice(0, 10)) ?? 0) >= 14) T.push({ rank: 60, cls: "", t: `Follow up on ${who}'s estimate`, s: `${vehicleText(j)} · estimate is ${daysSince(j.created_at.slice(0, 10))} days old`, acts: [{ label: "Open job", href: "job/" + j.id, primary: true }] });
   });
   return T.sort((a, b) => a.rank - b.rank);
 }
@@ -511,7 +513,7 @@ function jobCard(j) {
   return `<div class="jcard" data-href="job/${j.id}" role="link" tabindex="0">
     <div class="jthumb">${ph ? `<img data-photo="${ph.id}" alt="Estimate photo">` : `<span aria-hidden="true">🚗</span>`}</div>
     <div class="jmain"><div class="jname">${esc(c?.name || "No customer")}</div><div class="jcar">${esc(vehicleText(j))}</div>
-      <div class="jmeta">${j._pending ? `<span class="chip ${j._error ? "over" : "soon"}">${j._error ? "Couldn't upload" : "Waiting to upload"}</span>` : stageChip(j)}${+j.amount ? ` <span class="num">${money(j.status === "invoiced" ? balance(j) : j.amount)}${j.status === "invoiced" ? " owed" : ""}</span>` : ""}</div></div>
+      <div class="jmeta">${j._pending ? `<span class="chip ${j._error ? "over" : "soon"}">${j._error ? "Couldn't upload" : "Waiting to upload"}</span>` : j.status === "estimate" && j.approved_at ? `<span class="chip done">Approved ✓</span>` : stageChip(j)}${+j.amount ? ` <span class="num">${money(j.status === "invoiced" ? balance(j) : j.amount)}${j.status === "invoiced" ? " owed" : ""}</span>` : ""}</div></div>
     ${a && !j._pending ? `<button class="btn primary jgo" type="button" data-act="${a.act}" data-id="${j.id}">${a.label}</button>` : ""}
   </div>`;
 }
@@ -563,6 +565,7 @@ function renderJob(id) {
     <div><a href="#jobs" class="small">← All jobs</a></div>
     <div class="head"><div><div class="eyebrow">${esc(c?.name || "No customer")}${c?.phone ? " · " + esc(c.phone) : ""}</div><h1>${esc(vehicleText(j))}</h1><div class="small">${esc(j.title || "")}</div></div>
       <div class="amount"><div class="l">${j.status === "paid" ? "Paid in full" : "Still owed"}</div><div class="n">${+j.amount ? money(j.status === "paid" ? j.amount : balance(j)) : "—"}</div></div></div>
+    ${j.approved_at ? `<div class="notice good">✓ ${esc(j.approved_name || "The customer")} approved the estimate on ${esc(K.fmt(new Date(j.approved_at)))}.</div>` : ""}
     <div class="stepper">${STAGES.map((s, i) => `<div class="stage ${i < idx ? "done" : i === idx ? "now" : ""}"><span class="dot">${i < idx ? "✓" : i + 1}</span>${s.label}</div>`).join("")}</div>
     ${nx ? `<div class="nextcard ${j.status === "invoiced" && (a ?? 0) >= 30 ? "" : "calm"}"><div class="eyebrow">Next step</div><div class="headline">${esc(nx.label)}</div><div class="hint">${esc(nx.help)}</div>
       <div class="row2"><button class="btn primary big" type="button" data-act="${nx.act}" data-id="${j.id}">${esc(nx.label)}</button>
@@ -570,6 +573,7 @@ function renderJob(id) {
       ${owes(j) && !lien ? `<button class="btn" type="button" data-act="start-lien" data-id="${j.id}">Start lien${(a ?? 0) < 30 ? " (early)" : ""}</button>` : ""}
       ${lien ? `<a class="btn" href="#lien/${lien.id}">Open lien case</a>` : ""}
       <button class="btn" type="button" data-act="invoice" data-id="${j.id}">${j.status === "estimate" ? "Print or email estimate" : "Print or email invoice"}</button>
+      <button class="btn" type="button" data-act="cust-link" data-id="${j.id}">Send to customer</button>
       ${idx > 0 && j.status !== "paid" ? `<button class="linkbtn" type="button" data-act="stage-back" data-id="${j.id}">Undo: move back to “${STAGE_LABEL[STAGES[idx - 1].k]}”</button>` : ""}</div></div>`
     : `<div class="nextcard good"><div class="headline">Paid in full${j.paid_on ? " on " + esc(K.fmt(K.D(j.paid_on))) : ""}</div><div class="hint">Nothing left to do on this job.${anyLien ? " Its lien case is closed. Send the release from the lien case." : ""}</div><div class="row2"><button class="btn" type="button" data-act="invoice" data-id="${j.id}">Print or email receipt</button>${anyLien ? `<a class="btn" href="#lien/${anyLien.id}">Open lien case</a>` : ""}</div></div>`}
     <div class="twocol">
@@ -970,6 +974,59 @@ function backup(kind) {
   toast("Downloading. Open it with Excel, Numbers or Google Sheets.");
 }
 
+// ---- customer link (view estimate/bill, approve) ----
+const linkUrl = tok => `${location.origin}${location.pathname.replace(/[^/]*$/, "")}estimate.html?t=${tok}`;
+async function customerLink(j) {
+  let link = S.links.find(l => l.job_id === j.id && l.active);
+  if (!link) {
+    const b = new Uint8Array(24); crypto.getRandomValues(b);
+    const token = [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+    const { data, error } = await sb.from("shop_job_links").insert({ token, account_id: S.account.id, job_id: j.id }).select().single();
+    if (error) { toast(friendly(error)); return; }
+    S.links.unshift(data); link = data;
+  }
+  const c = cust(j.customer_id) || {}; const url = linkUrl(link.token); const isEst = j.status === "estimate";
+  const msg = `Hi ${(c.name || "").split(" ")[0] || "there"}, this is ${S.account.name}. Here's ${isEst ? "the estimate" : "your bill"} for your ${vehicleText(j)}: ${url}`;
+  openModal(`<div style="display:grid;gap:14px"><h2>Send to customer</h2>
+    <div class="hint">${isEst ? "They can see the estimate and photos, and tap Approve." : "They can see the work and what they still owe."} Only people with this link can open it.</div>
+    <textarea class="copybox" id="lnkText" aria-label="Message">${esc(msg)}</textarea>
+    ${link.viewed_at ? `<div class="notice good">They opened it on ${esc(K.fmt(new Date(link.viewed_at)))}.</div>` : ""}
+    <div class="modalfoot"><button class="linkbtn danger" type="button" data-act="link-off" data-id="${j.id}" style="margin-right:auto">Turn off this link</button>
+      ${c.email ? `<button class="btn" type="button" data-act="link-send" data-how="email" data-id="${j.id}">Email it</button>` : ""}
+      ${c.phone ? `<button class="btn" type="button" data-act="link-send" data-how="sms" data-id="${j.id}">Text it</button>` : ""}
+      <button class="btn primary" type="button" data-act="link-send" data-how="copy" data-id="${j.id}">Copy</button></div></div>`);
+}
+async function linkSend(how, j) {
+  const c = cust(j.customer_id) || {}; const text = $("lnkText").value; modalDirty = false;
+  if (how === "copy") { try { await navigator.clipboard.writeText(text); toast("Copied. Paste it into a text or email."); } catch { $("lnkText").select(); toast("Selected. Press Ctrl+C or ⌘C to copy."); } }
+  if (how === "sms") location.href = `sms:${(c.phone || "").replace(/[^\d+]/g, "")}?&body=${encodeURIComponent(text)}`;
+  if (how === "email") await emailOrMailto(c.email, `${j.status === "estimate" ? "Your estimate" : "Your bill"} from ${S.account.name}`, text);
+}
+async function linkOff(j) {
+  if (!(await confirmBox({ title: "Turn off this link?", body: "Anyone who has it won't be able to open it anymore. You can send a fresh link anytime.", ok: "Turn it off", danger: true }))) return;
+  const { error } = await sb.from("shop_job_links").update({ active: false }).eq("job_id", j.id).eq("active", true);
+  if (error) return toast(friendly(error));
+  await closeModal(true); await reload(); route(true); toast("Link turned off.");
+}
+
+// ---- help ----
+const HELP = [
+  ["A car comes in", "Tap Jobs, then + Add a job. Snap a photo of the estimate, type the customer's name and the car, and tap Save job."],
+  ["You finish the work", "On the Jobs screen, tap ✓ Work is done on that car."],
+  ["You give them the bill", "Tap They have the bill. Type the total if it isn't there yet."],
+  ["They pay", "Tap $ Got paid, type how much, pick cash, card or check, and save. When it's all paid, the job moves to Paid by itself."],
+  ["Send the estimate to a customer", "Open the job and tap Send to customer. Text it, email it, or copy the link. They can tap Approve on their phone."],
+  ["Someone hasn't paid", "The Today screen reminds you. Tap Send reminder. After 30 days you can tap Start lien and the lien helper walks you through each step."],
+  ["You made a mistake", "Most buttons have an Undo. On a job, use Edit to fix names, the car, or the price. Payments can be undone too."],
+  ["No internet", "You can still add jobs and photos. A yellow bar says they're saved on this device, and they upload by themselves when the internet is back."],
+  ["Print an invoice", "Open the job and tap Print or email invoice."]
+];
+function renderHelp() {
+  $("main").innerHTML = `<div class="pagehead"><div><div class="eyebrow">How to use the shop portal</div><h1>Help</h1></div><button class="btn" type="button" data-act="print-help">Print this page</button></div>
+    <div class="todo">${HELP.map(([t, d]) => `<div class="task easy"><div><div class="t">${esc(t)}</div><div class="s" style="font-size:15px;color:var(--stone)">${esc(d)}</div></div></div>`).join("")}</div>
+    <div class="notice">Stuck? Call or text Dale Jr. He set this up.</div>`;
+}
+
 // ---- reminders ----
 function reminderText(j) {
   const c = cust(j.customer_id) || {}; const a = ageDays(j) ?? 0; const first = (c.name || "").split(" ")[0] || "there";
@@ -1366,6 +1423,8 @@ function renderSettings() {
           <div class="hint">Then tell them to go to daleskc.com/portal and tap “Create your login” with that same email.</div></form>` : ""}</div>
       <div class="box"><h3>Backup</h3><div class="hint">Download everything as spreadsheets to keep a copy. The shop's data is also backed up automatically every day.</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="backup" data-id="jobs">Jobs</button><button class="btn" type="button" data-act="backup" data-id="customers">Customers</button><button class="btn" type="button" data-act="backup" data-id="payments">Payments</button></div></div>
+      <div class="box"><h3>Easier to read</h3><div class="hint">Make all the words and buttons bigger on this device.</div>
+        <div><button class="btn" type="button" data-act="big-text">${document.documentElement.classList.contains("big") ? "Normal text" : "Bigger text"}</button></div></div>
       <div class="box"><h3>Put it on your phone</h3>
         <div class="hint"><b>iPhone:</b> open daleskc.com/portal in Safari, tap the Share button (square with an arrow), then <b>Add to Home Screen</b>.<br><b>Android:</b> open it in Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</div>
         <div><button class="btn" type="button" data-act="install" id="installBtn" ${deferredInstall ? "" : "hidden"}>Install the shop app</button></div></div>
@@ -1421,12 +1480,17 @@ document.addEventListener("click", async e => {
   if (t.dataset.viewphoto) { const p = S.photos.find(x => x.id === t.dataset.viewphoto); if (p) viewPhoto(p); return; }
   const act = t.dataset.act; if (!act) return;
   const j = id ? jobById(id) : null;
-  const OFFLINE_OK = new Set(["close", "new-job", "new-job-for", "find", "aj-unpick", "clear-find", "print-doc", "copy-doc", "retry-queue", "discard-queue", "invoice", "print-invoice", "backup", "install"]);
+  const OFFLINE_OK = new Set(["close", "new-job", "new-job-for", "find", "aj-unpick", "clear-find", "print-doc", "copy-doc", "retry-queue", "discard-queue", "invoice", "print-invoice", "backup", "install", "print-help", "big-text"]);
   if (!navigator.onLine && !OFFLINE_OK.has(act)) { toast("You're offline. That needs internet. Adding jobs and photos still works."); return; }
   if (j && j._pending && !OFFLINE_OK.has(act)) { toast("This job is still uploading. Try again in a minute."); return; }
   switch (act) {
     case "close": e.preventDefault(); if (t.tagName === "A") { await closeModal(true); location.hash = t.getAttribute("href").slice(1); } else closeModal(); return;
     case "new-job": return newJob();
+    case "cust-link": return j && busy(t, () => customerLink(j));
+    case "link-send": return j && linkSend(t.dataset.how, j);
+    case "link-off": return j && linkOff(j);
+    case "print-help": return printText("Shop portal help", "DALE'S AUTO BODY · SHOP PORTAL\nHow to use it\n\n" + HELP.map(([a, b], i) => `${i + 1}. ${a.toUpperCase()}\n   ${b}`).join("\n\n") + "\n\nWebsite: daleskc.com/portal");
+    case "big-text": { const on = !document.documentElement.classList.contains("big"); document.documentElement.classList.toggle("big", on); try { localStorage.setItem("dab.big", on ? "1" : ""); } catch (e2) {} t.textContent = on ? "Normal text" : "Bigger text"; return; }
     case "invoice": return j && invoiceModal(j);
     case "print-invoice": return j && printText((j.status === "estimate" ? "Estimate" : "Invoice") + " - " + (cust(j.customer_id)?.name || ""), invoiceText(j));
     case "email-invoice": { if (!j) return; const c = cust(j.customer_id); if (!c?.email) return; return busy(t, () => emailOrMailto(c.email, `${j.status === "estimate" ? "Estimate" : "Invoice"} from ${S.account.name}: ${vehicleText(j)}`, invoiceText(j))); }
@@ -1503,6 +1567,7 @@ document.addEventListener("focusout", e => {
   setTimeout(() => { if (!document.activeElement?.closest?.(".notice")) route(true); }, 700);
 });
 
+try { if (localStorage.getItem("dab.big")) document.documentElement.classList.add("big"); } catch (e) { /* private mode */ }
 // ================= start =================
 function showReset() { recovering = true; showOnly("authView"); setAuthMode("reset"); }
 sb.auth.onAuthStateChange((ev, session) => {
