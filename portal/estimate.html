@@ -33,7 +33,7 @@ h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size:
 .photos { display: grid; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); gap: 8px; }
 @media (max-width: 520px) { .photos { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .jump { display: inline-flex; align-items: center; min-height: 44px; font-weight: 700; }
-@media print { body { background: #fff; color: #111; } .card { background: #fff; border-color: #ccc; color: #111; } .k, .small { color: #444; } .btn, #photoCard, .noprint { display: none !important; } .brand .sub { color: #8a5a00; } }
+@media print { body { background: #fff; color: #111; } .card { background: #fff; border-color: #ccc; color: #111; } .k, .small { color: #333 !important; } .btn, #photoCard, .noprint { display: none !important; } .brand .sub { color: #8a5a00; } }
 .photos a { display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #000; }
 .photos img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
 label { font-size: .875rem; color: var(--stone); font-weight: 600; }
@@ -146,7 +146,7 @@ a { color: var(--amber); }
     } else if (isEst && j.amount) { $("approveCard").hidden = false; $("approve").textContent = `Approve ${money(j.amount)} repair`; }
     else if (isEst) $("noPrice").hidden = false;
     const phone = s.phone || "(913) 371-6654";
-    $("contact").textContent = [s.address, "Monday–Friday 10am–6pm"].filter(Boolean).join(" · ");
+    $("contact").textContent = [s.address, phone, "Monday–Friday 10am–6pm"].filter(Boolean).join(" · ");
     $("call").href = "tel:" + phone.replace(/[^\d+]/g, ""); $("call").textContent = "Call " + phone;
     $("loading").hidden = true; $("problem").hidden = true; $("content").hidden = false;
   }

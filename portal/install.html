@@ -37,7 +37,7 @@ ol li::before { content: counter(s); width: 38px; height: 38px; border-radius: 5
 .ico svg { width: 20px; height: 20px; }
 .note { font-size: 14px; color: var(--muted); }
 .good { background: rgba(95,211,154,.14); border-color: var(--good); }
-.arrow { position: fixed; bottom: max(10px, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); font-size: 15px; font-weight: 700; color: #1b1405; background: var(--amber); padding: 8px 16px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: nowrap; animation: bob 1.2s ease-in-out infinite; }
+.arrow { border: 0; font-family: inherit; cursor: pointer; position: fixed; bottom: max(10px, env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); font-size: 15px; font-weight: 700; color: #1b1405; background: var(--amber); padding: 8px 16px; border-radius: 999px; box-shadow: 0 8px 24px rgba(0,0,0,.5); white-space: nowrap; animation: bob 1.2s ease-in-out infinite; }
 @keyframes bob { 50% { transform: translate(-50%, 8px); } }
 @media (prefers-reduced-motion: reduce) { .arrow { animation: none; } }
 </style>
@@ -88,7 +88,7 @@ ol li::before { content: counter(s); width: 38px; height: 38px; border-radius: 5
   <a class="btn line" href="./">Skip, just open the shop portal</a>
   <div class="note">Free. No app store needed. It works even when the internet is spotty, and it updates by itself.</div>
 </main>
-<div class="arrow" id="arrow" hidden aria-hidden="true">Share button is down here ⬇</div>
+<button class="arrow" id="arrow" type="button" hidden aria-label="Hint: the Share button is at the bottom of the screen. Tap to hide this hint.">Share button is down here ⬇</button>
 <script>
 (() => {
   const $ = id => document.getElementById(id);
@@ -116,7 +116,7 @@ ol li::before { content: counter(s); width: 38px; height: 38px; border-radius: 5
   });
   if (iOS) {
     show("iosCard");
-    if (safari && /iPhone|iPod/.test(ua)) { $("arrow").hidden = false; addEventListener("scroll", () => { $("arrow").hidden = true; }, { once: true, passive: true }); }
+    if (safari && /iPhone|iPod/.test(ua)) { $("arrow").hidden = false; addEventListener("scroll", () => { $("arrow").hidden = true; }, { once: true, passive: true }); $("arrow").addEventListener("click", () => { $("arrow").hidden = true; }); }
     else {
       $("iosCard").querySelector(".note").innerHTML = "In Chrome, the <b>Share</b> button is at the <b>top right</b> next to the address. Don't see <b>Add to Home Screen</b>? Open this page in <b>Safari</b> instead.";
       show("iosOther");
