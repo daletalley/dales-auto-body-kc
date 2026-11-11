@@ -1426,6 +1426,8 @@ function renderSettings() {
       <div class="box"><h3>Easier to read</h3><div class="hint">Make all the words and buttons bigger on this device.</div>
         <div><button class="btn" type="button" data-act="big-text">${document.documentElement.classList.contains("big") ? "Normal text" : "Bigger text"}</button></div></div>
       <div class="box"><h3>Put it on your phone</h3>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img src="icons/qr-install.png" alt="QR code to install the app" style="width:132px;height:132px;border-radius:10px;background:#fff;padding:6px">
+          <div class="hint" style="flex:1;min-width:180px">Scan this with any phone's camera to install the app. <a href="qr.html" target="_blank" rel="noopener">Print it as a sign</a> for the counter.</div></div>
         <div class="hint"><b>iPhone:</b> open daleskc.com/portal in Safari, tap the Share button (square with an arrow), then <b>Add to Home Screen</b>.<br><b>Android:</b> open it in Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</div>
         <div><button class="btn" type="button" data-act="install" id="installBtn" ${deferredInstall ? "" : "hidden"}>Install the shop app</button></div></div>
       <form class="box" id="pwForm" novalidate><h3>Your login</h3><div class="hint">Signed in as <b>${esc(S.user.email)}</b></div>
