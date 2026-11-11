@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Scan to get the app | Dale's Auto Body</title>
+<title>Staff: get the shop app | Dale's Auto Body</title>
 <link rel="icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,6 +16,7 @@ html, body { margin: 0; background: #fff; color: #0d1c2a; font-family: "Work San
 .band { width: 100%; background: #0f2740; color: #f5eee2; border-radius: 18px; padding: 0.35in 0.3in; }
 .band .sub { color: #e8bf57; font-size: 13px; letter-spacing: .25em; text-transform: uppercase; font-weight: 700; }
 .band .name { font-family: "Bebas Neue", Impact, sans-serif; font-size: 64px; letter-spacing: .1em; line-height: 1; margin-top: 6px; }
+.staff { display: inline-block; background: #F54503; color: #fff; font-weight: 700; font-size: 30px; letter-spacing: .14em; padding: 6px 22px; border-radius: 999px; margin-top: 14px; }
 .bar { width: 1.6in; height: 8px; background: #F54503; border-radius: 99px; margin: 10px auto 0; }
 h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: 54px; letter-spacing: .03em; margin: 0.1in 0 0; line-height: 1; }
 .qr { width: 4.6in; height: 4.6in; border: 6px solid #0f2740; border-radius: 22px; padding: 0.12in; }
@@ -26,17 +27,17 @@ h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size:
 .printbtn { font: inherit; font-weight: 700; font-size: 18px; padding: 14px 28px; border-radius: 999px; border: 0; background: #F54503; color: #fff; cursor: pointer; }
 @page { size: letter; margin: 0; }
 @media print { .noprint { display: none; } .sheet { padding: 0.6in; } }
-@media (max-width: 9in) { .sheet { width: 100%; min-height: 0; } .qr { width: min(4.6in, 80vw); height: min(4.6in, 80vw); } .band .name { font-size: 44px; } h1 { font-size: 40px; } }
+@media (max-width: 9in) { .sheet { width: 100%; min-height: 0; padding: 24px 16px; } .qr { width: min(4.6in, 80vw); height: min(4.6in, 80vw); } .band .name { font-size: clamp(30px, 9vw, 44px); } h1 { font-size: clamp(30px, 8vw, 40px); } .staff { font-size: 22px; } }
 </style>
 </head>
 <body>
 <div class="sheet">
-  <div class="band"><div class="sub">Family owned since 1975</div><div class="name">DALE'S AUTO BODY</div><div class="bar"></div></div>
-  <h1>Scan to get the shop app</h1>
+  <div class="band"><div class="sub">Family owned since 1975</div><div class="name">DALE'S AUTO BODY</div><div class="staff">STAFF ONLY</div></div>
+  <h1>Staff: scan to get the shop app</h1>
   <div class="qr"><img src="icons/qr-install.png" alt="QR code for daleskc.com/portal/install.html"></div>
   <div class="steps">Point your phone camera at the code and tap the link that pops up.<br>It shows you how to put <b>Dale's Shop</b> on your phone or computer.</div>
   <div class="url">daleskc.com/portal/install.html</div>
-  <div class="small">For Dale's Auto Body staff. You'll need your shop login.</div>
+  <div class="small">You'll need your shop login. Customers: you don't need this. Use the link we texted you.</div>
   <button class="printbtn noprint" type="button" onclick="window.print()">Print this sign</button>
 </div>
 </body>

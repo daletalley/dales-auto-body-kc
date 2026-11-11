@@ -9,45 +9,58 @@
 <link rel="icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-:root { --ink: #0d1c2a; --navy: #0f2740; --panel: #13283f; --rust: #F54503; --amber: #e8bf57; --cream: #f5eee2; --stone: #d8cabc; --muted: #8fa0b6; --line: rgba(255,255,255,.12); --good: #5fd39a; color-scheme: dark; }
+:root { --panel: #13283f; --act: #C93A00; --act-hover: #DE4300; --amber: #e8bf57; --cream: #f5eee2; --stone: #d8cabc; --muted: #a9b6c8; --line: rgba(255,255,255,.12); --good: #5fd39a; color-scheme: dark; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html { background: #0f2134; }
-body { margin: 0; font-family: "Work Sans", system-ui, sans-serif; background: linear-gradient(180deg, #0d1c2a, #0f2134) fixed; color: var(--cream); line-height: 1.55; font-size: 16px; min-height: 100vh; }
-.wrap { max-width: 640px; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 18px; }
+html { background: #0f2134; font-size: 100%; -webkit-text-size-adjust: 100%; }
+@media (min-width: 1600px) { html { font-size: clamp(18px, calc(.5vw + 8px), 30px); } }
+body { margin: 0; font-family: "Work Sans", system-ui, sans-serif; background: linear-gradient(180deg, #0d1c2a, #0f2134) fixed; color: var(--cream); line-height: 1.55; font-size: 1.0625rem; min-height: 100vh; }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 2px; border-radius: 6px; }
+.wrap { max-width: 40rem; margin: 0 auto; padding: 24px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 18px; }
 .brand .name { font-family: "Bebas Neue", Impact, sans-serif; font-size: 2rem; letter-spacing: .12em; line-height: 1; }
 .brand .sub { font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
-h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: clamp(34px, 8vw, 48px); letter-spacing: .03em; margin: 0; line-height: 1; }
+h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: clamp(2.2rem, 8vw, 3rem); letter-spacing: .03em; margin: 0; line-height: 1; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: grid; gap: 10px; }
+.card h2 { font-size: 1.1rem; margin: 0; }
 .row { display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
 .row:first-child { border-top: 0; padding-top: 0; }
-.k { color: var(--muted); }
+.k { color: var(--muted); flex: none; }
 .v { text-align: right; font-weight: 600; overflow-wrap: anywhere; }
-.total { font-family: "Bebas Neue", Impact, sans-serif; font-size: 44px; line-height: 1; }
-.photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
-.photos img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); background: #000; }
-label { font-size: 13px; color: var(--stone); font-weight: 600; }
-input { width: 100%; border: 1px solid rgba(255,255,255,.25); background: rgba(0,0,0,.2); color: var(--cream); border-radius: 10px; padding: 12px; font: inherit; }
-.btn { display: inline-flex; justify-content: center; align-items: center; width: 100%; border: 0; border-radius: 999px; padding: 15px 20px; font: inherit; font-weight: 700; font-size: 17px; cursor: pointer; text-decoration: none; }
-.btn.primary { background: var(--rust); color: #fff; }
-.btn.line { background: transparent; color: var(--cream); border: 1px solid rgba(255,255,255,.25); }
+.nw { white-space: nowrap; }
+.total { font-family: "Bebas Neue", Impact, sans-serif; font-size: 2.75rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr)); gap: 8px; }
+.photos a { display: block; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #000; }
+.photos img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+label { font-size: .875rem; color: var(--stone); font-weight: 600; }
+input { width: 100%; min-height: 50px; border: 1.5px solid rgba(255,255,255,.28); background: rgba(0,0,0,.2); color: var(--cream); border-radius: 10px; padding: 12px; font: inherit; }
+input:focus { border-color: var(--amber); outline: none; box-shadow: 0 0 0 3px rgba(232,191,87,.25); }
+.btn { display: inline-flex; justify-content: center; align-items: center; width: 100%; min-height: 52px; border: 0; border-radius: 999px; padding: 14px 20px; font: inherit; font-weight: 700; font-size: 1.0625rem; cursor: pointer; text-decoration: none; }
+.btn.primary { background: var(--act); color: #fff; }
+.btn.primary:hover { background: var(--act-hover); }
+.btn.line { background: transparent; color: var(--cream); border: 1.5px solid rgba(255,255,255,.35); }
 .btn:disabled { opacity: .6; }
-.ok { background: rgba(95,211,154,.14); border-color: var(--good); }
-.err { color: #ff7a5c; font-size: 14px; min-height: 1.2em; }
-.small { font-size: 13px; color: var(--muted); }
+.ok { background: rgba(95,211,154,.14); border-color: rgba(95,211,154,.6); }
+.ok b { font-size: 1.15rem; }
+.err { color: #ff8a70; font-size: .9rem; min-height: 1.2em; }
+.small { font-size: .875rem; color: var(--muted); }
 a { color: var(--amber); }
 </style>
 </head>
 <body>
 <main class="wrap">
   <div class="brand"><div class="sub">Family owned since 1975</div><div class="name" id="shopName">DALE'S AUTO BODY</div></div>
-  <div id="loading" class="card">Loading your estimate…</div>
-  <div id="problem" class="card" hidden></div>
+  <div id="loading" class="card" role="status">Loading…</div>
+  <div id="problem" class="card" hidden>
+    <b id="problemText"></b>
+    <div class="small">Call or text the shop and we'll send you a new link.</div>
+    <a class="btn line" href="tel:+19133716654">Call (913) 371-6654</a>
+  </div>
   <div id="content" hidden>
     <div style="display:grid;gap:18px">
       <div><div class="small" id="hello"></div><h1 id="heading">Your estimate</h1></div>
+      <div class="card ok" id="approved" role="status" tabindex="-1" hidden></div>
       <div class="card">
         <div class="row"><span class="k">Vehicle</span><span class="v" id="car"></span></div>
         <div class="row" id="vinRow"><span class="k">VIN</span><span class="v" id="vin"></span></div>
@@ -55,20 +68,20 @@ a { color: var(--amber); }
         <div class="row" id="claimRow"><span class="k">Insurance</span><span class="v" id="claim"></span></div>
         <div class="row" id="notesRow"><span class="k">Notes</span><span class="v" id="notes"></span></div>
       </div>
-      <div class="card"><div class="k" id="totalLabel">Estimate total</div><div class="total" id="total"></div><div class="small" id="totalNote"></div></div>
-      <div class="card" id="photoCard" hidden><div class="k">Photos</div><div class="photos" id="photos"></div></div>
-      <div class="card" id="approveCard" hidden>
-        <b>Ready to go ahead?</b>
-        <div class="small">Type your name and tap Approve. Dale will call you to schedule. Hidden damage found during the repair may change the price; he'll call you first.</div>
-        <label for="nm">Your full name</label><input id="nm" autocomplete="name">
-        <button class="btn primary" id="approve" type="button">Approve this estimate</button>
-        <div class="err" id="err" aria-live="polite"></div>
-      </div>
-      <div class="card ok" id="approved" hidden></div>
-      <div class="card"><b>Questions?</b><div id="contact" class="small"></div><a class="btn line" id="call" href="#">Call the shop</a></div>
+      <div class="card"><div class="k" id="totalLabel">Estimate total</div><div class="total" id="total"></div><div class="small" id="totalNote"></div><div class="small" id="payHow" hidden>Pay at the shop with cash, card or check, Monday to Friday 10am–6pm, or call to pay by card.</div></div>
+      <div class="card" id="photoCard" hidden><h2>Estimate pages and photos</h2><div class="small">Tap a photo to see it full size.</div><div class="photos" id="photos"></div></div>
+      <form class="card" id="approveCard" hidden novalidate>
+        <h2>Ready to go ahead?</h2>
+        <div class="small">Tapping Approve tells Dale's Auto Body to do this work at this price. If we find hidden damage once we start, we'll call you before doing anything extra. You pay when the work is done.</div>
+        <label for="nm">Your full name</label><input id="nm" autocomplete="name" autocapitalize="words" enterkeyhint="done">
+        <button class="btn primary" id="approve" type="submit">Approve this estimate</button>
+        <div class="err" id="err" role="alert"></div>
+      </form>
+      <div class="card" id="noPrice" hidden><b>Price coming soon</b><div class="small">We'll send you the price before any work starts. Questions? Call us below.</div></div>
+      <div class="card"><h2>Questions?</h2><div id="contact" class="small"></div><a class="btn line" id="call" href="tel:+19133716654">Call (913) 371-6654</a></div>
     </div>
   </div>
-  <div class="small">This page is just for you. Please don't share the link.</div>
+  <div class="small">This link is private to you.</div>
 </main>
 <script>
 (() => {
@@ -77,51 +90,70 @@ a { color: var(--amber); }
   const $ = id => document.getElementById(id);
   const t = new URLSearchParams(location.search).get("t") || "";
   const money = n => "$" + (+n || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const fail = msg => { $("loading").hidden = true; $("content").hidden = true; $("problem").hidden = false; $("problem").textContent = msg; };
-  const fmtDate = s => new Date(s).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  const fail = msg => { $("loading").hidden = true; $("content").hidden = true; $("problem").hidden = false; $("problemText").textContent = msg; };
+  const fmtDate = d => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+  let justApproved = false;
   async function load() {
-    if (!/^[a-f0-9]{48}$/.test(t)) return fail("This link isn't complete. Ask the shop to send it again.");
+    if (!/^[a-f0-9]{48}$/.test(t)) return fail("This link isn't complete. Part of it may have been cut off.");
     let r;
     try { r = await fetch(FN + "?t=" + t, { headers: { apikey: KEY, Authorization: "Bearer " + KEY } }); }
-    catch { return fail("Couldn't connect. Check your internet and refresh the page."); }
+    catch { return fail("Couldn't connect. Check your internet, then refresh this page."); }
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) return fail(d.error || "Something went wrong. Refresh the page or call the shop.");
+    if (!r.ok) return fail(d.error || "Something went wrong loading this page.");
     render(d);
   }
   function render(d) {
     const j = d.job, s = d.shop || {};
-    $("shopName").textContent = (s.name || "Dale's Auto Body").toUpperCase();
-    document.title = `${j.status === "estimate" ? "Your estimate" : "Your bill"} | ${s.name || "Dale's Auto Body"}`;
-    $("hello").textContent = d.customer.first ? `Hi ${d.customer.first},` : "";
+    const shop = s.name || "Dale's Auto Body";
+    $("shopName").textContent = shop.toUpperCase();
     const isEst = j.status === "estimate";
-    $("heading").textContent = isEst ? "Your estimate" : j.status === "paid" ? "Paid in full" : j.status === "invoiced" ? "Your bill" : "Your repair";
+    $("hello").textContent = d.customer && d.customer.first ? `Hi ${d.customer.first},` : "";
+    const heading = isEst ? (j.approved_at ? "Approved. Thank you!" : "Your estimate") : j.status === "paid" ? "Paid in full" : j.status === "invoiced" ? "Your bill" : "Your repair";
+    $("heading").textContent = heading; document.title = `${heading} | ${shop}`;
     $("car").textContent = j.car || "—";
-    $("vinRow").hidden = !j.vin; $("vin").textContent = j.vin;
+    $("vinRow").hidden = !j.vin; $("vin").textContent = j.vin || "";
     $("work").textContent = j.title || "—";
-    $("claimRow").hidden = !(j.claim || j.insurer); $("claim").textContent = [j.insurer, j.claim && "Claim #" + j.claim].filter(Boolean).join(" · ");
+    $("claimRow").hidden = !(j.claim || j.insurer);
+    $("claim").innerHTML = ""; if (j.insurer) $("claim").append(j.insurer + (j.claim ? " · " : ""));
+    if (j.claim) { const n = document.createElement("span"); n.className = "nw"; n.textContent = "Claim #" + j.claim; $("claim").append(n); }
     $("notesRow").hidden = !j.description; $("notes").textContent = j.description || "";
-    if (isEst) { $("totalLabel").textContent = "Estimate total"; $("total").textContent = j.amount ? money(j.amount) : "Price to be confirmed"; $("totalNote").textContent = "Good for 30 days."; }
-    else if (j.status === "paid") { $("totalLabel").textContent = "Total"; $("total").textContent = money(j.amount); $("totalNote").textContent = "Paid in full. Thank you!"; }
-    else { $("totalLabel").textContent = j.status === "invoiced" ? "Balance due" : "Repair total"; $("total").textContent = money(j.status === "invoiced" ? j.balance : j.amount); $("totalNote").textContent = j.paid ? `${money(j.paid)} paid so far of ${money(j.amount)}.` : (j.status === "invoiced" ? "Pay at the shop or call to pay." : "We'll let you know when it's ready."); }
-    if (d.photos.length) { $("photoCard").hidden = false; $("photos").innerHTML = ""; d.photos.forEach(u => { const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.rel = "noopener"; const im = document.createElement("img"); im.src = u; im.alt = "Estimate photo"; im.loading = "lazy"; a.appendChild(im); $("photos").appendChild(a); }); }
-    if (j.approved_at) { $("approveCard").hidden = true; $("approved").hidden = false; $("approved").textContent = `Approved by ${j.approved_name} on ${fmtDate(j.approved_at)}. Thank you! Dale will be in touch.`; }
-    else { $("approveCard").hidden = !isEst; $("approved").hidden = true; }
-    const phone = s.phone || "";
-    $("contact").textContent = [s.address, phone].filter(Boolean).join(" · ");
-    $("call").href = phone ? "tel:" + phone.replace(/[^\d+]/g, "") : "#"; $("call").hidden = !phone; $("call").textContent = phone ? "Call " + phone : "";
+    $("payHow").hidden = j.status !== "invoiced";
+    if (isEst) {
+      $("totalLabel").textContent = "Estimate total"; $("total").textContent = j.amount ? money(j.amount) : "Price coming soon";
+      const from = j.created_at ? new Date(j.created_at) : null;
+      $("totalNote").textContent = from ? `This price is good until ${fmtDate(from.getTime() + 30 * 864e5)}.` : "This price is good for 30 days from the estimate date.";
+    } else if (j.status === "paid") { $("totalLabel").textContent = "Total"; $("total").textContent = money(j.amount); $("totalNote").textContent = "Paid in full. Thank you!"; }
+    else if (j.status === "invoiced") { $("totalLabel").textContent = "Balance due"; $("total").textContent = money(j.balance); $("totalNote").textContent = j.paid ? `${money(j.paid)} paid so far, of ${money(j.amount)} total.` : `Total ${money(j.amount)}.`; }
+    else { $("totalLabel").textContent = "Repair total"; $("total").textContent = j.amount ? money(j.amount) : "To be confirmed"; $("totalNote").textContent = j.paid ? `${money(j.paid)} paid so far. We'll let you know when it's ready.` : "We'll let you know when it's ready."; }
+    const ph = d.photos || [];
+    $("photoCard").hidden = !ph.length; $("photos").innerHTML = "";
+    ph.forEach((u, i) => { const a = document.createElement("a"); a.href = u; a.target = "_blank"; a.rel = "noopener"; const im = document.createElement("img"); im.src = u; im.alt = `Photo ${i + 1} of ${ph.length}`; im.loading = "lazy"; a.appendChild(im); $("photos").appendChild(a); });
+    $("approveCard").hidden = true; $("noPrice").hidden = true; $("approved").hidden = true;
+    if (isEst && j.approved_at) {
+      $("approved").hidden = false;
+      $("approved").innerHTML = "<b></b><div></div>";
+      $("approved").querySelector("b").textContent = `You approved ${j.amount ? money(j.amount) : "this estimate"} on ${fmtDate(j.approved_at)}${j.approved_name ? " (" + j.approved_name + ")" : ""}.`;
+      $("approved").querySelector("div").textContent = "What happens next: Dale will call you to set a day to bring the car in. Nothing to pay until the work is done.";
+      if (justApproved) { justApproved = false; $("approved").scrollIntoView({ block: "center", behavior: "smooth" }); $("approved").focus({ preventScroll: true }); }
+    } else if (isEst && j.amount) { $("approveCard").hidden = false; $("approve").textContent = `Approve ${money(j.amount)} repair`; }
+    else if (isEst) $("noPrice").hidden = false;
+    const phone = s.phone || "(913) 371-6654";
+    $("contact").textContent = [s.address, "Monday–Friday 10am–6pm"].filter(Boolean).join(" · ");
+    $("call").href = "tel:" + phone.replace(/[^\d+]/g, ""); $("call").textContent = "Call " + phone;
     $("loading").hidden = true; $("problem").hidden = true; $("content").hidden = false;
   }
-  $("approve").addEventListener("click", async () => {
+  $("approveCard").addEventListener("submit", async e => {
+    e.preventDefault();
     const name = $("nm").value.trim();
     if (name.length < 2) { $("err").textContent = "Type your full name first."; $("nm").focus(); return; }
-    const b = $("approve"); b.disabled = true; b.textContent = "Saving…"; $("err").textContent = "";
+    const b = $("approve"), label = b.textContent; b.disabled = true; b.textContent = "Saving…"; $("err").textContent = "";
     try {
       const r = await fetch(FN, { method: "POST", headers: { "Content-Type": "application/json", apikey: KEY, Authorization: "Bearer " + KEY }, body: JSON.stringify({ t, action: "approve", name }) });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || "Couldn't save that. Try again.");
-      await load();
-    } catch (e) { $("err").textContent = e.message.includes("fetch") ? "No internet connection. Try again." : e.message; }
-    finally { b.disabled = false; b.textContent = "Approve this estimate"; }
+      justApproved = true; await load();
+    } catch (ex) { $("err").textContent = /fetch|network/i.test(ex.message) ? "No internet connection. Try again." : ex.message; }
+    finally { b.disabled = false; if (b.textContent === "Saving…") b.textContent = label; }
   });
   load();
 })();

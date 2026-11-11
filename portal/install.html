@@ -21,7 +21,7 @@
 [hidden] { display: none !important; }
 html { background: #0f2134; }
 body { margin: 0; font-family: "Work Sans", system-ui, sans-serif; background: linear-gradient(180deg, #0d1c2a, #0f2134) fixed; color: var(--cream); line-height: 1.55; font-size: 17px; min-height: 100vh; }
-.wrap { max-width: 560px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 18px; }
+.wrap { min-height: 60vh; max-width: 560px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 18px; }
 .top { display: flex; gap: 14px; align-items: center; }
 .top img { width: 72px; height: 72px; border-radius: 16px; }
 h1 { font-family: "Bebas Neue", Impact, sans-serif; font-weight: 400; font-size: 40px; letter-spacing: .03em; margin: 0; line-height: 1; }
@@ -44,7 +44,8 @@ ol li::before { content: counter(s); width: 38px; height: 38px; border-radius: 5
 </head>
 <body>
 <main class="wrap">
-  <div class="top"><img src="icons/icon-192.png" alt=""><div><div class="sub">Dale's Auto Body</div><h1>Get the shop app</h1></div></div>
+  <div class="top"><img src="icons/icon-192.png" alt=""><div><div class="sub">Dale's Auto Body · Staff</div><h1>Get the shop app</h1></div></div>
+  <div class="note">For Dale's staff. Customers don't need this; use the link we texted you.</div>
 
   <div class="card good" id="already" hidden><b>It's installed.</b><div>Open <b>Dale's Shop</b> from your home screen or desktop anytime.</div><a class="btn primary" href="./">Open the shop portal</a></div>
 
@@ -58,7 +59,7 @@ ol li::before { content: counter(s); width: 38px; height: 38px; border-radius: 5
   <div class="card" id="iosCard" hidden>
     <div><b>3 taps</b> and it's on your home screen:</div>
     <ol>
-      <li><span>Tap the <b>Share</b> button <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> at the bottom of the screen.</span></li>
+      <li><span>Tap <b>Share</b> <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></span> at the bottom of the screen. (On newer iPhones, tap <b>•••</b> first, then <b>Share</b>.)</span></li>
       <li><span>Scroll down and tap <b>Add to Home Screen</b> <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/></svg></span></span></li>
       <li><span>Tap <b>Add</b> in the top corner.</span></li>
     </ol>
@@ -115,7 +116,7 @@ ol li::before { content: counter(s); width: 38px; height: 38px; border-radius: 5
   });
   if (iOS) {
     show("iosCard");
-    if (safari) $("arrow").hidden = false;
+    if (safari && /iPhone|iPod/.test(ua)) $("arrow").hidden = false;
     else {
       $("iosCard").querySelector(".note").innerHTML = "In Chrome, the <b>Share</b> button is at the <b>top right</b> next to the address. Don't see <b>Add to Home Screen</b>? Open this page in <b>Safari</b> instead.";
       show("iosOther");

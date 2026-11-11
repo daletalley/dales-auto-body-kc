@@ -190,33 +190,46 @@ const jobName = j => `${cust(j.customer_id)?.name || "No customer"} · ${vehicle
 function stageChip(j) {
   if (j.status === "paid") return `<span class="chip paid">Paid</span>`;
   if (j.status === "done") return `<span class="chip soon">Needs a bill</span>`;
-  if (owes(j)) { const a = ageDays(j) ?? 0; return `<span class="chip ${a >= 30 ? "over" : "up"}">${a >= 30 ? `${plural(a, "day")} unpaid` : a === 0 ? "Billed today" : plural(a, "day")}</span>`; }
+  if (owes(j)) { const a = ageDays(j) ?? 0; return `<span class="chip ${a >= 30 ? "over" : "up"}">${a === 0 ? "Billed today" : `${plural(a, "day")} unpaid`}</span>`; }
   return `<span class="chip up">${esc(STAGE_LABEL[j.status])}</span>`;
 }
 
 // ================= auth =================
 let authMode = "signin", recovering = false, userSignedOut = false;
 const wantsSetup = new URLSearchParams(location.search).get("setup") === "1";
-function setAuthMode(m) {
+function setAuthMode(m, keepMsg) {
   authMode = m;
-  $("authTitle").textContent = m === "signin" ? "Sign in" : m === "signup" ? "Create your login" : "Set a new password";
-  $("authSubmit").textContent = m === "signin" ? "Sign in" : m === "signup" ? "Create login" : "Save new password";
-  $("authSwitchText").textContent = m === "signin" ? "First time here?" : "Already have a login?";
-  $("authSwitch").textContent = m === "signin" ? "Create your login" : "Sign in";
+  $("authTitle").textContent = { signin: "Sign in", signup: "Create your login", reset: "Set a new password", forgot: "Reset your password" }[m];
+  $("authSubmit").textContent = { signin: "Sign in", signup: "Create my login", reset: "Save new password", forgot: "Email me a reset link" }[m];
+  $("authLead").textContent = { signin: "For Dale's staff. Customers don't need to sign in.", signup: "Use the email Dale added for you under Settings → Team.", reset: "Pick a new password you'll remember.", forgot: "Type your email. We'll send a link to set a new password." }[m];
+  $("authSwitchText").textContent = m === "signin" ? "First time here?" : m === "forgot" ? "Remembered it?" : "Already have a login?";
+  $("authSwitch").textContent = m === "signin" ? "Create your login" : "Back to sign in";
   $("authPass").autocomplete = m === "signin" ? "current-password" : "new-password";
   $("authEmail").closest(".field").hidden = m === "reset";
+  $("authPass").closest(".field").hidden = m === "forgot";
+  $("authPassHint").hidden = !(m === "signup" || m === "reset");
+  $("authForgotWrap").hidden = m !== "signin";
   $("authSwitchRow").hidden = m === "reset";
-  $("authMsg").textContent = ""; $("authMsg").className = "msg";
+  if (!keepMsg) { $("authMsg").textContent = ""; $("authMsg").className = "msg"; }
 }
+$("authShow").addEventListener("click", () => { const p = $("authPass"); const show = p.type === "password"; p.type = show ? "text" : "password"; $("authShow").textContent = show ? "Hide" : "Show"; $("authShow").setAttribute("aria-pressed", show); p.focus(); });
 function showOnly(id) { ["authView", "setupView", "appView", "noShopView", "loadView"].forEach(v => $(v).hidden = v !== id); }
 $("authSwitch").addEventListener("click", e => { e.preventDefault(); setAuthMode(authMode === "signin" ? "signup" : "signin"); });
+const okMsg = html => { $("authMsg").className = "msg good"; $("authMsg").innerHTML = html; };
 $("authForm").addEventListener("submit", async e => {
   e.preventDefault();
   const email = val("authEmail").toLowerCase(), password = $("authPass").value, msg = $("authMsg");
   const err = t => { msg.className = "msg err"; msg.textContent = t; };
-  if (authMode !== "reset" && !emailOk(email)) return err("Enter a real email address.");
-  if (!email && authMode !== "reset") return err("Enter your email.");
-  if (password.length < 8) return err("Passwords need at least 8 characters.");
+  if (!email && authMode !== "reset") return err("Type your email address.");
+  if (authMode !== "reset" && !emailOk(email)) return err("That doesn't look like an email address. Example: dale@gmail.com");
+  if (authMode === "forgot") {
+    return busy($("authSubmit"), async () => {
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      if (error) return err(friendly(error));
+      okMsg(`<b>Check your email.</b> If ${esc(email)} has a login, a reset link is on its way. Open it on this phone or computer.`);
+    });
+  }
+  if (password.length < 8) return err(authMode === "signin" ? "Passwords are at least 8 characters. Check what you typed." : "Make the password at least 8 characters.");
   await busy($("authSubmit"), async () => {
     msg.className = "msg"; msg.textContent = "";
     try {
@@ -231,19 +244,12 @@ $("authForm").addEventListener("submit", async e => {
         const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } });
         if (error) throw error;
         if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) { setAuthMode("signin"); return err("That email already has a login. Sign in, or tap Forgot password."); }
-        if (!data.session) { setAuthMode("signin"); msg.textContent = "Check your email for a link to confirm, then sign in here."; }
+        if (!data.session) { setAuthMode("signin", true); okMsg(`<b>Check your email.</b> We sent a link to ${esc(email)}. Tap it, then come back here and sign in.`); }
       }
     } catch (ex) { err(/invalid login/i.test(ex.message || "") ? "Wrong email or password. Tap Forgot password to reset it." : friendly(ex)); }
   });
 });
-$("authForgot").addEventListener("click", async e => {
-  e.preventDefault();
-  const email = val("authEmail").toLowerCase(), msg = $("authMsg");
-  if (!emailOk(email) || !email) { msg.className = "msg err"; msg.textContent = "Type your email above first, then tap Forgot password."; return; }
-  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
-  msg.className = error ? "msg err" : "msg";
-  msg.textContent = error ? friendly(error) : "If that email has a login, a reset link is on its way. Open it on this device.";
-});
+$("authForgot").addEventListener("click", e => { e.preventDefault(); setAuthMode("forgot"); $("authEmail").focus(); });
 $("setupForm").addEventListener("submit", async e => {
   e.preventDefault();
   const row = { owner_id: S.user.id, name: val("sName"), address: val("sAddr"), phone: fmtPhone(val("sPhone")), industry: $("sInd").value };
@@ -523,11 +529,12 @@ function searchResults(q) {
     const v = j.vehicle || {}; const hay = [v.vin, v.plate, v.make, v.model, v.year, j.title, j.property?.address, j.insurance?.claim, j.insurance?.insurer].filter(Boolean).join(" ").toLowerCase();
     if (hay.includes(q)) hits.push({ kind: "Job", label: jobName(j), sub: [STAGE_LABEL[j.status], j.title, v.vin, v.plate].filter(Boolean).join(" · "), href: "job/" + j.id });
   });
-  return { title: "", hits: hits.slice(0, 10) };
+  S.liens.forEach(l => { if (lienLabel(l).toLowerCase().includes(q)) hits.push({ kind: "Lien", label: lienLabel(l), sub: l.status === "open" ? "Open lien case" : "Closed lien case", href: "lien/" + l.id }); });
+  return { title: "", hits: hits.slice(0, 12) };
 }
 function openSearch() {
-  openModal(`<h2>Find anything</h2>
-    <div class="field"><label class="sr" for="sq">Search customers and jobs</label><input id="sq" type="search" enterkeyhint="go" placeholder="Name, phone, car, VIN or plate" autocomplete="off" autofocus data-nodirty role="combobox" aria-expanded="true" aria-controls="sqList" aria-autocomplete="list"></div>
+  openModal(`<h2>Find</h2>
+    <div class="field"><label class="sr" for="sq">Search customers and jobs</label><input id="sq" type="search" enterkeyhint="go" placeholder="Name, phone, car, VIN, plate or claim #" autocomplete="off" autofocus data-nodirty role="combobox" aria-expanded="true" aria-controls="sqList" aria-autocomplete="list"></div>
     <div id="sqList" class="srows" role="listbox" aria-label="Results"></div>`);
   const draw = () => {
     const q = val("sq"); const r = searchResults(q); searchHits = r.hits; searchOn = 0;
@@ -574,6 +581,7 @@ function buildTasks() {
     const c = cust(j.customer_id); const who = c?.name || "No customer";
     if (owes(j)) {
       const a = ageDays(j) ?? 0, lien = openLien(j.id), rem = daysSince(j.last_reminded_on);
+      if (!lien && S.liens.some(l => l.job_id === j.id && l.status !== "open")) return; // lien closed without payment: written off, no more reminders
       const remTxt = rem != null ? ` · last reminder ${rem === 0 ? "today" : plural(rem, "day") + " ago"}` : " · no reminder sent yet";
       if (a >= 30 && !lien) T.push({ rank: 10, cls: "urgent", t: `${who} owes ${money(balance(j)).replace(/\s/g, "\u00a0")}`, s: `${vehicleText(j)} · ${plural(a, "day")} since the bill${remTxt}`,
         acts: [{ label: "Send reminder", act: "remind", id: j.id, primary: rem == null || rem >= 7 }, { label: "Start lien", act: "start-lien", id: j.id, primary: rem != null && rem < 7 }] });
@@ -581,9 +589,9 @@ function buildTasks() {
         acts: [{ label: "Send reminder", act: "remind", id: j.id, primary: true }, { label: "Got paid", act: "pay", id: j.id }] });
     }
     if (j.status === "estimate" && j.approved_at) T.push({ rank: 8, cls: "easy", t: `${who} approved the estimate`, s: `${vehicleText(j)}${+j.amount ? " · " + money(j.amount) : ""} · approved ${K.fmt(new Date(j.approved_at))}. Call them to bring it in.`,
-      acts: [{ label: "Car is here", act: "stage-start", id: j.id, primary: true }, ...(c?.phone ? [{ label: "Call", tel: c.phone }] : [])] });
+      acts: [{ label: "Start work", act: "stage-start", id: j.id, primary: true }, ...(c?.phone ? [{ label: "Call", tel: c.phone }] : [])] });
     if (j.status === "done") T.push({ rank: 15, cls: "easy", t: `Give ${who} the bill`, s: `${vehicleText(j)} · work done ${j.completed_on ? K.fmt(K.D(j.completed_on)) : ""}${+j.amount ? ` · ${money(j.amount)}` : " · no price entered yet"}`,
-      acts: [{ label: "Bill given", act: "stage-invoice", id: j.id, primary: true }, { label: "Open job", href: "job/" + j.id }] });
+      acts: [{ label: "Give the bill", act: "stage-invoice", id: j.id, primary: true }, { label: "Open job", href: "job/" + j.id }] });
     const age = daysSince(j.created_at?.slice(0, 10)) ?? 0;
     if (j.status === "estimate" && !j.approved_at && age >= 14) T.push({ rank: 60, cls: "", t: `Follow up on ${who}'s estimate`, s: `${vehicleText(j)} · estimate is ${plural(age, "day")} old`,
       acts: [{ label: "Open job", href: "job/" + j.id, primary: true }] });
@@ -624,7 +632,7 @@ function renderHome() {
           <a class="tile" href="#jobs"><div class="n">${inShop}</div><div class="l">${inShop === 1 ? "Car" : "Cars"} in the shop</div></a>
           <a class="tile" href="#money"><div class="n">${dollars(owedTotal)}</div><div class="l">Owed to you</div></a>
           <a class="tile" href="#money"><div class="n">${unb.length}</div><div class="l">Not billed yet</div></a>
-          <a class="tile ${old.length ? "alert" : ""}" href="#money"><div class="n">${old.length}</div><div class="l">Over 3 months</div></a>
+          <a class="tile ${old.length ? "alert" : ""}" href="#money"><div class="n">${old.length}</div><div class="l">Over 90 days</div></a>
         </div>
         ${!big && !tipOff ? `<div class="box tip"><h3>Hard to read?</h3><div class="hint">Make every word and button bigger on this device.</div><div class="secondary"><button class="btn" type="button" data-act="big-text">Bigger text</button><button class="btn ghost" type="button" data-act="tip-off">No thanks</button></div></div>` : ""}
       </aside>
@@ -639,9 +647,9 @@ const JOB_GROUPS = [
   { key: "invoiced", title: "Bill given", hint: "Waiting on their money.", f: j => j.status === "invoiced" }
 ];
 const CARD_ACTION = {
-  estimate: { label: "Car is here", act: "stage-start" },
+  estimate: { label: "Start work", act: "stage-start" },
   in_progress: { label: "Work is done", act: "stage-done" },
-  done: { label: "Bill given", act: "stage-invoice" },
+  done: { label: "Give the bill", act: "stage-invoice" },
   invoiced: { label: "Got paid", act: "pay" }
 };
 function jobCard(j, byCar) {
@@ -676,7 +684,7 @@ function renderJobs() {
 function nextJobAction(j) {
   if (j.status === "estimate") return { title: j.approved_at ? "They said yes. Is the car here?" : "Waiting on the customer", label: "Car is here", act: "stage-start", help: j.approved_at ? "Tap when the car is in the bay and you're starting work." : "Text them the estimate so they can approve it. When the car is here, tap the button." };
   if (j.status === "in_progress") return { title: "Working on it", label: "Work is done", act: "stage-done", help: "Tap when the repair is finished and the car is ready to go." };
-  if (j.status === "done") return { title: "Give them the bill", label: "Bill given", act: "stage-invoice", help: +j.amount ? `Print it, email it or hand it over, then tap the button. Price: ${money(j.amount)}.` : "Print it, email it or hand it over, then tap the button. You'll type the price." };
+  if (j.status === "done") return { title: "Give them the bill", label: "Give the bill", act: "stage-invoice", help: +j.amount ? `Price so far: ${money(j.amount)}. Tap the button, check the price, then print, text or email it.` : "Tap the button, type the price, then print, text or email it." };
   if (j.status === "invoiced") return { title: `${money(balance(j))} still owed`, label: "Got paid", act: "pay", help: (ageDays(j) ?? 0) >= 14 ? `Bill given ${plural(ageDays(j) ?? 0, "day")} ago. A friendly reminder usually does it.` : "Tap when they pay, even part of it." };
   return null;
 }
@@ -703,7 +711,7 @@ function renderJob(id) {
   const billed = ["invoiced", "paid"].includes(j.status);
   const amtLabel = j.status === "paid" ? "Paid in full" : billed ? "Still owed" : "Price";
   const amtVal = !+j.amount ? "—" : j.status === "paid" ? money(j.amount) : billed ? money(balance(j)) : money(j.amount);
-  const payLabel = billed || j.status === "done" ? "+ Add payment" : "+ Take a deposit";
+  const payLabel = billed || j.status === "done" ? "+ Got paid" : "+ Take a deposit";
   $("main").innerHTML = `
     ${backLink("jobs", "All jobs")}
     <div class="head"><div style="min-width:0"><div class="eyebrow">${esc(c?.name || "No customer")}</div><h1>${esc(vehicleText(j))}</h1><div class="small">${esc(j.title || "")}${c?.phone ? ` · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">${esc(c.phone)}</a>` : ""}</div></div>
@@ -715,7 +723,7 @@ function renderJob(id) {
         ${owes(j) ? `<button class="btn" type="button" data-act="remind" data-id="${j.id}">Send reminder</button>` : ""}
         ${isEst ? `<button class="btn" type="button" data-act="cust-link" data-id="${j.id}">Text estimate to customer</button>` : ""}</div>
       ${idx > 0 ? `<div><button class="linkbtn quiet" type="button" data-act="stage-back" data-id="${j.id}">Undo: back to ${STAGE_LABEL[STAGES[idx - 1].k]}</button></div>` : ""}</div>`
-    : `<div class="nextcard good"><div class="eyebrow">All done</div><div class="headline">Paid in full${j.paid_on ? " on " + esc(K.fmt(K.D(j.paid_on))) : ""}</div><div class="hint">Nothing left to do on this job.${anyLien ? " Its lien case is closed. Print the release from the lien case and give it to them." : ""}</div></div>`}
+    : `<div class="nextcard good"><div class="eyebrow">All done</div><div class="headline">Paid in full${j.paid_on ? " on " + esc(K.fmt(K.D(j.paid_on))) : ""}</div><div class="hint">Nothing left to do on this job.${anyLien ? " Its lien case is closed. Print the release from the lien case and give it to them." : ""} Marked paid by mistake? Tap <b>Undo</b> next to the payment below.</div></div>`}
     <div class="secondary" aria-label="More for this job">
       <button class="btn" type="button" data-act="invoice" data-id="${j.id}">Print or email the ${docWord}</button>
       ${j.status === "invoiced" ? `<button class="btn" type="button" data-act="cust-link" data-id="${j.id}">Text bill to customer</button>` : ""}
@@ -745,7 +753,7 @@ function renderJob(id) {
 }
 
 // ---- add a job: one simple screen ----
-const WORK_CHIPS = ["Collision repair", "Paint", "Dent repair", "Bumper", "Rust repair", "Frame", "Upholstery", "Insurance claim"];
+const WORK_CHIPS = ["Collision repair", "Paint", "Dent repair", "Bumper", "Rust repair", "Frame", "Upholstery", "Interior"];
 let AJ = null;
 function parseCar(s) {
   s = String(s || "").trim().replace(/\s+/g, " ");
@@ -758,8 +766,8 @@ function newJob(preCustomerId) {
   const pc = preCustomerId ? cust(preCustomerId) : null;
   openModal(`<form id="ajForm" novalidate><div style="display:grid;gap:14px">
     <h2>Add a job</h2>
-    <div class="field"><span class="req" style="font-size:var(--t-sm);color:var(--stone);font-weight:600" id="ajHereL">Is the car here?</span>
-      <div class="seg" role="group" aria-labelledby="ajHereL" id="ajHere"><button type="button" data-ajstart="in_progress" aria-pressed="false">Yes, it's here</button><button type="button" data-ajstart="estimate" aria-pressed="false">No, just an estimate</button></div></div>
+    <div class="field"><span class="req" style="font-size:var(--t-sm);color:var(--stone);font-weight:600" id="ajHereL">Are you starting work on it now?</span>
+      <div class="seg" role="group" aria-labelledby="ajHereL" id="ajHere"><button type="button" data-ajstart="in_progress" aria-pressed="false">Yes, start work now</button><button type="button" data-ajstart="estimate" aria-pressed="false">No, estimate only for now</button></div></div>
     <div class="photobtns">
       ${coarse ? `<label class="btn big photobtn"><input type="file" accept="image/*" capture="environment" id="ajCam" hidden>${icon("camera")}Take photo of estimate</label>
       <label class="btn photobtn2"><input type="file" accept="image/*" multiple id="ajPick" hidden>Choose from photos</label>`
@@ -880,10 +888,10 @@ async function deletePhoto(p) {
 function photoBox(j, pending) {
   const ps = jobPhotos(j);
   const pick = coarse
-    ? `<label class="dropzone"><input type="file" accept="image/*" capture="environment" data-addphoto="${j.id}" hidden>${icon("camera")}<span>Take a photo of the estimate</span></label>
+    ? `<label class="dropzone"><input type="file" accept="image/*" capture="environment" data-addphoto="${j.id}" hidden>${icon("camera")}<span>Take a photo (estimate or damage)</span></label>
        <label class="linkbtn"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>Or choose from your photos</label>`
-    : `<label class="dropzone" data-drop="${j.id}"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>${icon("camera")}<span>Choose photos from this computer</span><span class="small" style="font-weight:500">or drag them here</span></label>`;
-  return `<div class="box"><h3>Estimate photos${ps.length ? ` · ${ps.length}` : ""}</h3>
+    : `<label class="dropzone" data-drop="${j.id}"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>${icon("camera")}<span>Add photos from this computer</span><span class="small" style="font-weight:500">or drag them here</span></label>`;
+  return `<div class="box"><h3>Photos${ps.length ? ` · ${ps.length}` : ""}</h3>
     ${ps.length ? `<div class="thumbs">${ps.map((p, i) => `<button type="button" class="thumb" data-viewphoto="${p.id}" aria-label="Open photo ${i + 1}"><img data-photo="${p.id}" alt="">${p._pending ? `<span class="tag">Uploading</span>` : ""}</button>`).join("")}</div>` : ""}
     ${pending ? "" : pick}</div>`;
 }
@@ -993,21 +1001,38 @@ function stageDone(j) {
   });
 }
 function stageInvoice(j) {
-  const needAmt = !(+j.amount > 0);
-  openModal(`<form id="siForm" novalidate><div style="display:grid;gap:16px"><h2>Did they get the bill?</h2><div class="hint">${esc(jobName(j))}. Tap Bill given once they have it (printed, emailed or texted).</div>
-    <div class="grid"><div class="field"><label class="req" for="siAmt">Price on the bill ($)</label><input id="siAmt" inputmode="decimal" value="${esc(+j.amount ? j.amount : "")}" ${needAmt ? "autofocus" : ""}></div>
-      <div class="field"><label for="siDate">Given on</label><input id="siDate" type="date" max="${todayISO()}" min="${esc(j.completed_on || "")}" value="${todayISO()}"></div></div>
-    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Bill given</button></div></div></form>`);
+  const needAmt = !(+j.amount > 0); const c = cust(j.customer_id) || {};
+  openModal(`<form id="siForm" novalidate><div style="display:grid;gap:16px"><h2>Give them the bill</h2><div class="hint">${esc(jobName(j))}</div>
+    <div class="grid"><div class="field"><label class="req" for="siAmt">1. Price on the bill ($)</label><input id="siAmt" inputmode="decimal" value="${esc(+j.amount ? j.amount : "")}" ${needAmt ? "autofocus" : ""}></div>
+      <div class="field"><label for="siDate">Date</label><input id="siDate" type="date" max="${todayISO()}" min="${esc(j.completed_on || "")}" value="${todayISO()}"></div></div>
+    <div class="field"><span style="font-size:var(--t-sm);color:var(--stone);font-weight:600">2. How are you giving it to them?</span>
+      <div class="choices">
+        <button type="submit" class="choice" data-how="print"><b>Print it</b><span>Opens the bill to print or hand over</span></button>
+        ${c.phone && coarse ? `<button type="submit" class="choice" data-how="text"><b>Text it</b><span>Sends a link to ${esc(c.phone)}</span></button>` : ""}
+        ${c.email ? `<button type="submit" class="choice" data-how="email"><b>Email it</b><span>To ${esc(c.email)}</span></button>` : ""}
+        <button type="submit" class="choice" data-how="done"><b>They already have it</b><span>Just mark it as given</span></button>
+      </div></div>
+    <div class="hint">Either way, the job moves to <b>Bill given</b> and shows on Money owed until they pay.</div>
+    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button></div></div></form>`);
+  $("siAmt").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("siDate").focus(); } });
   $("siForm").addEventListener("submit", async e => {
     e.preventDefault();
+    const how = e.submitter?.dataset.how || "done";
+    const pw = how === "print" ? window.open("", "_blank") : null; // open now, while it still counts as a tap, so it isn't blocked
     const amt = parseMoney(val("siAmt"));
-    if (amt == null || Number.isNaN(amt) || amt <= 0) return fieldErr("siAmt", "Type the price on the bill.");
-    if (amt < +j.amount_paid) return fieldErr("siAmt", `They've already paid ${money(j.amount_paid)}.`);
+    const bad = m => { if (pw) pw.close(); fieldErr("siAmt", m); $("siAmt").focus(); };
+    if (amt == null || Number.isNaN(amt) || amt <= 0) return bad("Type the price first.");
+    if (amt < +j.amount_paid) return bad(`They've already paid ${money(j.amount_paid)}, so the price can't be less.`);
     fieldErr("siAmt", "");
-    if (!dateRule("siDate", { required: true, min: j.completed_on, minLabel: "the day the work was done" })) return;
+    if (!dateRule("siDate", { required: true, min: j.completed_on, minLabel: "the day the work was done" })) { if (pw) pw.close(); return; }
     await busy(e.submitter, async () => {
       const row = { status: "invoiced", amount: amt, invoiced_on: val("siDate"), completed_on: j.completed_on || val("siDate") };
-      if (await setStage(j, row, "Bill given. It's on Money owed until they pay.", { status: "done", invoiced_on: null, amount: j.amount ?? null })) closeModal(true);
+      if (!(await setStage(j, row, "Bill given. It's on Money owed until they pay.", { status: "done", invoiced_on: null, amount: j.amount ?? null }))) { if (pw) pw.close(); return; }
+      await closeModal(true);
+      const nj = jobById(j.id) || { ...j, ...row };
+      if (how === "print") printHtml("Bill - " + (c.name || ""), invoiceHtml(nj), INV_CSS, pw);
+      if (how === "text") customerLink(nj);
+      if (how === "email") emailOrMailto(c.email, `Your bill from ${S.account.name}: ${vehicleText(nj)}`, invoiceText(nj));
     });
   });
 }
@@ -1031,11 +1056,11 @@ async function deleteJob(j) {
 
 // ================= PAYMENTS =================
 function payPick() {
-  const list = S.jobs.filter(j => j.status !== "paid" && +j.amount > 0 && balance(j) > 0)
+  const list = S.jobs.filter(j => j.status !== "paid" && (!(+j.amount > 0) || balance(j) > 0))
     .sort((a, b) => (b.status === "invoiced") - (a.status === "invoiced") || (ageDays(b) ?? -1) - (ageDays(a) ?? -1));
-  if (!list.length) { toast("Nobody owes anything right now. Add a price to a job first."); return; }
+  if (!list.length) { toast("Every job is paid. Add a job first."); return; }
   openModal(`<h2>Who paid?</h2><div class="field"><label for="ppSearch">Search by name, car or phone</label><input id="ppSearch" type="search" autocomplete="off" data-nodirty></div>
-    <div class="pickl" id="ppList">${list.map(j => `<button type="button" data-paypick="${j.id}" data-hay="${esc(jobName(j).toLowerCase() + " " + (cust(j.customer_id)?.phone || "").replace(/\D/g, ""))}">${esc(jobName(j))} <span>${money(balance(j))} ${j.status === "invoiced" ? "owed" : "price"}</span></button>`).join("")}</div>
+    <div class="pickl" id="ppList">${list.map(j => `<button type="button" data-paypick="${j.id}" data-hay="${esc(jobName(j).toLowerCase() + " " + (cust(j.customer_id)?.phone || "").replace(/\D/g, ""))}">${esc(jobName(j))} <span>${!(+j.amount > 0) ? "no price yet" : money(balance(j)) + (j.status === "invoiced" ? " owed" : " left")}</span></button>`).join("")}</div>
     <div class="empty" id="ppNone" hidden>No one matches.</div>`);
   $("ppSearch").addEventListener("input", () => { const q = val("ppSearch").toLowerCase(); const d = q.replace(/\D/g, ""); let n = 0;
     $("ppList").querySelectorAll("button").forEach(b => { const show = !q || b.dataset.hay.includes(q) || (d.length >= 3 && b.dataset.hay.includes(d)); b.hidden = !show; n += show; }); $("ppNone").hidden = n > 0; });
@@ -1061,7 +1086,7 @@ function payModal(j) {
     <div class="field"><span class="req" style="font-size:var(--t-sm);color:var(--stone);font-weight:600" id="pfHowL">How did they pay?</span><div class="chips" role="group" aria-labelledby="pfHowL">${Object.entries(METHODS).map(([k, t]) => `<button type="button" class="chipbtn" data-method="${k}" aria-pressed="false">${t}</button>`).join("")}</div><div class="fmsg" id="pfHowMsg" role="alert"></div></div>
     <div class="grid"><div class="field"><label for="pfDate">Paid on</label><input id="pfDate" type="date" max="${todayISO()}" value="${todayISO()}"></div>
       <div class="field"><label for="pfNote">Note (optional)</label><input id="pfNote" placeholder="Check #, claim #, etc."></div></div>
-    <div class="notice good" id="pfFull" hidden>This pays the job off in full.</div>
+    <div class="notice good" id="pfFull" hidden>This pays the job off in full. It will move to <b>Paid</b>.</div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save payment</button></div></div></form>`);
   const upd = () => { const a = parseMoney(val("pfAmt")); $("pfFull").hidden = !(a >= bal && a > 0); };
   $("pfAmt").addEventListener("input", upd);
@@ -1117,7 +1142,7 @@ async function emailOrMailto(to, subject, text) {
 }
 
 // ---- invoice / estimate / receipt ----
-const docKind = j => j.status === "estimate" ? "Estimate" : j.status === "paid" ? "Receipt" : "Invoice";
+const docKind = j => j.status === "estimate" ? "Estimate" : j.status === "paid" ? "Receipt" : "Bill";
 function invoiceText(j) {
   const c = cust(j.customer_id) || {}; const v = j.vehicle || {}; const ins = j.insurance || {}; const a = S.account;
   const isEst = j.status === "estimate"; const pays = jobPays(j).filter(p => !p.voided);
@@ -1155,8 +1180,8 @@ function invoiceHtml(j) {
   </div>`;
 }
 const INV_CSS = `body{margin:0;font:14px/1.5 "Work Sans",Arial,sans-serif;color:#1a1f26}.inv{max-width:7.2in;margin:0 auto;padding:.2in 0;border-top:6px solid #F54503}.ihead{display:flex;justify-content:space-between;gap:16px;padding-top:14px}.ibrand{font:700 26px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.08em;color:#0f2740}.imeta{text-align:right}.ikind{font:700 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.06em;color:#C93A00}.icols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:22px 0}.ilbl{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6a7380;margin-bottom:2px}table{width:100%;border-collapse:collapse;margin:6px 0 14px}th{text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#6a7380;border-bottom:2px solid #1a1f26;padding:6px 0}td{padding:10px 0;border-bottom:1px solid #e3e6ea;vertical-align:top}.r{text-align:right}.itot{margin-left:auto;width:300px;display:grid;gap:4px}.itot div{display:flex;justify-content:space-between;gap:16px}.idue{border-top:2px solid #1a1f26;padding-top:8px;margin-top:4px;font-size:19px;font-weight:700}.inote{margin-top:22px;color:#4b5563;font-size:12.5px}@page{margin:.6in}`;
-function printHtml(title, body, css) {
-  const w = window.open("", "_blank");
+function printHtml(title, body, css, win) {
+  const w = win || window.open("", "_blank");
   if (!w) { toast("Your browser blocked the print window. Allow pop-ups for daleskc.com."); return; }
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>${body}</body></html>`);
   w.document.close(); w.focus(); setTimeout(() => w.print(), 500);
@@ -1209,11 +1234,11 @@ async function customerLink(j) {
     <div class="hint">${isEst ? "They can see the estimate and photos, and tap Approve." : "They can see the work and what they still owe."} Only people with this link can open it.</div>
     <textarea class="copybox" id="lnkText" aria-label="Message to send">${esc(msg)}</textarea>
     ${link.viewed_at ? `<div class="notice good">They opened it on ${esc(K.fmt(new Date(link.viewed_at)))}.</div>` : ""}
-    <div><button class="linkbtn danger" type="button" data-act="link-off" data-id="${j.id}">Turn off this link</button></div>
+    <div class="hint">Changed your mind? <button class="linkbtn quiet" type="button" data-act="link-off" data-id="${j.id}">Turn off this link</button> so it stops working.</div>
     <div class="modalfoot">
-      <button class="btn ${c.phone || c.email ? "" : "primary"}" type="button" data-act="link-send" data-how="copy" data-id="${j.id}">Copy</button>
-      ${c.email ? `<button class="btn ${c.phone ? "" : "primary"}" type="button" data-act="link-send" data-how="email" data-id="${j.id}">Email it</button>` : ""}
-      ${c.phone ? `<button class="btn primary" type="button" data-act="link-send" data-how="sms" data-id="${j.id}">Text it</button>` : ""}</div></div>`);
+      <button class="btn ${(c.phone && coarse) || c.email ? "" : "primary"}" type="button" data-act="link-send" data-how="copy" data-id="${j.id}">Copy</button>
+      ${c.email ? `<button class="btn ${c.phone && coarse ? "" : "primary"}" type="button" data-act="link-send" data-how="email" data-id="${j.id}">Email it</button>` : ""}
+      ${c.phone && coarse ? `<button class="btn primary" type="button" data-act="link-send" data-how="sms" data-id="${j.id}">Text it</button>` : ""}</div></div>`);
 }
 async function linkSend(how, j) {
   const c = cust(j.customer_id) || {}; const text = $("lnkText").value; modalDirty = false;
@@ -1237,8 +1262,9 @@ const HELP = [
   ["Send the estimate to a customer", "Open the job and tap Text estimate to customer. They can see it with the photos and tap Approve on their phone."],
   ["Someone hasn't paid", "The Today screen reminds you. Tap Send reminder. If they still don't pay after 30 days, open the job and tap Start a lien case. It walks you through each step."],
   ["You made a mistake", "Most buttons have an Undo. On a job, tap Edit to fix the name, the car or the price. Payments can be undone too."],
-  ["No internet", "You can still add jobs and photos. A yellow bar says they're saved on this device, and they upload by themselves when the internet is back."],
-  ["Find someone fast", "Tap the magnifying glass at the top (or press / on a computer) and type a name, phone number, car or VIN."]
+  ["No internet", "You can still add jobs and photos, take payments, and move jobs along (start work, work done, give the bill). A yellow bar says they're saved on this device. They upload by themselves when the internet is back."],
+  ["Find someone fast", "Tap the magnifying glass at the top (or press / on a computer) and type a name, phone number, car or VIN."],
+  ["Where are Liens, Settings and Help on a phone?", "Tap More at the bottom right of the screen."]
 ];
 const helpWho = () => ({ name: S.account?.help_name || "Dale Jr.", phone: S.account?.help_phone || "" });
 function renderHelp() {
@@ -1264,9 +1290,9 @@ function remindModal(j) {
     <div class="field"><label for="remText">Message (change it if you like)</label><textarea class="copybox" id="remText">${esc(text)}</textarea></div>
     ${!c.phone && !c.email ? `<div class="notice">This customer has no phone or email saved. Add one on their customer page to text or email from here, or copy the message.</div>` : ""}
     <div class="modalfoot">
-      <button class="btn ${c.phone || c.email ? "" : "primary"}" type="button" data-remsend="copy" data-id="${j.id}">Copy</button>
-      ${c.email ? `<button class="btn ${c.phone ? "" : "primary"}" type="button" data-remsend="email" data-id="${j.id}">Email it</button>` : ""}
-      ${c.phone ? `<button class="btn primary" type="button" data-remsend="sms" data-id="${j.id}">Text it</button>` : ""}</div>`);
+      <button class="btn ${(c.phone && coarse) || c.email ? "" : "primary"}" type="button" data-remsend="copy" data-id="${j.id}">Copy</button>
+      ${c.email ? `<button class="btn ${c.phone && coarse ? "" : "primary"}" type="button" data-remsend="email" data-id="${j.id}">Email it</button>` : ""}
+      ${c.phone && coarse ? `<button class="btn primary" type="button" data-remsend="sms" data-id="${j.id}">Text it</button>` : ""}</div>`);
 }
 let askedReminder = null;
 async function askReminderSent() {
@@ -1285,6 +1311,7 @@ async function remSend(how, j) {
   const c = cust(j.customer_id) || {}; const text = $("remText").value; modalDirty = false;
   if (how === "copy") {
     let copied = true; try { await navigator.clipboard.writeText(text); } catch { copied = false; $("remText").select(); }
+    askedReminder = j.id;
     toast(copied ? "Copied. Paste it into a text or email." : "Selected. Press Ctrl+C or ⌘C to copy it.", { label: "I sent it", run: async () => { if (await markReminded(j)) { route(true); toast("Logged as reminded today.", null, { ok: true }); } } });
     return;
   }
@@ -1297,10 +1324,10 @@ async function remSend(how, j) {
 
 // ================= MONEY OWED =================
 const BUCKETS = [
-  { key: "b0", label: "This month", test: d => d <= 30, color: "var(--good)" },
-  { key: "b30", label: "1–2 months", test: d => d > 30 && d <= 60, color: "var(--stone)" },
-  { key: "b60", label: "2–3 months", test: d => d > 60 && d <= 90, color: "var(--amber)" },
-  { key: "b90", label: "Over 3 months", test: d => d > 90, color: "var(--rust)" }];
+  { key: "b0", label: "Under 30 days", test: d => d <= 30, color: "var(--good)" },
+  { key: "b30", label: "30–60 days", test: d => d > 30 && d <= 60, color: "var(--stone)" },
+  { key: "b60", label: "60–90 days", test: d => d > 60 && d <= 90, color: "var(--amber)" },
+  { key: "b90", label: "Over 90 days", test: d => d > 90, color: "var(--rust)" }];
 let arBucket = "all";
 function renderMoney() {
   const open = S.jobs.filter(owes).map(j => ({ j, age: ageDays(j) ?? 0, bal: balance(j) })).sort((a, b) => b.age - a.age);
@@ -1318,12 +1345,12 @@ function renderMoney() {
         <div class="s">${lien ? `<a class="chip over lchip2" href="#lien/${lien.id}">Lien open</a> ` : ""}${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${daysSince(j.last_reminded_on) === 0 ? "today" : plural(daysSince(j.last_reminded_on), "day") + " ago"}` : ""}</div></div>
         <div class="amt num">${money(bal)}</div>
         <div class="r"><div class="acts">
-          <button class="btn sm" type="button" data-act="remind" data-id="${j.id}">Reminder</button>
+          <button class="btn sm" type="button" data-act="remind" data-id="${j.id}">Send reminder</button>
           <button class="btn sm" type="button" data-act="pay" data-id="${j.id}">Got paid</button>
         </div></div></div>`; }).join("") : `<div class="empty">${open.length ? "Nothing in this group." : "Nobody owes the shop money. When you tap Bill given on a job, it shows up here until it's paid."}</div>`}</div></section>
     ${unb.length ? `<section aria-labelledby="unbH"><h2 id="unbH">Not billed yet · ${unb.length}${unbTotal ? ` · ${money(unbTotal)}` : ""}</h2><div class="hint" style="margin:-6px 0 12px">Work is done but they don't have the bill yet, so it isn't counted above.</div>
       <div class="list">${unb.map(j => `<div class="row" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(cust(j.customer_id)?.name || "No customer")}</a><div class="s">${esc(vehicleText(j))}${+j.amount ? " · " + money(j.amount) : " · no price yet"}${j.completed_on ? " · done " + esc(K.fmt(K.D(j.completed_on))) : ""}</div></div>
-        <div class="r"><div class="acts"><button class="btn sm outline" type="button" data-act="stage-invoice" data-id="${j.id}">Bill given</button></div></div></div>`).join("")}</div></section>` : ""}`;
+        <div class="r"><div class="acts"><button class="btn sm outline" type="button" data-act="stage-invoice" data-id="${j.id}">Give the bill</button></div></div></div>`).join("")}</div></section>` : ""}`;
 }
 
 // ================= CUSTOMERS =================
@@ -1359,7 +1386,7 @@ function renderCustomer(id) {
     <div class="twocol"><div class="box"><h3>Contact <button class="linkbtn" type="button" data-act="edit-customer" data-id="${c.id}">Edit</button></h3>
       <dl class="kv"><dt>Phone</dt><dd>${esc(c.phone || "—")}</dd><dt>Email</dt><dd>${esc(c.email || "—")}</dd><dt>Address</dt><dd>${esc(c.address || "—")}${!c.address ? `<div class="fwarn">Needed for lien letters</div>` : ""}</dd>${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}</dl></div>
       <section class="box"><h3>Jobs · ${js.length}</h3>${js.length ? jobRows(js, "", true) : `<div class="hint">No jobs yet.</div>`}</section></div>
-    <details class="dangerzone"><summary>${icon("trash")}Delete this customer</summary><div style="display:grid;gap:10px;padding:4px 0 8px"><div class="hint">${js.length ? `${esc(c.name)} has ${plural(js.length, "job")}. Delete those first, so nothing gets lost.` : "This can't be undone."}</div><div><button class="btn danger" type="button" data-act="del-customer" data-id="${c.id}" ${js.length ? "disabled" : ""}>Delete customer</button></div></div></details>`;
+    <details class="dangerzone"><summary>${icon("trash")}Delete this customer</summary><div style="display:grid;gap:10px;padding:4px 0 8px"><div class="hint">${js.length ? `${esc(c.name)} has ${plural(js.length, "job")}. Move or delete those first. To move a job: open it, tap Edit, and pick a different customer.` : "This can't be undone."}</div><div><button class="btn danger" type="button" data-act="del-customer" data-id="${c.id}" ${js.length ? "disabled" : ""}>Delete customer</button></div></div></details>`;
   fillPhotos($("main"));
 }
 function customerModal(c) {
@@ -1372,7 +1399,7 @@ function customerModal(c) {
       <div class="field wide"><label for="cuNotes">Notes</label><textarea id="cuNotes" rows="2">${esc(c.notes || "")}</textarea></div></div>
     <div id="cuDup"></div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save customer</button></div></div></form>`);
-  const dup = () => { const n = val("cuName").toLowerCase(); const m = n.length > 2 && S.customers.find(x => x.id !== c.id && x.name.toLowerCase() === n); $("cuDup").innerHTML = m ? `<div class="notice">There's already a customer named ${esc(m.name)}. <a href="#customer/${m.id}" data-act="close">Open them</a>, or keep going if this is a different person.</div>` : ""; };
+  const dup = () => { const n = val("cuName").toLowerCase(); const m = n.length > 2 && S.customers.find(x => x.id !== c.id && x.name.toLowerCase() === n); $("cuDup").innerHTML = m ? `<div class="notice">There's already a customer named ${esc(m.name)}. <a href="#customer/${m.id}" data-act="close">Open them</a>, or keep going if this is a different person. (Made a duplicate by mistake? Move its jobs with Edit on each job, then delete it.)</div>` : ""; };
   $("cuName").addEventListener("input", dup);
   $("cuForm").addEventListener("submit", async e => {
     e.preventDefault(); let ok = true;
@@ -1390,7 +1417,7 @@ function customerModal(c) {
 }
 async function deleteCustomer(c) {
   const n = S.jobs.filter(j => j.customer_id === c.id).length;
-  if (n) { await confirmBox({ title: "Can't delete yet", body: `${esc(c.name)} has ${plural(n, "job")}. Delete or reassign those jobs first, so nothing gets lost.`, ok: "Got it", cancel: "" }); return; }
+  if (n) { await confirmBox({ title: "Can't delete yet", body: `${esc(c.name)} has ${plural(n, "job")}. Move or delete those first, so nothing gets lost. To move a job: open it, tap Edit, and pick the right customer.`, ok: "Got it", cancel: "" }); return; }
   if (!(await confirmBox({ title: `Delete ${c.name}?`, body: "This can't be undone.", ok: "Delete", danger: true }))) return;
   const { error } = await sb.from("shop_customers").delete().eq("id", c.id); if (error) return toast(friendly(error));
   await reload(); go("customers"); toast("Customer deleted.");
@@ -1405,11 +1432,11 @@ function lienLabel(l) {
 }
 const STEP_UI = {
   demand: { label: "I sent the demand letter", doc: "demand" },
-  lookup: { label: "I have the owner and lienholder records", help: "Order the title and registration record from the Kansas Division of Vehicles or your county tag office. Every lienholder on it must get the notice of sale." },
+  lookup: { label: "I have the owner and lienholder records", ask: "lienholders", help: "Order the title and registration record from the Kansas Division of Vehicles or your county tag office. Every lienholder on it must get the notice of sale." },
   notice: { label: "I mailed the notice of sale", doc: "notice", ask: "notice" },
   handbill: { label: "I posted the sale notice", doc: "handbill" },
   sale: { label: "The sale happened", ask: "sale" },
-  title: { label: "Inspection done and TR-96M given to the buyer" },
+  title: { label: "Inspection done and TR-96M given to the buyer", help: "Call the Kansas Highway Patrol to set up the MVE-1 inspection. Get form TR-96M at your county tag office." },
   buyertitle: { label: "The buyer applied for title" },
   rod: { label: "I filed the lien statement", ask: "filed" },
   foreclose: { label: "It's handled (paid, settled or in court)" },
@@ -1447,21 +1474,32 @@ async function startLien(j) {
   const opts = j.kind === "property" ? ["gc", "sub"] : ["repair", "tow"];
   openModal(`<div style="display:grid;gap:16px"><h2>Start a lien case</h2><div class="hint">${esc(jobName(j))} · ${money(balance(j))} owed</div>
     <div><div class="hint" style="margin-bottom:6px">Which fits?</div><div class="choices">${opts.map(k => `<button type="button" class="choice" data-track="${k}" aria-pressed="${k === track}"><b>${esc(K.TRACKS[k].label)}</b><span>${esc(K.TRACKS[k].blurb)}</span></button>`).join("")}</div></div>
+    ${j.kind === "property" ? "" : `<div class="field"><span class="req" style="font-size:var(--t-sm);color:var(--stone);font-weight:600" id="lnHaveL">Do you still have the vehicle?</span>
+      <div class="seg" role="group" aria-labelledby="lnHaveL" id="lnHave"><button type="button" data-have="1" aria-pressed="false">Yes, it's here</button><button type="button" data-have="0" aria-pressed="false">No, I gave it back</button></div>
+      <div class="field" id="lnRelF" hidden><label for="lnRel">Date you gave it back</label><input id="lnRel" type="date" max="${todayISO()}" min="${esc(j.completed_on || "")}"></div>
+      <div class="hint">This decides which Kansas steps apply, so the helper asks now.</div></div>`}
     <div class="hint">Everything we know from the job and customer gets filled in. The lien helper then walks you through it one step at a time.</div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="button" id="lnGo">Start lien case</button></div></div>`);
   $("modal").querySelectorAll("[data-track]").forEach(b => b.addEventListener("click", () => { track = b.dataset.track; $("modal").querySelectorAll("[data-track]").forEach(x => x.setAttribute("aria-pressed", x === b)); }));
-  $("lnGo").addEventListener("click", e => busy(e.currentTarget, async () => {
+  let have = null;
+  $("modal").querySelectorAll("[data-have]").forEach(b => b.addEventListener("click", () => { have = b.dataset.have === "1"; fieldErr("lnHave", ""); $("modal").querySelectorAll("[data-have]").forEach(x => x.setAttribute("aria-pressed", x === b)); $("lnRelF").hidden = have; }));
+  $("lnGo").addEventListener("click", e => {
+    if (j.kind !== "property") {
+      if (have === null) return fieldErr("lnHave", "Tap Yes or No.");
+      if (!have && !dateRule("lnRel", { required: true, min: j.completed_on || null, minLabel: "the day the work was done" })) return;
+    }
+    return busy(e.currentTarget, async () => {
     const c = cust(j.customer_id) || {};
     const data = { claimant: { name: S.account.name, address: S.account.address, phone: S.account.phone },
       owner: { name: c.name || "", address: c.address || "" }, contractor: {},
       vehicle: j.kind === "property" ? {} : { ...(j.vehicle || {}) },
       property: j.kind === "property" ? { address: j.property?.address || "", county: j.property?.county || "", legal: "" } : {},
       residential: !!j.property?.residential, newResidential: false, amount: String(balance(j)), description: j.title || j.description || "",
-      dates: { lastWork: j.completed_on || "", ...(track === "tow" ? { possession: j.completed_on || "" } : {}) }, saleTime: "", done: {} };
+      dates: { lastWork: j.completed_on || "", ...(track === "tow" ? { possession: j.completed_on || "" } : {}), ...(have === false ? { released: val("lnRel") } : {}) }, saleTime: "", done: {} };
     const { data: row, error } = await sb.from("shop_liens").insert({ account_id: S.account.id, job_id: j.id, track, data }).select().single();
     if (error) return toast(friendly(error));
     await reload(); await closeModal(true); go("lien/" + row.id); toast("Lien case started. Follow the steps from the top.");
-  }));
+  }); });
 }
 function renderLiens() {
   const open = S.liens.filter(l => l.status === "open"), closed = S.liens.filter(l => l.status !== "open");
@@ -1477,14 +1515,14 @@ function renderLiens() {
 let currentLien = null, currentDoc = null, saveT = null, saveState = "saved", lastLienStep = "";
 function renderLien(id) {
   const l = S.liens.find(x => x.id === id);
-  if (!l) { $("main").innerHTML = `${backLink("liens", "Lien cases")}<div class="empty">That lien case isn't here anymore.</div>`; return; }
+  if (!l) { $("main").innerHTML = `${backLink("liens", "All liens")}<div class="empty">That lien case isn't here anymore.</div>`; return; }
   currentLien = l; const c = lienData(l); const veh = c.track === "repair" || c.track === "tow";
   const job = l.job_id && jobById(l.job_id); const closed = l.status !== "open";
   const n = guidedNext(c); const miss = missingFor(c); const ui = n ? (STEP_UI[n.key] || { label: "Mark this step done" }) : null;
   const all = guidedSteps(c); const doneCount = all.filter(s => c.done[s.key]).length;
   const st = n && n.date ? K.status(c, n) : null;
   $("main").innerHTML = `
-    ${backLink("liens", "Lien cases")}
+    ${backLink("liens", "All liens")}
     <div class="head"><div><div class="eyebrow">${esc(K.TRACKS[c.track].label)} lien · ${esc(K.TRACKS[c.track].law)}${closed ? " · CLOSED" : ""}</div><h1>${esc(lienLabel(l))}</h1>
       <div class="small">${job ? `From job: <a href="#job/${job.id}">${esc(job.title || vehicleText(job))}</a>` : "Not linked to a job"}</div></div>
       <div class="amount"><div class="l">Amount owed</div><div class="n">${money(c.amount)}</div></div></div>
@@ -1492,6 +1530,7 @@ function renderLien(id) {
     : n ? `<div class="nextcard ${st && st.cls === "over" ? "" : "calm"}"><div class="eyebrow">Step ${all.indexOf(all.find(s => s.key === n.key)) + 1} of ${all.length}</div><div class="headline">${esc(n.title)}</div>
         <div class="hint">${esc(n.detail)}${ui.help ? " " + esc(ui.help) : ""}</div>
         ${n.date ? `<div><span class="date">Due ${esc(K.fmt(n.date))}</span> <span class="chip ${st.cls}">${esc(st.txt)}</span></div>` : ""}
+        ${n.key === "notice" && !closed ? `<div class="grid">${lfield(c, "dates.saleDate", "Sale date (prints on the letter)", { suffix: "-n" }).replace('type="text"', `type="date" min="${todayISO()}"`)}${lfield(c, "saleTime", "Sale time", { suffix: "-n" })}</div>` : ""}
         ${ui.doc && miss.length ? `<div class="notice bad"><b>Fill these in before sending letters:</b><div class="grid" style="margin-top:10px">${miss.map(m => lfield(c, m.path, m.label)).join("")}</div></div>` : ""}
         <div class="row2">${ui.doc ? `<button class="btn" type="button" data-act="print-doc" data-doc="${ui.doc}">Print the ${esc(K.docsFor(c).find(d => d.key === ui.doc)?.label.toLowerCase() || "letter")}</button>` : ""}
           <button class="btn primary big" type="button" data-act="step-done" data-step="${n.key}">${esc(ui.label)}</button>
@@ -1506,7 +1545,7 @@ function renderLien(id) {
           <div><div class="t">${esc(s.title)}</div><div class="d">${esc(s.detail)}</div>${s.cite ? `<details class="why"><summary>Why?</summary><span class="cite">${esc(s.cite)}</span></details>` : ""}
           ${(c.done[s.key] || skipped) && !closed ? `<div class="undo"><button class="linkbtn" type="button" data-act="step-undo" data-step="${s.key}">Undo</button></div>` : ""}</div>
           <div class="when">${s.kind === "info" || !s.date ? "" : `<span class="wdate">${s.kind === "after" ? "not before " : ""}${esc(K.fmt(s.date))}</span>`}<span class="chip ${skipped ? "info" : stt.cls}">${esc(skipped ? "Skipped" : stt.txt)}</span></div></li>`; };
-        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up · ${up.filter(s => all.some(x => x.key === s.key)).length} ${up.length && up.length === up.filter(s => all.some(x => x.key === s.key)).length ? "" : "· plus notes"}</summary><div class="inner">${n ? `<div class="nowline"><span class="snum now" aria-hidden="true">${all.indexOf(all.find(s => s.key === n.key)) + 1}</span>Now: ${esc(n.title)}</div>` : ""}${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
+        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up (${plural(up.filter(s => all.some(x => x.key === s.key)).length, "step")}${up.length !== up.filter(s => all.some(x => x.key === s.key)).length ? ", plus notes" : ""})</summary><div class="inner">${n ? `<div class="nowline"><span class="snum now" aria-hidden="true">${all.indexOf(all.find(s => s.key === n.key)) + 1}</span>Now: ${esc(n.title)}</div>` : ""}${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
           <details class="panel" style="margin-top:12px"><summary>Done · ${done.length}</summary><div class="inner">${done.length ? `<ul class="steps">${done.map(li).join("")}</ul>` : `<div class="hint">No steps done yet.</div>`}</div></details>`; })()}</section>
       <section class="stick"><h2>Letters and forms</h2><div class="docs" id="docs"></div><div class="sheet" id="sheet" tabindex="0" aria-label="Document preview"></div>
         <div class="sheetbar"><button class="btn outline" type="button" data-act="print-doc">Print</button><button class="btn" type="button" data-act="copy-doc">Copy text</button><span class="small" id="missing"></span></div></section>
@@ -1593,6 +1632,13 @@ function stepDone(key) {
     confirmBox({ title: "Mark this step done?", body: `<b>${esc(ui.label)}.</b> Only mark it once it's really done. You can undo it later.`, ok: "Yes, it's done" }).then(ok => ok && finish(null, null));
     return;
   }
+  if (ui.ask === "lienholders") {
+    openModal(`<form id="slForm" novalidate><div style="display:grid;gap:16px"><h2>Who are the lienholders?</h2>
+      <div class="hint">From the title record. Every one of them gets the notice of sale. If there are none, type None.</div>
+      <div class="field"><label class="req" for="slText">Lienholder names and mailing addresses</label><textarea id="slText" rows="3">${esc(c.lienholders || "")}</textarea></div>
+      <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button></div></div></form>`);
+    $("slForm").addEventListener("submit", e => { e.preventDefault(); if (!val("slText")) return fieldErr("slText", "Type the lienholders, or None."); finish({ lienholders: val("slText") }, e.submitter); });
+  }
   if (ui.ask === "filed") {
     openModal(`<form id="sfForm" novalidate><div style="display:grid;gap:16px"><h2>${esc(ui.label)}</h2><div class="field"><label class="req" for="sfDate">Filed on</label><input id="sfDate" type="date" max="${todayISO()}" value="${todayISO()}"></div>
       <div class="hint">This starts the 1-year clock to enforce the lien.</div><div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button></div></div></form>`);
@@ -1652,12 +1698,12 @@ async function closeLienCase() {
   const l = currentLien; const job = l.job_id && jobById(l.job_id);
   openModal(`<div style="display:grid;gap:16px"><h2>Close this case?</h2>
     <div class="choices">${job && job.status !== "paid" ? `<button type="button" class="choice" id="clPaid"><b>They paid</b><span>Record the payment. The case closes on its own.</span></button>` : ""}
-      <button type="button" class="choice" id="clGive"><b>Close without payment</b><span>Writing it off or dropping the lien</span></button></div>
+      <button type="button" class="choice" id="clGive"><b>Close without payment</b><span>You're writing it off or dropping the lien. Today stops reminding you about this bill.</span></button></div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button></div></div>`);
   if ($("clPaid")) $("clPaid").addEventListener("click", async () => { await closeModal(true); payModal(job); });
   $("clGive").addEventListener("click", async () => {
     await closeModal(true);
-    if (!(await confirmBox({ title: "Close without payment?", body: "You can reopen it later if things change.", ok: "Close case" }))) return;
+    if (!(await confirmBox({ title: "Close without payment?", body: "The bill stays on Money owed as a record, but Today won't remind you about it anymore. You can reopen the case later.", ok: "Close case" }))) return;
     const { error } = await sb.from("shop_liens").update({ status: "closed" }).eq("id", l.id); if (error) return toast(friendly(error));
     await reload(); route(true); toast("Case closed.");
   });
@@ -1693,15 +1739,16 @@ function renderSettings() {
       <div class="box"><h3>Team</h3>
         <div class="hint">People who can sign in and use the portal. Co-owners can also change shop info and the team.</div>
         <div class="members">
-          <div class="member"><div><b>Shop owner</b>${S.isDale ? " · you" : ""}</div></div>
+          <div class="member"><div class="memail"><b>Shop owner</b>${S.isDale ? ` · ${esc(S.user.email)} (you)` : ""}</div></div>
           ${S.members.filter(m => m.active).map(m => `<div class="member"><div class="memail">${esc(m.email || "Team member")}${m.user_id === S.user.id ? " · you" : ""} ${m.co_owner ? `<span class="chip done">Co-owner</span>` : ""}</div>
             ${S.isOwner && m.user_id !== S.user.id ? `<div class="secondary"><button class="linkbtn" type="button" data-act="toggle-coowner" data-id="${m.user_id}">${m.co_owner ? "Remove co-owner" : "Make co-owner"}</button><button class="linkbtn danger" type="button" data-act="rm-member" data-id="${m.user_id}">Remove</button></div>` : ""}</div>`).join("")}
           ${S.invites.filter(i => i.active).map(i => `<div class="member"><div class="memail">${esc(i.email)}</div><div class="small">Invited. Hasn't signed in yet.</div>${S.isOwner ? `<div class="secondary"><button class="linkbtn danger" type="button" data-act="rm-invite" data-id="${esc(i.email)}">Cancel invite</button></div>` : ""}</div>`).join("")}</div>
         ${S.isOwner ? `<form id="invForm" novalidate style="display:grid;gap:10px"><div class="field"><label for="invEmail">Add someone by email</label><input id="invEmail" type="email" inputmode="email" placeholder="name@gmail.com"></div><div><button class="btn" type="submit">Add to team</button></div>
-          <div class="hint">Then tell them to open daleskc.com/portal and tap “Create your login” with that same email.</div></form>` : ""}</div>
+          <div class="hint">Then tell them: open daleskc.com/portal, tap “Create your login”, use this same email, then tap the link in the email we send them.</div></form>` : ""}</div>
       <div class="box"><h3>Put it on your phone</h3>
-        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><img src="icons/qr-install.png" alt="QR code that installs the app" style="width:132px;height:132px;border-radius:10px;background:#fff;padding:6px">
-          <div class="hint" style="flex:1;min-width:180px">Point any phone's camera at this code to install the app. <a href="qr.html" target="_blank" rel="noopener">Print it as a sign</a> for the counter.</div></div>
+        ${coarse ? `<div class="hint">Put a Dale's Shop icon on this phone's home screen so it opens like an app.</div><div><a class="btn" href="install.html">Add to my home screen</a></div>`
+          : `<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><img src="icons/qr-install.png" alt="QR code that installs the app" style="width:132px;height:132px;border-radius:10px;background:#fff;padding:6px">
+          <div class="hint" style="flex:1;min-width:180px">Point a phone's camera at this code to put the app on that phone. <a href="qr.html" target="_blank" rel="noopener">Print it as a sign</a> for the staff area.</div></div>`}
         <div><button class="btn" type="button" data-act="install" id="installBtn" ${deferredInstall ? "" : "hidden"}>Install on this computer</button></div></div>
       ${S.isOwner ? `<form class="box" id="helpForm" novalidate><h3>Who to call for help</h3><div class="hint">Shows a Call button on the Help page.</div>
         <div class="grid"><div class="field"><label for="hpName">Name</label><input id="hpName" value="${esc(a.help_name || "Dale Jr.")}"></div>
@@ -1801,7 +1848,8 @@ document.addEventListener("click", async e => {
       const deadJobs = new Set(all.filter(i => i.error && i.type === "job").map(i => i.job.id));
       const bad = all.filter(i => i.error || deadJobs.has(jobOf(i)));
       const extra = bad.length - all.filter(i => i.error).length;
-      if (!(await confirmBox({ title: `Throw away ${plural(bad.length, "change")}?`, body: `Changes that couldn't upload will be deleted from this device.${extra ? ` That includes ${plural(extra, "photo or payment")} added to a job that never uploaded.` : ""}`, ok: "Throw away", danger: true }))) return;
+      if (!(await confirmBox({ title: `Throw away ${plural(bad.length, "change")}?`, body: `These will be deleted from this device:<ul style="margin:8px 0 0;padding-left:20px">${bad.map(i => { const jj = jobById(jobOf(i)); const nm = jj ? jobName(jj) : i.job ? `${i.customer?.name || cust(i.job.customer_id)?.name || "No customer"} · ${[i.job.vehicle?.year, i.job.vehicle?.make, i.job.vehicle?.model].filter(Boolean).join(" ")}` : "a job";
+        return `<li>${esc(i.type === "job" ? "New job: " + nm : i.type === "pay" ? `Payment of ${money(i.row.amount)} on ${nm}` : i.type === "photo" ? "Photo on " + nm : "A change to " + nm)}</li>`; }).join("")}</ul>${extra ? `<div style="margin-top:8px">That includes ${plural(extra, "item")} added to a job that never uploaded.</div>` : ""}`, ok: "Throw away", danger: true }))) return;
       for (const it of bad) await IDB.del(it.qid); await mergePending(); saveSnapshot(); if (navigator.onLine) await reload(); return route(true); }
     case "new-job-for": return newJob(id);
     case "find": return openSearch();
@@ -1810,7 +1858,7 @@ document.addEventListener("click", async e => {
     case "void-pay": return voidPayment(id);
     case "remind": return j && remindModal(j);
     case "start-lien": return j && startLien(j);
-    case "stage-start": return j && busy(t, () => setStage(j, { status: "in_progress" }, "Car is in the shop. Work started.", { status: "estimate" }));
+    case "stage-start": return j && busy(t, () => setStage(j, { status: "in_progress" }, "Work started. It's in In shop now.", { status: "estimate" }));
     case "stage-done": return j && stageDone(j);
     case "stage-invoice": return j && stageInvoice(j);
     case "stage-back": return j && stageBack(j);

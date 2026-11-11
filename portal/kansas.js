@@ -68,7 +68,7 @@ function steps(c) {
         "Serve it right after filing and keep proof of service.", "K.S.A. 60-1103");
     add("foreclose", "Sue to foreclose, or the lien expires", addMonths(filed || deadline, 12), "due",
       filed ? `1 year from filing on ${fmt(filed)}.` : "1 year from filing. Shown from the filing deadline until you enter the date you filed.", "K.S.A. 60-1105");
-    add("release", "Send a lien release once paid", null, "info", "Generated under Paperwork.", "");
+    add("release", "Send a lien release once paid", null, "info", "Print it under Letters and forms.", "");
   }
 
   if (c.track === "repair") {

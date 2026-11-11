@@ -436,6 +436,12 @@ main:focus { outline: none; }
 .auth .msg:empty { display: none; }
 .auth .brand .name { font-size: 2.2rem; }
 .auth .title { font-size: var(--t-lg); font-weight: 700; margin: 0; }
+.pw { position: relative; }
+.pw input { padding-right: 76px; }
+.pwshow { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); min-height: 40px; padding: 0 12px; border: 0; border-radius: 8px; background: rgba(255,255,255,.08); color: var(--cream); font-weight: 600; font-size: var(--t-sm); cursor: pointer; }
+.msg.good { background: var(--good-soft); border: 1px solid rgba(95,211,154,.5); border-radius: var(--r-md); padding: 12px 14px; color: var(--cream); }
+.authlinks { display: flex; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; }
+.authlinks a { display: inline-flex; align-items: center; min-height: 44px; }
 
 /* ---------- toast ---------- */
 .toast { position: fixed; z-index: 50; left: 50%; transform: translateX(-50%); bottom: calc(var(--tab-h) + var(--safe-b) + 14px); width: max-content; max-width: min(560px, calc(100% - 32px)); background: var(--cream); color: #14202D; padding: 14px 18px; border-radius: var(--r-md); font-size: var(--t-sm); font-weight: 600; box-shadow: 0 16px 40px -14px rgba(0,0,0,.7); display: flex; gap: 12px; align-items: center; }
@@ -473,12 +479,12 @@ main:focus { outline: none; }
 <div id="authView" class="authwrap" hidden>
   <form class="auth" id="authForm" novalidate>
     <a class="brand" href="/"><span class="sub">Family owned since 1975</span><span class="name">DALE'S AUTO BODY</span><span class="sub" style="color:var(--muted)">Shop portal</span></a>
-    <div><p class="title" id="authTitle">Sign in</p><div class="small">Jobs, money owed and Kansas lien paperwork for the shop.</div></div>
+    <div><p class="title" id="authTitle">Sign in</p><div class="small" id="authLead">For Dale's staff. Customers don't need to sign in.</div></div>
     <div class="field"><label for="authEmail">Email</label><input id="authEmail" type="email" autocomplete="email" inputmode="email" required></div>
-    <div class="field"><label for="authPass">Password</label><input id="authPass" type="password" autocomplete="current-password" minlength="8" required></div>
+    <div class="field"><label for="authPass">Password</label><div class="pw"><input id="authPass" type="password" autocomplete="current-password" minlength="8" required><button class="pwshow" id="authShow" type="button" aria-pressed="false" aria-label="Show password">Show</button></div><div class="hint" id="authPassHint" hidden>At least 8 characters.</div></div>
     <button class="btn primary big block" id="authSubmit" type="submit">Sign in</button>
     <div class="msg" id="authMsg" role="alert" aria-live="polite"></div>
-    <div class="small" id="authSwitchRow"><span id="authSwitchWrap"><span id="authSwitchText">First time here?</span> <a href="#" id="authSwitch">Create your login</a> · </span><a href="#" id="authForgot">Forgot password</a></div>
+    <div class="small authlinks" id="authSwitchRow"><span id="authSwitchWrap"><span id="authSwitchText">First time here?</span> <a href="#" id="authSwitch">Create your login</a></span><span id="authForgotWrap"><a href="#" id="authForgot">Forgot password?</a></span></div>
     <div class="small"><a href="/">← Back to daleskc.com</a></div>
   </form>
 </div>
@@ -488,11 +494,11 @@ main:focus { outline: none; }
     <div class="brand"><span class="sub">One-time setup</span><span class="name">CONFIRM SHOP INFO</span></div>
     <div class="small">This goes on every letter and lien form. Use the legal business name and address.</div>
     <div class="field"><label for="sName">Business name</label><input id="sName" required value="Dale's Auto Body"></div>
-    <div class="field"><label for="sAddr">Business address</label><input id="sAddr" required value="1310 State Avenue, Kansas City, KS 66102"></div>
-    <div class="field"><label for="sPhone">Phone</label><input id="sPhone" type="tel" value="(913) 371-6654"></div>
+    <div class="field"><label for="sAddr">Business address</label><textarea id="sAddr" rows="2" required>1310 State Avenue, Kansas City, KS 66102</textarea></div>
+    <div class="field"><label for="sPhone">Phone (optional)</label><input id="sPhone" type="tel" value="(913) 371-6654"></div>
     <div class="field"><label for="sInd">Kind of business</label>
       <select id="sInd"><option value="collision" selected>Collision / body shop</option><option value="auto_repair">Auto repair</option><option value="towing">Towing and storage</option><option value="equipment">Equipment repair</option><option value="contractor">Contractor</option><option value="subcontractor">Subcontractor or supplier</option></select></div>
-    <button class="btn primary big block" type="submit">Open the portal</button>
+    <button class="btn primary big block" type="submit">Save and open the portal</button>
     <div class="msg" id="setupMsg" role="alert" aria-live="polite"></div>
   </form>
 </div>
@@ -501,8 +507,9 @@ main:focus { outline: none; }
   <div class="auth">
     <div class="brand"><span class="sub">Shop portal</span><span class="name">ALMOST THERE</span></div>
     <p style="margin:0">You're signed in as <b id="noShopEmail"></b>, but this login isn't connected to the shop yet.</p>
-    <p class="small" style="margin:0">Ask Dale to add this email under <b>Settings → Team</b>, then tap <b>Check again</b>.</p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" id="noShopRetry" type="button">Check again</button><button class="btn ghost" id="noShopOut" type="button">Sign out</button></div>
+    <p class="small" style="margin:0">Ask Dale to add this exact email under <b>Settings → Team</b>, then tap <b>Check again</b>.</p>
+    <p class="small" style="margin:0">Used a different email before? Tap <b>Sign out</b> and sign in with that one.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" id="noShopRetry" type="button">Check again</button><button class="btn" id="noShopOut" type="button">Sign out</button></div>
   </div>
 </div>
 
@@ -514,7 +521,7 @@ main:focus { outline: none; }
   <div class="shell">
     <aside class="side" aria-label="Main menu">
       <a class="brand" href="#home"><span class="name">DALE'S AUTO BODY</span><span class="sub">Shop portal</span></a>
-      <button class="searchbtn" type="button" data-act="search"><span data-icon="search"></span>Find anything<kbd>/</kbd></button>
+      <button class="searchbtn" type="button" data-act="search"><span data-icon="search"></span>Find<kbd>/</kbd></button>
       <nav id="nav">
         <a href="#home" data-nav="home"><span data-icon="home"></span>Today</a>
         <a href="#jobs" data-nav="jobs"><span data-icon="car"></span>Jobs</a>
