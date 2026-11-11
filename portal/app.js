@@ -51,13 +51,34 @@ function friendly(e) {
 }
 
 // ================= ui helpers =================
+const ICONS = {
+  home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h5v-6h4v6h5V10"/>',
+  car: '<path d="M5 17h14"/><path d="M3 17v-4l2-5a2 2 0 0 1 2-1h10a2 2 0 0 1 2 1l2 5v4"/><path d="M3 13h18"/><circle cx="7.5" cy="17.5" r="1.8"/><circle cx="16.5" cy="17.5" r="1.8"/>',
+  money: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/>',
+  people: '<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.4"/><path d="M15.5 14.3c3 .3 5.5 2.6 5.5 5.7"/>',
+  doc: '<path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5"/><path d="M10 13h6M10 17h6"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2.5 12h3M18.5 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
+  help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.6v.6"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  camera: '<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
+  out: '<path d="M15 4h4v16h-4"/><path d="M10 8l-4 4 4 4M6 12h10"/>',
+  trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  text: '<path d="M3 19L8.5 5h1L15 19M5.2 14h7.6"/><path d="M15.5 19l3-7.5h.6l3 7.5M16.6 16.8h4.4"/>'
+};
+const icon = (n, cls = "icon") => `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n] || ""}</svg>`;
+function fillIcons(root) { (root || document).querySelectorAll("[data-icon]").forEach(el => { el.outerHTML = icon(el.dataset.icon); }); }
 let toastT;
-function toast(text, action) {
+function toast(text, action, opts = {}) {
   const el = $("toast"); clearTimeout(toastT);
-  el.innerHTML = esc(text) + (action ? ` <button class="linkbtn" type="button" id="toastAct" style="color:var(--rust);margin-left:8px">${esc(action.label)}</button>` : "");
+  el.innerHTML = (opts.ok ? `<span class="ok">${icon("check")}</span>` : "") + `<span>${esc(text)}</span>` + (action ? `<button class="linkbtn" type="button" id="toastAct">${esc(action.label)}</button>` : "");
   el.hidden = false;
   if (action) $("toastAct").onclick = () => { el.hidden = true; action.run(); };
-  toastT = setTimeout(() => el.hidden = true, action ? 7000 : 3500);
+  toastT = setTimeout(() => el.hidden = true, action ? 10000 : 6000);
 }
 async function busy(btn, fn) {
   if (btn && btn.disabled) return;
@@ -66,45 +87,67 @@ async function busy(btn, fn) {
   try { return await fn(); }
   finally { if (btn && btn.isConnected) { btn.disabled = false; btn.innerHTML = old; } }
 }
-let modalDirty = false, modalOnClose = null;
+const coarse = matchMedia("(pointer: coarse)").matches;
+let modalDirty = false, modalOnClose = null, modalOpener = null;
+function trapFocus(box, e) {
+  if (e.key !== "Tab") return;
+  const f = [...box.querySelectorAll('button:not([disabled]),a[href],input:not([type=hidden]):not([disabled]),select,textarea,[tabindex]:not([tabindex="-1"])')].filter(x => x.offsetParent !== null);
+  if (!f.length) return; const first = f[0], last = f.at(-1);
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
 function openModal(html, opts = {}) {
-  $("modal").innerHTML = html; $("overlay").hidden = false; modalDirty = false; modalOnClose = opts.onClose || null;
-  const f = $("modal").querySelector("[autofocus]") || $("modal").querySelector("input:not([type=hidden]),select,textarea");
-  if (f) setTimeout(() => f.focus(), 30);
+  if ($("overlay").hidden) modalOpener = document.activeElement;
+  $("modal").innerHTML = `<button class="iconbtn mclose" type="button" data-act="close" aria-label="Close">${icon("close")}</button><div class="mbody">${html}</div>`;
+  const h = $("modal").querySelector("h2"); if (h) { h.id = "mTitle"; $("modal").setAttribute("aria-labelledby", "mTitle"); } else $("modal").removeAttribute("aria-labelledby");
+  // pin the button bar to the bottom edge of the sheet; submit buttons stay tied to their form
+  const foot = $("modal").querySelector(".mbody .modalfoot");
+  if (foot) { const form = foot.closest("form"); if (form) { form.id = form.id || "mform"; foot.querySelectorAll("button[type=submit]").forEach(b => b.setAttribute("form", form.id)); } $("modal").appendChild(foot); }
+  $("modal").classList.toggle("hasfoot", !!foot);
+  $("overlay").hidden = false; document.body.style.overflow = "hidden"; modalDirty = false; modalOnClose = opts.onClose || null;
+  $("modal").querySelector(".mbody").scrollTop = 0;
+  const f = $("modal").querySelector("[autofocus]") || (!coarse && $("modal").querySelector(".mbody input:not([type=hidden]):not([type=file]):not([readonly]),.mbody select,.mbody textarea"));
+  setTimeout(() => (f || $("modal").querySelector(".mclose")).focus(), 30);
 }
 async function closeModal(force) {
   if ($("overlay").hidden) return;
   if (!force && modalDirty && !(await confirmBox({ title: "Throw away what you typed?", body: "You have changes that aren't saved yet.", ok: "Throw away", cancel: "Keep editing", danger: true }))) return;
-  $("overlay").hidden = true; $("modal").innerHTML = ""; modalDirty = false;
+  $("overlay").hidden = true; $("modal").innerHTML = ""; modalDirty = false; document.body.style.overflow = "";
   const cb = modalOnClose; modalOnClose = null; if (cb) cb();
+  if (modalOpener && modalOpener.isConnected) { try { modalOpener.focus(); } catch (e) { /* gone */ } } modalOpener = null;
 }
-$("modal").addEventListener("input", () => { modalDirty = true; });
+$("modal").addEventListener("input", e => { if (!e.target.closest("[data-nodirty]")) modalDirty = true; });
+$("modal").addEventListener("keydown", e => trapFocus($("modal"), e));
 $("overlay").addEventListener("mousedown", e => { if (e.target.id === "overlay") closeModal(); });
-let confirmResolve = null;
+let confirmResolve = null, confirmOpener = null;
 function confirmBox({ title, body = "", ok = "OK", cancel = "Cancel", danger = false }) {
   return new Promise(res => {
-    confirmResolve = res;
-    $("confirmBox").innerHTML = `<h2>${esc(title)}</h2>${body ? `<div>${body}</div>` : ""}
-      <div class="modalfoot"><button class="btn ghost" type="button" data-cf="0">${esc(cancel)}</button><button class="btn ${danger ? "primary" : "primary"}" type="button" data-cf="1" ${danger ? 'style="background:var(--bad);border-color:var(--bad)"' : ""}>${esc(ok)}</button></div>`;
-    $("confirmOverlay").hidden = false; setTimeout(() => $("confirmBox").querySelector('[data-cf="1"]').focus(), 30);
+    confirmResolve = res; confirmOpener = document.activeElement;
+    $("confirmBox").innerHTML = `<div class="mbody"><h2 id="cTitle">${esc(title)}</h2>${body ? `<div>${body}</div>` : ""}</div>
+      <div class="modalfoot">${cancel ? `<button class="btn ghost" type="button" data-cf="0">${esc(cancel)}</button>` : ""}<button class="btn ${danger ? "danger" : "primary"}" type="button" data-cf="1">${esc(ok)}</button></div>`;
+    $("confirmBox").setAttribute("aria-labelledby", "cTitle");
+    $("confirmOverlay").hidden = false; setTimeout(() => $("confirmBox").querySelector(danger ? '[data-cf="0"]' : '[data-cf="1"]')?.focus() || $("confirmBox").querySelector('[data-cf="1"]').focus(), 30);
   });
 }
+function confirmDone(v) { $("confirmOverlay").hidden = true; const r = confirmResolve; confirmResolve = null; if (confirmOpener && confirmOpener.isConnected) { try { confirmOpener.focus(); } catch (e) { /* gone */ } } if (r) r(v); }
 $("confirmOverlay").addEventListener("click", e => {
   const b = e.target.closest("[data-cf]"); if (!b && e.target.id !== "confirmOverlay") return;
-  $("confirmOverlay").hidden = true; const r = confirmResolve; confirmResolve = null; if (r) r(b ? b.dataset.cf === "1" : false);
+  confirmDone(b ? b.dataset.cf === "1" : null);
 });
+$("confirmBox").addEventListener("keydown", e => trapFocus($("confirmBox"), e));
 document.addEventListener("keydown", e => {
+  if (e.key === "/" && !$("appView").hidden && $("overlay").hidden && !e.target.closest("input,textarea,select")) { e.preventDefault(); openSearch(); return; }
   if (e.key !== "Escape") return;
-  if (!$("confirmOverlay").hidden) { $("confirmOverlay").hidden = true; const r = confirmResolve; confirmResolve = null; if (r) r(false); return; }
-  if (!$("results").hidden) { $("results").hidden = true; return; }
+  if (!$("confirmOverlay").hidden) { confirmDone(null); return; }
   if (!$("overlay").hidden) closeModal();
 });
 function fieldErr(id, msg) {
   const el = $(id); if (!el) return;
   const f = el.closest(".field"); if (!f) return;
   f.classList.toggle("invalid", !!msg);
-  let m = f.querySelector(".fmsg"); if (!m) { m = document.createElement("div"); m.className = "fmsg"; f.appendChild(m); }
+  let m = f.querySelector(".fmsg"); if (!m) { m = document.createElement("div"); m.className = "fmsg"; m.id = id + "-err"; m.setAttribute("role", "alert"); f.appendChild(m); }
   m.textContent = msg || "";
+  if (msg) { el.setAttribute("aria-invalid", "true"); el.setAttribute("aria-describedby", m.id); } else { el.removeAttribute("aria-invalid"); }
 }
 function fieldWarn(id, msg) {
   const el = $(id); if (!el) return; const f = el.closest(".field"); if (!f) return;
@@ -124,13 +167,14 @@ function dateRule(id, { required = false, notFuture = true, min = null, minLabel
 // ================= state =================
 const S = { user: null, account: null, isOwner: false, isDale: false, customers: [], jobs: [], liens: [], payments: [], members: [], invites: [], photos: [], links: [], offlineSince: null };
 const STAGES = [
-  { k: "estimate", label: "Estimate" }, { k: "in_progress", label: "In the shop" }, { k: "done", label: "Work done" },
-  { k: "invoiced", label: "Invoiced" }, { k: "paid", label: "Paid" }];
+  { k: "estimate", label: "Estimate" }, { k: "in_progress", label: "In shop" }, { k: "done", label: "Work done" },
+  { k: "invoiced", label: "Bill given" }, { k: "paid", label: "Paid" }];
 const STAGE_LABEL = Object.fromEntries(STAGES.map(s => [s.k, s.label]));
 const METHODS = { cash: "Cash", card: "Card", check: "Check", insurance: "Insurance", other: "Other" };
 const balance = j => Math.max(0, Math.round(((+j.amount || 0) - (+j.amount_paid || 0)) * 100) / 100);
 const ageDays = j => daysSince(j.invoiced_on || j.completed_on);
-const owes = j => j.status !== "paid" && (+j.amount || 0) > 0 && balance(j) > 0 && (j.status === "done" || j.status === "invoiced");
+const owes = j => j.status === "invoiced" && (+j.amount || 0) > 0 && balance(j) > 0; // only billed work counts as owed
+const unbilled = j => j.status === "done" && !j._pending;
 const cust = id => S.customers.find(c => c.id === id);
 const jobById = id => S.jobs.find(j => j.id === id);
 const jobPays = j => S.payments.filter(p => p.job_id === j.id).sort((a, b) => (b.paid_on || "").localeCompare(a.paid_on || "") || (b.created_at || "").localeCompare(a.created_at || ""));
@@ -143,7 +187,7 @@ const jobName = j => `${cust(j.customer_id)?.name || "No customer"} · ${vehicle
 function stageChip(j) {
   if (j.status === "paid") return `<span class="chip paid">Paid</span>`;
   if (j.status === "done") return `<span class="chip soon">Needs a bill</span>`;
-  if (owes(j)) { const a = ageDays(j) ?? 0; return `<span class="chip ${a >= 30 ? "over" : "soon"}">${a >= 30 ? `${a} days unpaid` : "Waiting on payment"}</span>`; }
+  if (owes(j)) { const a = ageDays(j) ?? 0; return `<span class="chip ${a >= 30 ? "over" : "soon"}">${a >= 30 ? `${plural(a, "day")} unpaid` : "Waiting on money"}</span>`; }
   return `<span class="chip up">${esc(STAGE_LABEL[j.status])}</span>`;
 }
 
@@ -246,12 +290,16 @@ async function startApp() {
   await loadAll();
   S.isOwner = S.isDale || S.members.some(m => m.user_id === S.user.id && m.active && m.co_owner);
   if (S.isOwner && !S.isDale) await loadAll();
-  showOnly("appView"); route(); flushQueue();
+  showOnly("appView"); shellReady(); route(); flushQueue();
 }
 async function startOffline(snap) {
   Object.assign(S, { account: snap.account, isDale: snap.isDale, isOwner: snap.isOwner, customers: snap.customers, jobs: snap.jobs, liens: snap.liens, payments: snap.payments, members: snap.members, invites: snap.invites, photos: snap.photos || [], links: snap.links || [] });
   S.offlineSince = snap.at; await mergePending();
-  showOnly("appView"); netState(); route();
+  showOnly("appView"); shellReady(); netState(); route();
+}
+function shellReady() {
+  fillIcons(document.querySelector(".shell")); fillIcons(document.querySelector(".tabbar"));
+  $("sideWho").innerHTML = `<span>${esc(S.user?.email || "")}</span><button class="linkbtn" type="button" data-act="sign-out" style="justify-content:flex-start;padding:0">Sign out</button>`;
 }
 async function loadAll() {
   const a = S.account.id;
@@ -297,6 +345,18 @@ async function mergePending() {
     }
     if (it.type === "photo") S.photos.push({ id: it.pid, job_id: it.jobId, kind: it.kind, _pending: true, _blob: it.blob });
   }
+  // queued stage changes and payments: show them as if they'd already happened
+  S.payments = S.payments.filter(p => !p._pending);
+  for (const it of queueCache) {
+    if (it.type === "update") { const jj = S.jobs.find(x => x.id === it.jobId); if (jj) Object.assign(jj, it.row); }
+    if (it.type === "pay") S.payments.unshift({ ...it.row, created_at: new Date(it.created).toISOString(), _pending: true });
+  }
+  S.jobs.forEach(jj => {
+    const pend = S.payments.filter(p => p._pending && p.job_id === jj.id);
+    if (jj._basePaid == null) { if (!pend.length) return; jj._basePaid = +jj.amount_paid || 0; jj._baseStatus = jj.status; }
+    jj.amount_paid = Math.round((jj._basePaid + pend.reduce((a, p) => a + (+p.amount || 0), 0)) * 100) / 100;
+    if (+jj.amount > 0 && jj.amount_paid >= +jj.amount) { jj.status = "paid"; jj.paid_on = jj.paid_on || todayISO(); } else if (jj.status === "paid" && jj._baseStatus !== "paid") jj.status = jj._baseStatus;
+  });
   S.customers.sort((a, b) => a.name.localeCompare(b.name));
   pendingBar();
 }
@@ -308,7 +368,7 @@ function pendingBar() {
   bar.className = "pendbar" + (bad.length ? " bad" : "");
   bar.innerHTML = bad.length
     ? `${plural(bad.length, "saved item")} couldn't upload: ${esc(bad[0].error)} <button class="linkbtn" type="button" data-act="retry-queue">Try again</button> <button class="linkbtn danger" type="button" data-act="discard-queue">Throw away</button>`
-    : `${plural(n, "item")} saved on this device. ${navigator.onLine ? "Uploading…" : "It will upload by itself when the internet is back."}`;
+    : `${plural(n, "change")} saved on this device. ${navigator.onLine ? "Uploading…" : "They upload by themselves when the internet is back."}`;
 }
 let flushing = false;
 async function flushQueue() {
@@ -323,6 +383,8 @@ async function flushQueue() {
           const { error } = await sb.from("shop_jobs").upsert(it.job, { onConflict: "id", ignoreDuplicates: true }); if (error) throw error;
           for (const p of it.photos || []) await uploadPhoto(it.job.id, p.blob, p.kind, p.pid);
         } else if (it.type === "photo") await uploadPhoto(it.jobId, it.blob, it.kind, it.pid);
+        else if (it.type === "update") { const { error } = await sb.from("shop_jobs").update(it.row).eq("id", it.jobId); if (error) throw error; }
+        else if (it.type === "pay") { const { error } = await sb.from("shop_payments").upsert(it.row, { onConflict: "id", ignoreDuplicates: true }); if (error) throw error; }
         await IDB.del(it.qid); did++;
       } catch (ex) {
         if (isNetErr(ex)) break; // try again when back online
@@ -378,16 +440,21 @@ const jobPhotos = j => (S.photos || []).filter(p => p.job_id === j.id).sort((a, 
 function netState() {
   const off = !navigator.onLine;
   $("netbar").hidden = !off;
-  $("netbar").textContent = off ? `You're offline${S.offlineSince ? `. Showing what was saved ${new Date(S.offlineSince).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}` : ""}. You can still add jobs and photos; they'll upload when you're back online.` : "";
+  $("netbar").textContent = off ? `You're offline${S.offlineSince ? `. Showing what was saved ${new Date(S.offlineSince).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })}` : ""}. You can still add jobs, photos and payments and move jobs along. It all uploads when you're back online.` : "";
   pendingBar();
 }
 
 // keep fresh when coming back to the tab (someone else may have changed something)
 document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState !== "visible" || !S.account || $("appView").hidden) return;
+  if (document.visibilityState !== "visible") return;
+  if (dayChanged()) return;
+  if (!S.account || $("appView").hidden) return;
   if (!$("overlay").hidden || document.activeElement?.matches("input,textarea,select")) return;
   await reload(); route(true);
 });
+const bootDay = new Date().toDateString();
+function dayChanged() { if (new Date().toDateString() === bootDay) return false; if ($("overlay").hidden && !modalDirty && saveState !== "saving" && !queueCache.length) { location.reload(); return true; } return false; }
+setInterval(dayChanged, 60000);
 window.addEventListener("offline", () => netState());
 window.addEventListener("online", async () => { netState(); if (!S.account) return; toast("Back online. Updating…"); await flushQueue(); await reload(); netState(); route(true); });
 setInterval(() => { if (navigator.onLine && queueCache.length && !flushing) flushQueue(); }, 30000);
@@ -396,50 +463,79 @@ let deferredInstall = null;
 window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); deferredInstall = e; const b = document.getElementById("installBtn"); if (b) b.hidden = false; });
 
 // ================= routing =================
-window.addEventListener("hashchange", () => route());
-function route(keepScroll) {
+const LEGAL = `<p class="legal">Private shop portal for Dale's Auto Body. Lien letters are drafts for Dale to review and sign. This is not legal advice. Kansas deadlines summarized November 2026 from K.S.A. 58-201 et seq., 8-1101 et seq., 60-1101 et seq. and Division of Vehicles forms.</p>`;
+const backLink = (href, label) => `<a class="back" href="#${href}">${icon("back")}${esc(label)}</a>`;
+window.addEventListener("hashchange", () => route(false, true));
+function route(keepScroll, fromNav) {
   if ($("appView").hidden) return;
   if (/type=recovery|access_token/.test(location.hash)) return;
   const [view, id] = (location.hash.slice(1) || "home").split("/");
   const navKey = { job: "jobs", customer: "customers", lien: "liens" }[view] || view;
-  document.querySelectorAll("#nav a").forEach(a => a.setAttribute("aria-current", a.getAttribute("href") === "#" + navKey ? "page" : "false"));
+  const inMore = ["liens", "settings", "help"].includes(navKey);
+  document.querySelectorAll("[data-nav]").forEach(a => { if (a.dataset.nav === navKey || (a.dataset.nav === "more" && inMore)) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
   const views = { home: renderHome, jobs: renderJobs, job: () => renderJob(id), money: renderMoney, customers: renderCustomers, customer: () => renderCustomer(id), liens: renderLiens, lien: () => renderLien(id), settings: renderSettings, help: renderHelp };
+  if (view !== "lien") currentLien = null;
   (views[view] || renderHome)();
-  if (!keepScroll) window.scrollTo(0, 0);
+  const titles = { home: "Today", jobs: "Jobs", job: "Job", money: "Money owed", customers: "Customers", customer: "Customer", liens: "Liens", lien: "Lien case", settings: "Settings", help: "Help" };
+  document.title = `${titles[view] || "Today"} · Dale's Shop`;
+  if (!keepScroll) { window.scrollTo(0, 0); if (fromNav) $("main").focus({ preventScroll: true }); }
 }
 const go = h => { if (location.hash === "#" + h) route(); else location.hash = h; };
 
-// ================= search =================
+// ================= search (one search for everything) =================
 let searchHits = [], searchOn = 0;
-$("search").addEventListener("input", () => {
-  const q = val("search").toLowerCase(); const box = $("results");
-  if (q.length < 2) { box.hidden = true; return; }
-  const digits = q.replace(/\D/g, "");
-  searchHits = [];
+function searchResults(q) {
+  q = q.trim().toLowerCase();
+  if (q.length < 2) {
+    const recent = S.jobs.filter(j => j.status !== "paid").slice(0, 6);
+    return { title: recent.length ? "Open jobs" : "", hits: recent.map(j => ({ kind: "Job", label: jobName(j), sub: [STAGE_LABEL[j.status], j.title].filter(Boolean).join(" · "), href: "job/" + j.id })) };
+  }
+  const digits = q.replace(/\D/g, ""); const hits = [];
   S.customers.forEach(c => {
-    if (c.name.toLowerCase().includes(q) || (digits.length >= 3 && c.phone.replace(/\D/g, "").includes(digits)) || c.email.toLowerCase().includes(q))
-      searchHits.push({ kind: "Customer", label: c.name, sub: c.phone || c.email || "", href: "customer/" + c.id });
+    if (c.name.toLowerCase().includes(q) || (digits.length >= 3 && (c.phone || "").replace(/\D/g, "").includes(digits)) || (c.email || "").toLowerCase().includes(q))
+      hits.push({ kind: "Customer", label: c.name, sub: c.phone || c.email || "", href: "customer/" + c.id });
   });
   S.jobs.forEach(j => {
-    const v = j.vehicle || {}; const hay = [v.vin, v.plate, v.make, v.model, v.year, j.title, j.property?.address].filter(Boolean).join(" ").toLowerCase();
-    if (hay.includes(q)) searchHits.push({ kind: "Job", label: jobName(j), sub: [j.title, v.vin, v.plate].filter(Boolean).join(" · "), href: "job/" + j.id });
+    const v = j.vehicle || {}; const hay = [v.vin, v.plate, v.make, v.model, v.year, j.title, j.property?.address, j.insurance?.claim, j.insurance?.insurer].filter(Boolean).join(" ").toLowerCase();
+    if (hay.includes(q)) hits.push({ kind: "Job", label: jobName(j), sub: [STAGE_LABEL[j.status], j.title, v.vin, v.plate].filter(Boolean).join(" · "), href: "job/" + j.id });
   });
-  searchHits = searchHits.slice(0, 8); searchOn = 0;
-  box.innerHTML = searchHits.length ? searchHits.map((h, i) => `<a href="#${h.href}" class="${i === 0 ? "on" : ""}"><div class="rk">${h.kind}</div><div>${esc(h.label)}</div>${h.sub ? `<div class="small">${esc(h.sub)}</div>` : ""}</a>`).join("") : `<div class="none">Nothing matches “${esc(q)}”.</div>`;
-  box.hidden = false;
-});
-$("search").addEventListener("keydown", e => {
-  if (e.key === "Enter" && searchHits[searchOn]) { e.preventDefault(); go(searchHits[searchOn].href); $("results").hidden = true; $("search").value = ""; $("search").blur(); }
-  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-    e.preventDefault(); if (!searchHits.length) return;
-    searchOn = (searchOn + (e.key === "ArrowDown" ? 1 : -1) + searchHits.length) % searchHits.length;
-    $("results").querySelectorAll("a").forEach((a, i) => a.classList.toggle("on", i === searchOn));
-  }
-});
-$("results").addEventListener("click", e => { if (e.target.closest("a")) { $("results").hidden = true; $("search").value = ""; } });
-document.addEventListener("click", e => { if (!e.target.closest(".search")) $("results").hidden = true; });
+  return { title: "", hits: hits.slice(0, 10) };
+}
+function openSearch() {
+  openModal(`<h2>Find anything</h2>
+    <div class="field"><label class="sr" for="sq">Search customers and jobs</label><input id="sq" type="search" enterkeyhint="go" placeholder="Name, phone, car, VIN or plate" autocomplete="off" autofocus data-nodirty role="combobox" aria-expanded="true" aria-controls="sqList" aria-autocomplete="list"></div>
+    <div id="sqList" class="srows" role="listbox" aria-label="Results"></div>`);
+  const draw = () => {
+    const q = val("sq"); const r = searchResults(q); searchHits = r.hits; searchOn = 0;
+    $("sqList").innerHTML = (r.title ? `<div class="srtitle" role="presentation">${esc(r.title)}</div>` : "") + (searchHits.length
+      ? searchHits.map((h, i) => `<a href="#${h.href}" class="srow ${i === 0 && q ? "on" : ""}" role="option" id="sqo${i}" aria-selected="${i === 0 && !!q}" data-act="close"><span class="k">${h.kind}</span><span style="min-width:0"><span style="display:block;font-weight:600">${esc(h.label)}</span>${h.sub ? `<span class="s">${esc(h.sub)}</span>` : ""}</span></a>`).join("")
+      : q.trim().length >= 2 ? `<div class="empty">Nothing matches “${esc(q)}”. Try part of a name, the last 4 of a phone number, or the VIN.</div>` : `<div class="hint">Type a name, phone number, car, VIN or plate.</div>`);
+    $("sq").setAttribute("aria-activedescendant", searchHits.length && q ? "sqo0" : "");
+  };
+  $("sq").addEventListener("input", draw);
+  $("sq").addEventListener("keydown", e => {
+    if (e.key === "Enter" && searchHits[searchOn]) { e.preventDefault(); const h = searchHits[searchOn].href; closeModal(true).then(() => go(h)); }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault(); if (!searchHits.length) return;
+      searchOn = (searchOn + (e.key === "ArrowDown" ? 1 : -1) + searchHits.length) % searchHits.length;
+      $("sqList").querySelectorAll(".srow").forEach((a, i) => { a.classList.toggle("on", i === searchOn); a.setAttribute("aria-selected", i === searchOn); });
+      $("sq").setAttribute("aria-activedescendant", "sqo" + searchOn);
+    }
+  });
+  draw();
+}
+function moreMenu() {
+  const big = document.documentElement.classList.contains("big");
+  openModal(`<h2>More</h2><div class="morelist">
+    <a href="#liens" data-act="close">${icon("doc")}Liens</a>
+    <a href="#settings" data-act="close">${icon("gear")}Settings</a>
+    <a href="#help" data-act="close">${icon("help")}Help</a>
+    <button type="button" data-act="big-text">${icon("text")}<span>${big ? "Normal size text" : "Bigger text"}</span></button>
+  </div><div class="hint">Signed in as ${esc(S.user?.email || "")}</div>`);
+}
 
 // ================= HOME: to-do list =================
+const dollars = n => "$" + Math.round(+n || 0).toLocaleString("en-US");
 function buildTasks() {
   const T = [];
   S.liens.filter(l => l.status === "open").forEach(l => {
@@ -450,108 +546,126 @@ function buildTasks() {
       acts: [{ label: "Open lien case", primary: true, href: "lien/" + l.id }] });
   });
   S.jobs.forEach(j => {
+    if (j._pending) return;
     const c = cust(j.customer_id); const who = c?.name || "No customer";
     if (owes(j)) {
       const a = ageDays(j) ?? 0, lien = openLien(j.id), rem = daysSince(j.last_reminded_on);
-      if (a >= 30 && !lien) T.push({ rank: 10, cls: "urgent", t: `${who} owes ${money(balance(j))}`, s: `${vehicleText(j)} · ${a} days since ${j.invoiced_on ? "the invoice" : "the work was done"}${rem != null ? ` · last reminder ${rem === 0 ? "today" : rem + " days ago"}` : " · no reminder sent yet"}`,
-        acts: [{ label: "Send reminder", act: "remind", id: j.id }, { label: "Start lien", act: "start-lien", id: j.id, primary: true }] });
-      else if (a >= 14 && !lien && (rem == null || rem >= 7)) T.push({ rank: 20, cls: "soon", t: `Remind ${who} about ${money(balance(j))}`, s: `${vehicleText(j)} · ${a} days unpaid`, acts: [{ label: "Send reminder", act: "remind", id: j.id, primary: true }, { label: "Record payment", act: "pay", id: j.id }] });
+      const remTxt = rem != null ? ` · last reminder ${rem === 0 ? "today" : plural(rem, "day") + " ago"}` : " · no reminder sent yet";
+      if (a >= 30 && !lien) T.push({ rank: 10, cls: "urgent", t: `${who} owes ${money(balance(j))}`, s: `${vehicleText(j)} · ${plural(a, "day")} since the bill${remTxt}`,
+        acts: [{ label: "Send reminder", act: "remind", id: j.id, primary: rem == null || rem >= 7 }, { label: "Start lien paperwork", act: "start-lien", id: j.id, primary: rem != null && rem < 7 }] });
+      else if (a >= 14 && !lien && (rem == null || rem >= 7)) T.push({ rank: 20, cls: "soon", t: `Remind ${who} about ${money(balance(j))}`, s: `${vehicleText(j)} · ${plural(a, "day")} unpaid${remTxt}`,
+        acts: [{ label: "Send reminder", act: "remind", id: j.id, primary: true }, { label: "Got paid", act: "pay", id: j.id }] });
     }
-    if (j.status === "estimate" && j.approved_at) T.push({ rank: 8, cls: "easy", t: `${who} approved the estimate`, s: `${vehicleText(j)}${+j.amount ? " · " + money(j.amount) : ""} · approved ${K.fmt(new Date(j.approved_at))}. Call them to bring it in.`, acts: [{ label: "Car is here", act: "stage-start", id: j.id, primary: true }, { label: "Open job", href: "job/" + j.id }] });
-    if (j.status === "done") T.push({ rank: 15, cls: "easy", t: `Invoice ${who}`, s: `${vehicleText(j)} · work finished ${j.completed_on ? K.fmt(K.D(j.completed_on)) : ""}${+j.amount ? ` · ${money(j.amount)}` : " · no total entered yet"}`, acts: [{ label: "Mark invoiced", act: "stage-invoice", id: j.id, primary: true }, { label: "Open job", href: "job/" + j.id }] });
-    if (j.status === "estimate" && !j.approved_at && (daysSince(j.created_at?.slice(0, 10)) ?? 0) >= 14) T.push({ rank: 60, cls: "", t: `Follow up on ${who}'s estimate`, s: `${vehicleText(j)} · estimate is ${daysSince(j.created_at.slice(0, 10))} days old`, acts: [{ label: "Open job", href: "job/" + j.id, primary: true }] });
+    if (j.status === "estimate" && j.approved_at) T.push({ rank: 8, cls: "easy", t: `${who} approved the estimate`, s: `${vehicleText(j)}${+j.amount ? " · " + money(j.amount) : ""} · approved ${K.fmt(new Date(j.approved_at))}. Call them to bring it in.`,
+      acts: [{ label: "Car is here", act: "stage-start", id: j.id, primary: true }, ...(c?.phone ? [{ label: "Call", tel: c.phone }] : [])] });
+    if (j.status === "done") T.push({ rank: 15, cls: "easy", t: `Give ${who} the bill`, s: `${vehicleText(j)} · work done ${j.completed_on ? K.fmt(K.D(j.completed_on)) : ""}${+j.amount ? ` · ${money(j.amount)}` : " · no price entered yet"}`,
+      acts: [{ label: "Bill given", act: "stage-invoice", id: j.id, primary: true }, { label: "Open job", href: "job/" + j.id }] });
+    const age = daysSince(j.created_at?.slice(0, 10)) ?? 0;
+    if (j.status === "estimate" && !j.approved_at && age >= 14) T.push({ rank: 60, cls: "", t: `Follow up on ${who}'s estimate`, s: `${vehicleText(j)} · estimate is ${plural(age, "day")} old`,
+      acts: [{ label: "Open job", href: "job/" + j.id, primary: true }] });
   });
   return T.sort((a, b) => a.rank - b.rank);
 }
-function taskHtml(t) {
+function taskHtml(t, first) {
+  const btn = a => { const cls = `btn ${a.primary ? "outline" : ""}`;
+    return a.href ? `<a class="${cls}" href="#${a.href}">${esc(a.label)}</a>` : a.tel ? `<a class="${cls}" href="tel:${esc(a.tel.replace(/[^\d+]/g, ""))}">${icon("phone")}${esc(a.label)}</a>` : `<button class="${cls}" type="button" data-act="${a.act}" data-id="${a.id}">${esc(a.label)}</button>`; };
   return `<div class="task ${t.cls}"><div><div class="t">${esc(t.t)}</div><div class="s">${esc(t.s)}${t.chip ? ` <span class="chip ${t.chip.cls}">${esc(t.chip.txt)}</span>` : ""}</div></div>
-    <div class="acts">${t.acts.map(a => a.href ? `<a class="btn ${a.primary ? "primary" : ""}" href="#${a.href}">${esc(a.label)}</a>` : `<button class="btn ${a.primary ? "primary" : ""}" type="button" data-act="${a.act}" data-id="${a.id}">${esc(a.label)}</button>`).join("")}</div></div>`;
+    <div class="acts">${t.acts.map(btn).join("")}</div></div>`;
 }
+let tipOff = false; try { tipOff = !!localStorage.getItem("dab.tipoff"); } catch (e) { /* private mode */ }
 function renderHome() {
   const T = buildTasks();
   const inShop = S.jobs.filter(j => j.status === "in_progress").length;
   const owed = S.jobs.filter(owes); const owedTotal = owed.reduce((a, j) => a + balance(j), 0);
+  const unb = S.jobs.filter(unbilled); const unbTotal = unb.reduce((a, j) => a + (+j.amount || 0), 0);
   const old = owed.filter(j => (ageDays(j) ?? 0) > 90);
   const hour = new Date().getHours();
+  const big = document.documentElement.classList.contains("big");
+  const summary = [T.length ? plural(T.length, "thing") + (T.length === 1 ? " needs" : " need") + " you" : "Nothing needs you", plural(inShop, "car") + " in the shop", owedTotal ? dollars(owedTotal) + " owed" : ""].filter(Boolean).join(" · ");
   $("main").innerHTML = `
-    <div class="pagehead"><div><div class="eyebrow">${esc(K.fmt(K.TODAY))}</div><h1>Good ${hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}${S.isDale ? ", Dale" : ""}</h1></div></div>
-    <div class="quick">
-      <button class="btn primary big" type="button" data-act="new-job">+ New job</button>
-      <button class="btn big" type="button" data-act="pay-pick">Record a payment</button>
-      <button class="btn big" type="button" data-act="find">Find a customer</button>
-    </div>
-    <section><h2>${T.length ? `To do · ${T.length}` : "To do"}</h2>
-      <div class="todo">${T.length ? T.map(taskHtml).join("") : `<div class="allclear">You're all caught up. Nothing needs you right now.</div>`}</div></section>
-    <div class="tiles">
-      <a class="tile" href="#jobs"><div class="n">${inShop}</div><div class="l">${inShop === 1 ? "Car" : "Cars"} in the shop →</div></a>
-      <a class="tile" href="#money"><div class="n">${money(owedTotal)}</div><div class="l">Owed by ${plural(owed.length, "customer job")} →</div></a>
-      <a class="tile ${old.length ? "alert" : ""}" href="#money"><div class="n">${old.length}</div><div class="l">${old.length === 1 ? "Bill" : "Bills"} over 90 days old →</div></a>
+    <div class="pagehead"><div><div class="eyebrow">${esc(K.longFmt ? K.longFmt(K.TODAY) : K.fmt(K.TODAY))}</div><h1>Good ${hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening"}${S.isDale ? ", Dale" : ""}</h1><p class="lede">${esc(summary)}.</p></div></div>
+    <div class="today">
+      <div style="display:grid;gap:28px;min-width:0">
+        <div class="quick">
+          <button class="btn primary big" type="button" data-act="new-job">+ Add a job</button>
+          <button class="btn big" type="button" data-act="pay-pick">${icon("money")}Got paid</button>
+          <button class="btn big" type="button" data-act="search">${icon("search")}Find</button>
+        </div>
+        <section aria-labelledby="todoH"><h2 id="todoH">${T.length ? `To do · ${T.length}` : "To do"}</h2>
+          <div class="todo">${T.length ? T.map((t, i) => taskHtml(t, i === 0)).join("") : `<div class="allclear"><span class="okbig">${icon("check")}</span>You're all caught up. Nothing needs you right now.</div>`}</div></section>
+      </div>
+      <aside class="aside" aria-label="Shop at a glance" style="display:grid;gap:16px;align-content:start">
+        <h2 style="margin:0">At a glance</h2>
+        <div class="tiles">
+          <a class="tile" href="#jobs"><div class="n">${inShop}</div><div class="l">${inShop === 1 ? "Car" : "Cars"} in the shop</div></a>
+          <a class="tile" href="#money"><div class="n">${dollars(owedTotal)}</div><div class="l">Owed to you</div></a>
+          <a class="tile" href="#money"><div class="n">${unb.length}</div><div class="l">Not billed yet</div></a>
+          <a class="tile ${old.length ? "alert" : ""}" href="#money"><div class="n">${old.length}</div><div class="l">Over 3 months</div></a>
+        </div>
+        ${!big && !tipOff ? `<div class="box tip"><h3>Hard to read?</h3><div class="hint">Make every word and button bigger on this device.</div><div class="secondary"><button class="btn" type="button" data-act="big-text">Bigger text</button><button class="btn ghost" type="button" data-act="tip-off">No thanks</button></div></div>` : ""}
+      </aside>
     </div>`;
 }
 
 // ================= JOBS =================
 const JOB_GROUPS = [
-  { key: "in_progress", title: "In the shop", hint: "You're working on these.", f: j => j.status === "in_progress" },
-  { key: "done", title: "Finished: give them the bill", hint: "Work is done. Tap the button once they have the bill.", f: j => j.status === "done" },
-  { key: "invoiced", title: "Waiting on money", hint: "They have the bill but haven't paid it all.", f: j => j.status === "invoiced" },
-  { key: "estimate", title: "Estimates", hint: "The customer hasn't said yes yet.", f: j => j.status === "estimate" }
+  { key: "estimate", title: "Estimates", hint: "Waiting for the customer to say yes.", f: j => j.status === "estimate" },
+  { key: "in_progress", title: "In shop", hint: "Being worked on now.", f: j => j.status === "in_progress" },
+  { key: "done", title: "Work done", hint: "Ready. Give them the bill.", f: j => j.status === "done" },
+  { key: "invoiced", title: "Bill given", hint: "Waiting on their money.", f: j => j.status === "invoiced" }
 ];
 const CARD_ACTION = {
-  in_progress: { label: "✓ Work is done", act: "stage-done" },
-  done: { label: "They have the bill", act: "stage-invoice" },
-  invoiced: { label: "$ Got paid", act: "pay" },
-  estimate: { label: "Car is here", act: "stage-start" }
+  estimate: { label: "Car is here", act: "stage-start" },
+  in_progress: { label: "Work is done", act: "stage-done" },
+  done: { label: "Bill given", act: "stage-invoice" },
+  invoiced: { label: "Got paid", act: "pay" }
 };
-let jobFind = "";
-function jobMatches(j, q) {
-  if (!q) return true; const c = cust(j.customer_id) || {}; const v = j.vehicle || {};
-  const d = q.replace(/\D/g, "");
-  return [c.name, vehicleText(j), j.title, v.vin, v.plate, j.insurance?.claim, j.insurance?.insurer].filter(Boolean).join(" ").toLowerCase().includes(q) || (d.length >= 3 && (c.phone || "").replace(/\D/g, "").includes(d));
-}
-function jobCard(j) {
+function jobCard(j, byCar) {
   const c = cust(j.customer_id); const ph = jobPhotos(j)[0]; const a = CARD_ACTION[j.status];
-  return `<div class="jcard" data-href="job/${j.id}" role="link" tabindex="0">
-    <div class="jthumb">${ph ? `<img data-photo="${ph.id}" alt="Estimate photo">` : `<span aria-hidden="true">🚗</span>`}</div>
-    <div class="jmain"><div class="jname">${esc(c?.name || "No customer")}</div><div class="jcar">${esc(vehicleText(j))}</div>
-      <div class="jmeta">${j._pending ? `<span class="chip ${j._error ? "over" : "soon"}">${j._error ? "Couldn't upload" : "Waiting to upload"}</span>` : j.status === "estimate" && j.approved_at ? `<span class="chip done">Approved ✓</span>` : stageChip(j)}${+j.amount ? ` <span class="num">${money(j.status === "invoiced" ? balance(j) : j.amount)}${j.status === "invoiced" ? " owed" : ""}</span>` : ""}</div></div>
-    ${a && !j._pending ? `<button class="btn primary jgo" type="button" data-act="${a.act}" data-id="${j.id}">${a.label}</button>` : ""}
+  const work = j.title && j.title !== "Estimate" ? j.title : "";
+  const amt = +j.amount ? `<span class="num">${j.status === "invoiced" ? money(balance(j)) + " owed" : money(j.amount)}</span>` : "";
+  return `<div class="jcard" data-href="job/${j.id}">
+    <div class="jthumb">${ph ? `<img data-photo="${ph.id}" alt="">` : icon("car")}</div>
+    <div class="jmain"><a class="jname" href="#job/${j.id}">${esc(byCar ? vehicleText(j) : c?.name || "No customer")}</a><div class="jcar">${esc(byCar ? work || STAGE_LABEL[j.status] : vehicleText(j))}</div>${!byCar && work ? `<div class="jwork">${esc(work)}</div>` : ""}
+      <div class="jmeta">${j._pending ? `<span class="chip ${j._error ? "over" : "soon"}">${j._error ? "Couldn't upload" : "Waiting to upload"}</span>` : j.status === "estimate" && j.approved_at ? `<span class="chip done">Approved</span>` : j.status === "invoiced" || j.status === "paid" ? stageChip(j) : ""}${amt}</div></div>
+    ${a && !j._pending ? `<button class="btn outline jgo" type="button" data-act="${a.act}" data-id="${j.id}">${a.label}</button>` : ""}
   </div>`;
 }
-function jobRows(list, empty) {
-  if (!list.length) return `<div class="list"><div class="empty">${empty}</div></div>`;
-  return `<div class="jlist">${list.map(jobCard).join("")}</div>`;
+function jobRows(list, empty, byCar) {
+  if (!list.length) return empty ? `<div class="empty">${empty}</div>` : "";
+  return `<div class="jlist">${list.map(j => jobCard(j, byCar)).join("")}</div>`;
 }
 function renderJobs() {
-  const q = jobFind.trim().toLowerCase();
-  const all = S.jobs.filter(j => jobMatches(j, q));
-  const paid = all.filter(j => j.status === "paid");
-  const active = all.filter(j => j.status !== "paid");
+  const paid = S.jobs.filter(j => j.status === "paid");
+  const active = S.jobs.filter(j => j.status !== "paid");
   $("main").innerHTML = `
-    <button class="btn primary addjob" type="button" data-act="new-job">+ Add a job</button>
-    <div class="field"><label for="jobFind">Find a job</label><input id="jobFind" type="search" placeholder="Name, car, phone, VIN…" value="${esc(jobFind)}" autocomplete="off"></div>
-    ${!S.jobs.length ? `<div class="allclear">No jobs yet. Tap <b>+ Add a job</b> when a car comes in.</div>` : ""}
-    ${S.jobs.length && !all.length ? `<div class="notice">No job matches “${esc(jobFind)}”. <button class="linkbtn" type="button" data-act="clear-find">Show all jobs</button></div>` : ""}
-    ${JOB_GROUPS.map(g => { const list = active.filter(g.f); if (!list.length) return "";
-      return `<section><h2>${esc(g.title)} · ${list.length}</h2><div class="hint" style="margin:-4px 0 10px">${esc(g.hint)}</div>${jobRows(list, "")}</section>`; }).join("")}
-    ${paid.length ? `<details class="panel"><summary>Paid jobs · ${paid.length}</summary><div style="padding:0 12px 12px">${jobRows(paid.slice(0, 100), "")}</div></details>` : ""}`;
-  const f = $("jobFind");
-  f.addEventListener("input", () => { jobFind = f.value; const pos = f.selectionStart; renderJobs(); const g = $("jobFind"); g.focus(); g.setSelectionRange(pos, pos); });
+    <div class="pagehead"><div><h1>Jobs</h1><p class="lede">${plural(active.length, "open job")}${paid.length ? ` · ${paid.length} paid` : ""}</p></div>
+      <button class="btn primary addjob" type="button" data-act="new-job">+ Add a job</button></div>
+    ${!S.jobs.length ? `<div class="allclear">No jobs yet. Tap <b>+ Add a job</b> when a car comes in.</div>` : `
+    <div class="board cols4">${JOB_GROUPS.map(g => { const list = active.filter(g.f);
+      return `<section class="lane" aria-labelledby="lane-${g.key}"><h2 id="lane-${g.key}">${esc(g.title)} <span class="count">${list.length}</span></h2><div class="hint">${esc(g.hint)}</div>
+        ${list.length ? jobRows(list) : `<div class="laneempty">None right now</div>`}</section>`; }).join("")}</div>`}
+    ${paid.length ? `<details class="panel"><summary>Paid jobs · ${paid.length}</summary><div class="inner">${jobRows(paid.slice(0, 100))}${paid.length > 100 ? `<div class="hint" style="margin-top:10px">Showing the newest 100. Use Find to look up older ones.</div>` : ""}</div></details>` : ""}`;
   fillPhotos($("main"));
 }
 
 function nextJobAction(j) {
-  if (j.status === "estimate") return { label: "Car is here: start work", act: "stage-start", help: "When the customer says yes and the car is in the bay." };
-  if (j.status === "in_progress") return { label: "Mark the work done", act: "stage-done", help: "When the repair is finished and the car is ready." };
-  if (j.status === "done") return { label: +j.amount ? "Mark invoiced" : "Enter the total and invoice", act: "stage-invoice", help: "When you've given or sent the customer the bill." };
-  if (j.status === "invoiced") return { label: "Record a payment", act: "pay", help: `${money(balance(j))} still owed.` };
+  if (j.status === "estimate") return { title: j.approved_at ? "They said yes. Is the car here?" : "Waiting on the customer", label: "Car is here", act: "stage-start", help: j.approved_at ? "Tap when the car is in the bay and you're starting work." : "Text them the estimate so they can approve it. When the car is here, tap the button." };
+  if (j.status === "in_progress") return { title: "Working on it", label: "Work is done", act: "stage-done", help: "Tap when the repair is finished and the car is ready to go." };
+  if (j.status === "done") return { title: "Give them the bill", label: "Bill given", act: "stage-invoice", help: +j.amount ? `Print it, email it or hand it over, then tap the button. Price: ${money(j.amount)}.` : "Print it, email it or hand it over, then tap the button. You'll type the price." };
+  if (j.status === "invoiced") return { title: `${money(balance(j))} still owed`, label: "Got paid", act: "pay", help: (ageDays(j) ?? 0) >= 14 ? `Bill given ${plural(ageDays(j) ?? 0, "day")} ago. A friendly reminder usually does it.` : "Tap when they pay, even part of it." };
   return null;
+}
+function trackHtml(j) {
+  const idx = STAGES.findIndex(s => s.k === j.status);
+  return `<ol class="track" aria-label="Job progress">${STAGES.map((s, i) => `<li class="${i < idx || j.status === "paid" ? "done" : i === idx ? "now" : ""}" ${i === idx ? 'aria-current="step"' : ""}><span class="dot" aria-hidden="true">${i < idx || j.status === "paid" ? "✓" : i + 1}</span><span class="tl">${s.label}</span>${i < idx || j.status === "paid" ? '<span class="sr">(done)</span>' : ""}</li>`).join("")}</ol>`;
 }
 function renderJob(id) {
   const j = jobById(id);
-  if (!j) { $("main").innerHTML = `<div class="empty">That job isn't here anymore. <a href="#jobs">Back to jobs</a></div>`; return; }
+  if (!j) { $("main").innerHTML = `${backLink("jobs", "All jobs")}<div class="empty">That job isn't here anymore.</div>`; return; }
   if (j._pending) {
     const c0 = cust(j.customer_id);
-    $("main").innerHTML = `<div><a href="#jobs" class="small">← All jobs</a></div>
+    $("main").innerHTML = `${backLink("jobs", "All jobs")}
       <div class="head"><div><div class="eyebrow">${esc(c0?.name || "No customer")}</div><h1>${esc(vehicleText(j))}</h1><div class="small">${esc(j.title || "")}</div></div></div>
       <div class="notice ${j._error ? "bad" : ""}">${j._error ? `This job couldn't upload: ${esc(j._error)} <button class="linkbtn" type="button" data-act="retry-queue">Try again</button>` : `Saved on this device. ${navigator.onLine ? "Uploading now…" : "It will upload by itself when the internet is back."} You can change it after it uploads.`}</div>
       ${photoBox(j, true)}`;
@@ -561,40 +675,48 @@ function renderJob(id) {
   const nx = nextJobAction(j); const lien = openLien(j.id); const anyLien = S.liens.find(l => l.job_id === j.id);
   const pays = jobPays(j); const a = ageDays(j);
   const v = j.vehicle || {}, p = j.property || {};
+  const isEst = j.status === "estimate"; const docWord = isEst ? "estimate" : j.status === "paid" ? "receipt" : "bill";
+  const billed = ["invoiced", "paid"].includes(j.status);
+  const amtLabel = j.status === "paid" ? "Paid in full" : billed ? "Still owed" : "Price";
+  const amtVal = !+j.amount ? "—" : j.status === "paid" ? money(j.amount) : billed ? money(balance(j)) : money(j.amount);
+  const payLabel = billed || j.status === "done" ? "+ Add payment" : "+ Take a deposit";
   $("main").innerHTML = `
-    <div><a href="#jobs" class="small">← All jobs</a></div>
-    <div class="head"><div><div class="eyebrow">${esc(c?.name || "No customer")}${c?.phone ? " · " + esc(c.phone) : ""}</div><h1>${esc(vehicleText(j))}</h1><div class="small">${esc(j.title || "")}</div></div>
-      <div class="amount"><div class="l">${j.status === "paid" ? "Paid in full" : "Still owed"}</div><div class="n">${+j.amount ? money(j.status === "paid" ? j.amount : balance(j)) : "—"}</div></div></div>
-    ${j.approved_at ? `<div class="notice good">✓ ${esc(j.approved_name || "The customer")} approved the estimate on ${esc(K.fmt(new Date(j.approved_at)))}.</div>` : ""}
-    <div class="stepper">${STAGES.map((s, i) => `<div class="stage ${i < idx ? "done" : i === idx ? "now" : ""}"><span class="dot">${i < idx ? "✓" : i + 1}</span>${s.label}</div>`).join("")}</div>
-    ${nx ? `<div class="nextcard ${j.status === "invoiced" && (a ?? 0) >= 30 ? "" : "calm"}"><div class="eyebrow">Next step</div><div class="headline">${esc(nx.label)}</div><div class="hint">${esc(nx.help)}</div>
+    ${backLink("jobs", "All jobs")}
+    <div class="head"><div style="min-width:0"><div class="eyebrow">${esc(c?.name || "No customer")}</div><h1>${esc(vehicleText(j))}</h1><div class="small">${esc(j.title || "")}${c?.phone ? ` · <a href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">${esc(c.phone)}</a>` : ""}</div></div>
+      <div class="amount"><div class="l">${amtLabel}</div><div class="n">${amtVal}</div></div></div>
+    ${trackHtml(j)}
+    ${j.approved_at && isEst ? `<div class="notice good">${esc(j.approved_name || "The customer")} approved the estimate on ${esc(K.fmt(new Date(j.approved_at)))}.</div>` : ""}
+    ${nx ? `<div class="nextcard ${j.status === "invoiced" && (a ?? 0) >= 30 ? "" : "calm"}"><div class="eyebrow">Next step</div><div class="headline">${esc(nx.title)}</div><div class="hint">${esc(nx.help)}</div>
       <div class="row2"><button class="btn primary big" type="button" data-act="${nx.act}" data-id="${j.id}">${esc(nx.label)}</button>
-      ${owes(j) ? `<button class="btn" type="button" data-act="remind" data-id="${j.id}">Send reminder</button>` : ""}
-      ${owes(j) && !lien ? `<button class="btn" type="button" data-act="start-lien" data-id="${j.id}">Start lien${(a ?? 0) < 30 ? " (early)" : ""}</button>` : ""}
-      ${lien ? `<a class="btn" href="#lien/${lien.id}">Open lien case</a>` : ""}
-      <button class="btn" type="button" data-act="invoice" data-id="${j.id}">${j.status === "estimate" ? "Print or email estimate" : "Print or email invoice"}</button>
-      <button class="btn" type="button" data-act="cust-link" data-id="${j.id}">Send to customer</button>
-      ${idx > 0 && j.status !== "paid" ? `<button class="linkbtn" type="button" data-act="stage-back" data-id="${j.id}">Undo: move back to “${STAGE_LABEL[STAGES[idx - 1].k]}”</button>` : ""}</div></div>`
-    : `<div class="nextcard good"><div class="headline">Paid in full${j.paid_on ? " on " + esc(K.fmt(K.D(j.paid_on))) : ""}</div><div class="hint">Nothing left to do on this job.${anyLien ? " Its lien case is closed. Send the release from the lien case." : ""}</div><div class="row2"><button class="btn" type="button" data-act="invoice" data-id="${j.id}">Print or email receipt</button>${anyLien ? `<a class="btn" href="#lien/${anyLien.id}">Open lien case</a>` : ""}</div></div>`}
+        ${owes(j) ? `<button class="btn" type="button" data-act="remind" data-id="${j.id}">Send reminder</button>` : ""}
+        ${isEst ? `<button class="btn" type="button" data-act="cust-link" data-id="${j.id}">Text estimate to customer</button>` : ""}</div>
+      ${idx > 0 ? `<div><button class="linkbtn" type="button" data-act="stage-back" data-id="${j.id}">Undo: move back to “${STAGE_LABEL[STAGES[idx - 1].k]}”</button></div>` : ""}</div>`
+    : `<div class="nextcard good"><div class="eyebrow">All done</div><div class="headline">Paid in full${j.paid_on ? " on " + esc(K.fmt(K.D(j.paid_on))) : ""}</div><div class="hint">Nothing left to do on this job.${anyLien ? " Its lien case is closed. Print the release from the lien case and give it to them." : ""}</div></div>`}
+    <div class="secondary" aria-label="More for this job">
+      <button class="btn" type="button" data-act="invoice" data-id="${j.id}">Print or email the ${docWord}</button>
+      ${j.status === "invoiced" ? `<button class="btn" type="button" data-act="cust-link" data-id="${j.id}">Text bill to customer</button>` : ""}
+      ${lien ? `<a class="btn" href="#lien/${lien.id}">Open lien case</a>` : anyLien ? `<a class="btn" href="#lien/${anyLien.id}">Lien case (closed)</a>` : ""}
+    </div>
     <div class="twocol">
-      <div class="box"><h3>Money <button class="linkbtn" type="button" data-act="pay" data-id="${j.id}" ${j.status === "paid" ? "hidden" : ""}>+ Add payment</button></h3>
-        <dl class="kv"><dt>Total</dt><dd>${+j.amount ? money(j.amount) : `<button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Enter the total</button>`}</dd>
-          <dt>Paid</dt><dd>${money(j.amount_paid)}</dd><dt>Owed</dt><dd><b>${money(balance(j))}</b></dd>
+      <div class="box"><h3>Money ${j.status !== "paid" ? `<button class="linkbtn" type="button" data-act="pay" data-id="${j.id}">${payLabel}</button>` : ""}</h3>
+        <dl class="kv"><dt>${isEst ? "Estimate" : "Price"}</dt><dd>${+j.amount ? money(j.amount) : `<button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Add the price</button>`}</dd>
+          <dt>Paid</dt><dd>${money(j.amount_paid)}</dd>${billed ? `<dt>Still owed</dt><dd><b>${money(balance(j))}</b></dd>` : ""}
           ${j.last_reminded_on ? `<dt>Last reminder</dt><dd>${esc(K.fmt(K.D(j.last_reminded_on)))}</dd>` : ""}</dl>
-        <div>${pays.length ? pays.map(pm => `<div class="pay ${pm.voided ? "void" : ""}"><div><b>${money(pm.amount)}</b> · ${esc(METHODS[pm.method])} · ${esc(K.fmt(K.D(pm.paid_on)))}${pm.note ? `<div class="small">${esc(pm.note)}</div>` : ""}${pm.voided ? `<div class="small">Undone</div>` : ""}</div>
-          ${pm.voided ? "" : `<button class="linkbtn danger" type="button" data-act="void-pay" data-id="${pm.id}">Undo</button>`}</div>`).join("") : `<div class="hint">No payments yet.</div>`}</div></div>
+        <div>${pays.length ? pays.map(pm => `<div class="pay ${pm.voided ? "void" : ""}"><div><b>${money(pm.amount)}</b> · ${esc(METHODS[pm.method] || "")} · ${esc(K.fmt(K.D(pm.paid_on)))}${pm.note ? `<div class="small">${esc(pm.note)}</div>` : ""}${pm.voided ? `<div class="small">Undone</div>` : ""}</div>
+          ${pm.voided ? "" : pm._pending ? `<span class="chip soon">Waiting to upload</span>` : `<button class="linkbtn quiet" type="button" data-act="void-pay" data-id="${pm.id}">Undo</button>`}</div>`).join("") : `<div class="hint">No payments yet.</div>`}</div>
+        ${owes(j) && !lien ? `<div class="hint" style="border-top:1px solid var(--line);padding-top:12px">Still not paid after a reminder or two? <button class="linkbtn" type="button" data-act="start-lien" data-id="${j.id}">Start a lien case</button></div>` : ""}</div>
       <div class="box"><h3>Details <button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Edit</button></h3>
         <dl class="kv">
           <dt>Customer</dt><dd>${c ? `<a href="#customer/${c.id}">${esc(c.name)}</a>` : "None"}</dd>
           ${j.kind === "property" ? `<dt>Address</dt><dd>${esc(p.address || "—")}</dd><dt>County</dt><dd>${esc(p.county || "—")}</dd>`
-          : `<dt>${j.kind === "equipment" ? "Equipment" : "Vehicle"}</dt><dd>${esc([v.year, v.make, v.model].filter(Boolean).join(" ") || "—")}</dd><dt>${j.kind === "equipment" ? "Serial" : "VIN"}</dt><dd>${esc(v.vin || "—")}</dd><dt>Plate</dt><dd>${esc(v.plate || "—")}</dd>`}
+          : `<dt>${j.kind === "equipment" ? "Equipment" : "Car"}</dt><dd>${esc([v.year, v.make, v.model].filter(Boolean).join(" ") || "—")}</dd><dt>${j.kind === "equipment" ? "Serial" : "VIN"}</dt><dd class="date">${esc(v.vin || "—")}</dd><dt>Plate</dt><dd>${esc(v.plate || "—")}</dd>`}
           <dt>Work</dt><dd>${esc(j.title || "—")}${j.description ? `<div class="small">${esc(j.description)}</div>` : ""}</dd>
           ${j.insurance && (j.insurance.insurer || j.insurance.claim) ? `<dt>Insurance</dt><dd>${esc([j.insurance.insurer, j.insurance.claim && "Claim #" + j.insurance.claim].filter(Boolean).join(" · "))}${j.insurance.adjuster ? `<div class="small">Adjuster: ${esc([j.insurance.adjuster, j.insurance.adjuster_phone].filter(Boolean).join(" · "))}</div>` : ""}${+j.insurance.deductible ? `<div class="small">Deductible: ${money(j.insurance.deductible)}</div>` : ""}</dd>` : ""}
-          <dt>Work done</dt><dd>${j.completed_on ? esc(K.fmt(K.D(j.completed_on))) : "—"}</dd><dt>Invoiced</dt><dd>${j.invoiced_on ? esc(K.fmt(K.D(j.invoiced_on))) : "—"}</dd>
-        </dl>
-        <div><button class="linkbtn danger" type="button" data-act="del-job" data-id="${j.id}">Delete this job</button></div></div>
+          ${j.completed_on ? `<dt>Work done</dt><dd>${esc(K.fmt(K.D(j.completed_on)))}</dd>` : ""}${j.invoiced_on ? `<dt>Bill given</dt><dd>${esc(K.fmt(K.D(j.invoiced_on)))}</dd>` : ""}
+        </dl></div>
     </div>
-    ${photoBox(j, false)}`;
+    ${photoBox(j, false)}
+    <details class="dangerzone"><summary>${icon("trash")}Delete this job</summary><div style="display:grid;gap:10px;padding:4px 0 8px"><div class="hint">Only if it was added by mistake. Payments on it are deleted too. This can't be undone.</div><div><button class="btn danger" type="button" data-act="del-job" data-id="${j.id}">Delete job for good</button></div></div></details>`;
   fillPhotos($("main"));
 }
 
@@ -608,25 +730,27 @@ function parseCar(s) {
   m = s.match(/^(\S+)\s*(.*)$/); return m ? { year: "", make: m[1], model: m[2] } : { year: "", make: "", model: "" };
 }
 function newJob(preCustomerId) {
-  AJ = { customerId: preCustomerId || null, photos: [], start: "in_progress" };
+  AJ = { customerId: preCustomerId || null, photos: [], start: null };
   const pc = preCustomerId ? cust(preCustomerId) : null;
   openModal(`<form id="ajForm" novalidate><div style="display:grid;gap:14px">
     <h2>Add a job</h2>
+    <div class="field"><span style="font-size:var(--t-sm);color:var(--stone);font-weight:600" id="ajHereL">Is the car here?</span>
+      <div class="seg" role="group" aria-labelledby="ajHereL" id="ajHere"><button type="button" data-ajstart="in_progress" aria-pressed="false">Yes, it's here</button><button type="button" data-ajstart="estimate" aria-pressed="false">No, just an estimate</button></div></div>
     <div class="photobtns">
-      <label class="btn big photobtn"><input type="file" accept="image/*" capture="environment" id="ajCam" hidden>📷 Take photo of estimate</label>
-      <label class="btn photobtn2"><input type="file" accept="image/*" multiple id="ajPick" hidden>Choose from photos</label>
+      ${coarse ? `<label class="btn big outline photobtn"><input type="file" accept="image/*" capture="environment" id="ajCam" hidden>${icon("camera")}Take photo of estimate</label>
+      <label class="btn photobtn2"><input type="file" accept="image/*" multiple id="ajPick" hidden>Choose from photos</label>`
+      : `<label class="btn outline photobtn"><input type="file" accept="image/*" multiple id="ajPick" hidden>${icon("camera")}Add photos of the estimate</label><input type="file" id="ajCam" hidden>`}
     </div>
     <div class="thumbs" id="ajThumbs"></div>
     <div class="field" id="ajCustField"><label class="req" for="ajName">Customer name</label>
-      <input id="ajName" autocomplete="off" value="${esc(pc?.name || "")}" ${pc ? "readonly" : ""} placeholder="First and last name">
+      <input id="ajName" autocomplete="off" autocapitalize="words" value="${esc(pc?.name || "")}" ${pc ? "readonly" : ""} placeholder="First and last name">
       <div class="sugg" id="ajSugg" hidden></div>
       <div class="hint" id="ajPicked">${pc ? `Existing customer${pc.phone ? " · " + esc(pc.phone) : ""} · <button class="linkbtn" type="button" data-act="aj-unpick">Change</button>` : ""}</div></div>
     <div class="field" id="ajPhoneField" ${pc ? "hidden" : ""}><label for="ajPhone">Phone</label><input id="ajPhone" type="tel" inputmode="tel" placeholder="(913) 555-0100"></div>
-    <div class="field"><label class="req" for="ajCar">Car</label><input id="ajCar" placeholder="Like: 2014 Ford F-150" autocomplete="off"><div class="hint" id="ajCarHint"></div></div>
+    <div class="field"><label class="req" for="ajCar">Car</label><input id="ajCar" placeholder="Like: 2014 Ford F-150" autocomplete="off" autocapitalize="words"><div class="hint" id="ajCarHint"></div></div>
     <div class="field"><label for="ajWork">What needs doing?</label><input id="ajWork" placeholder="Like: rear bumper and paint"></div>
     <div class="chips">${WORK_CHIPS.map(w => `<button type="button" class="chipbtn" data-ajchip="${esc(w)}">${esc(w)}</button>`).join("")}</div>
-    <div class="field"><label for="ajAmt">Price ($) — leave blank if you don't know yet</label><input id="ajAmt" inputmode="decimal" placeholder="0.00"></div>
-    <div class="seg"><button type="button" data-ajstart="in_progress" aria-pressed="true">The car is here</button><button type="button" data-ajstart="estimate" aria-pressed="false">Just an estimate</button></div>
+    <div class="field"><label for="ajAmt">Price ($)</label><input id="ajAmt" inputmode="decimal" placeholder="0.00"><div class="hint">Leave it blank if you don't know yet.</div></div>
     <details class="more"><summary>More details (optional)</summary><div class="grid" style="padding-top:10px">
       <div class="field wide"><label for="ajVin">VIN</label><input id="ajVin" autocapitalize="characters" spellcheck="false" placeholder="17 characters, on the dash or door"></div>
       <div class="field"><label for="ajPlate">Plate</label><input id="ajPlate"></div>
@@ -657,7 +781,6 @@ function newJob(preCustomerId) {
   $("ajCam").addEventListener("change", e => { onFiles(e.target.files); e.target.value = ""; });
   $("ajPick").addEventListener("change", e => { onFiles(e.target.files); e.target.value = ""; });
   $("ajForm").addEventListener("submit", e => { e.preventDefault(); saveNewJob(e.submitter); });
-  if (!pc) setTimeout(() => name.focus(), 40);
 }
 function ajThumbs() {
   $("ajThumbs").innerHTML = AJ.photos.map((p, i) => `<div class="thumb"><img src="${URL.createObjectURL(p.blob)}" alt="Estimate photo ${i + 1}"><button type="button" class="x" data-ajrm="${i}" aria-label="Remove photo">×</button></div>`).join("");
@@ -666,12 +789,13 @@ function ajPick(id) {
   const c = cust(id); if (!c) return; AJ.customerId = id;
   $("ajName").value = c.name; $("ajName").readOnly = true; $("ajSugg").hidden = true; $("ajPhoneField").hidden = true;
   $("ajPicked").innerHTML = `Existing customer${c.phone ? " · " + esc(c.phone) : ""} · <button class="linkbtn" type="button" data-act="aj-unpick">Change</button>`;
-  fieldErr("ajName", ""); $("ajCar").focus();
+  fieldErr("ajName", ""); if (!coarse) $("ajCar").focus();
 }
 function ajUnpick() { AJ.customerId = null; $("ajName").readOnly = false; $("ajName").value = ""; $("ajPicked").innerHTML = ""; $("ajPhoneField").hidden = false; $("ajName").focus(); }
 async function saveNewJob(btn) {
   let ok = true;
   const nm = val("ajName"), phone = val("ajPhone"), car = parseCar(val("ajCar")), vin = vinCheck(val("ajVin")), amt = parseMoney(val("ajAmt")), email = val("ajEmail").toLowerCase();
+  if (!AJ.start) { fieldErr("ajHere", "Tap Yes or No."); ok = false; } else fieldErr("ajHere", "");
   if (!nm) { fieldErr("ajName", "Type the customer's name."); ok = false; } else fieldErr("ajName", "");
   if (!AJ.customerId && !phoneOk(phone)) { fieldErr("ajPhone", "Phone numbers have 10 digits."); ok = false; } else fieldErr("ajPhone", "");
   if (!val("ajCar") && !vin.value) { fieldErr("ajCar", "What car is it? Like: 2014 Ford F-150."); ok = false; } else fieldErr("ajCar", "");
@@ -679,14 +803,15 @@ async function saveNewJob(btn) {
   if (Number.isNaN(amt)) { fieldErr("ajAmt", "Use a dollar amount like 1250 or 1250.50 (or leave it blank)."); ok = false; } else fieldErr("ajAmt", "");
   if (!vin.ok) { $("modal").querySelector("details.more").open = true; fieldErr("ajVin", vin.msg); ok = false; }
   if (!emailOk(email)) { $("modal").querySelector("details.more").open = true; fieldErr("ajEmail", "That email doesn't look right."); ok = false; }
-  if (!ok) { const bad = $("modal").querySelector(".field.invalid input"); if (bad) bad.focus(); return; }
+  if (!ok) { const bad = $("modal").querySelector(".field.invalid input, .field.invalid button"); if (bad) { bad.scrollIntoView({ block: "center", behavior: "smooth" }); if (!coarse || bad.tagName !== "INPUT") bad.focus({ preventScroll: true }); } return; }
   // same name as an existing customer? ask instead of making a duplicate
   if (!AJ.customerId) {
     const d = phone.replace(/\D/g, "").slice(-10);
     const m = S.customers.find(c => c.name.toLowerCase() === nm.toLowerCase() || (d.length === 10 && (c.phone || "").replace(/\D/g, "").endsWith(d)));
     if (m) {
       const same = await confirmBox({ title: `Is this ${m.name}?`, body: `You already have ${esc(m.name)}${m.phone ? " · " + esc(m.phone) : ""} as a customer. Same person?`, ok: "Yes, same person", cancel: "No, someone new" });
-      if (same) AJ.customerId = m.id;
+      if (same === null) return;
+      if (same) { AJ.customerId = m.id; if (phone && !m.phone && navigator.onLine) await sb.from("shop_customers").update({ phone: fmtPhone(phone) }).eq("id", m.id); }
     }
   }
   await busy(btn, async () => {
@@ -698,7 +823,7 @@ async function saveNewJob(btn) {
     try { await enqueue({ type: "job", customer, job, photos: AJ.photos }); }
     catch (ex) { toast("Couldn't save on this device: " + friendly(ex)); return; }
     await closeModal(true); go("job/" + jobId);
-    if (navigator.onLine) { await flushQueue(); route(true); if (jobById(jobId) && !jobById(jobId)._pending) toast("Job saved."); }
+    if (navigator.onLine) { await flushQueue(); route(true); if (jobById(jobId) && !jobById(jobId)._pending) toast("Job saved.", null, { ok: true }); }
     else toast("Saved on this device. It will upload when you're back online.");
   });
 }
@@ -717,7 +842,7 @@ async function viewPhoto(p) {
   const src = await photoSrc(p);
   openModal(`<div style="display:grid;gap:12px"><h2>${p.kind === "estimate" ? "Estimate photo" : "Photo"}</h2>
     ${src ? `<img class="bigphoto" src="${esc(src)}" alt="Photo">` : `<div class="notice">This photo will show when you're back online.</div>`}
-    <div class="modalfoot">${!p._pending ? `<button class="btn danger" type="button" data-act="del-photo" data-id="${p.id}" style="margin-right:auto">Delete photo</button>` : `<span class="small" style="margin-right:auto">Waiting to upload</span>`}
+    <div class="modalfoot">${!p._pending ? `<button class="btn danger spacer" type="button" data-act="del-photo" data-id="${p.id}">Delete photo</button>` : `<span class="small spacer">Waiting to upload</span>`}
     ${src ? `<a class="btn" href="${esc(src)}" target="_blank" rel="noopener">Open full size</a>` : ""}<button class="btn primary" type="button" data-act="close">Done</button></div></div>`);
 }
 async function deletePhoto(p) {
@@ -730,9 +855,13 @@ async function deletePhoto(p) {
 
 function photoBox(j, pending) {
   const ps = jobPhotos(j);
-  return `<div class="box"><h3>Estimate photos (${ps.length})${pending ? "" : `<label class="btn sm"><input type="file" accept="image/*" capture="environment" data-addphoto="${j.id}" hidden>📷 Take photo</label>`}</h3>
-    ${ps.length ? `<div class="thumbs">${ps.map(p => `<button type="button" class="thumb" data-viewphoto="${p.id}"><img data-photo="${p.id}" alt="${p.kind === "estimate" ? "Estimate photo" : "Photo"}">${p._pending ? `<span class="tag">Uploading</span>` : ""}</button>`).join("")}</div>` : `<div class="hint">No photos yet. Tap <b>Take photo</b> to snap the estimate.</div>`}
-    ${pending ? "" : `<label class="linkbtn"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>Or choose photos from your phone</label>`}</div>`;
+  const pick = coarse
+    ? `<label class="dropzone"><input type="file" accept="image/*" capture="environment" data-addphoto="${j.id}" hidden>${icon("camera")}<span>Take a photo of the estimate</span></label>
+       <label class="linkbtn"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>Or choose from your photos</label>`
+    : `<label class="dropzone" data-drop="${j.id}"><input type="file" accept="image/*" multiple data-addphoto="${j.id}" hidden>${icon("camera")}<span>Choose photos from this computer</span><span class="small" style="font-weight:500">or drag them here</span></label>`;
+  return `<div class="box"><h3>Estimate photos${ps.length ? ` · ${ps.length}` : ""}</h3>
+    ${ps.length ? `<div class="thumbs">${ps.map((p, i) => `<button type="button" class="thumb" data-viewphoto="${p.id}" aria-label="Open photo ${i + 1}"><img data-photo="${p.id}" alt="">${p._pending ? `<span class="tag">Uploading</span>` : ""}</button>`).join("")}</div>` : ""}
+    ${pending ? "" : pick}</div>`;
 }
 
 // ---- edit job ----
@@ -758,9 +887,9 @@ function editJob(j) {
       <div class="grouplabel">Work</div>
       <div class="field wide"><label class="req" for="ejTitle">Short description</label><input id="ejTitle" value="${esc(j.title || "")}"></div>
       <div class="field wide"><label for="ejDesc">Notes</label><textarea id="ejDesc" rows="2">${esc(j.description || "")}</textarea></div>
-      <div class="field"><label for="ejAmt">Total ($)</label><input id="ejAmt" inputmode="decimal" value="${esc(j.amount ?? "")}">${+j.amount_paid ? `<div class="hint">${money(j.amount_paid)} has been paid, so the total can't go below that.</div>` : ""}</div>
+      <div class="field"><label for="ejAmt">Price ($)</label><input id="ejAmt" inputmode="decimal" value="${esc(j.amount ?? "")}">${+j.amount_paid ? `<div class="hint">${money(j.amount_paid)} has been paid, so the price can't go below that.</div>` : ""}</div>
       ${["done", "invoiced", "paid"].includes(j.status) ? `<div class="field"><label for="ejDone">Work done on</label><input id="ejDone" type="date" max="${todayISO()}" value="${esc(j.completed_on || "")}"></div>` : ""}
-      ${["invoiced", "paid"].includes(j.status) && j.invoiced_on ? `<div class="field"><label for="ejInv">Invoiced on</label><input id="ejInv" type="date" max="${todayISO()}" value="${esc(j.invoiced_on || "")}"></div>` : ""}
+      ${["invoiced", "paid"].includes(j.status) && j.invoiced_on ? `<div class="field"><label for="ejInv">Bill given on</label><input id="ejInv" type="date" max="${todayISO()}" value="${esc(j.invoiced_on || "")}"></div>` : ""}
     </div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save changes</button></div></div></form>`);
   if ($("ejVin")) $("ejVin").addEventListener("input", () => { const r = vinCheck(val("ejVin")); fieldErr("ejVin", r.ok ? "" : r.msg); fieldWarn("ejVin", r.ok ? r.warn || "" : ""); });
@@ -794,38 +923,54 @@ function editJob(j) {
 }
 
 // ---- stage changes ----
-async function setStage(j, row, msg, undoRow) {
+// save a change to a job; with no internet it's saved on this device and uploads later
+async function jobUpdate(j, row) {
+  const queue = async () => { try { await enqueue({ type: "update", jobId: j.id, row }); saveSnapshot(); return { queued: true }; } catch (ex) { return { error: ex }; } };
+  if (!navigator.onLine || j._pending) return queue();
   const { error } = await sb.from("shop_jobs").update(row).eq("id", j.id);
-  if (error) { toast(friendly(error)); return false; }
+  if (error && isNetErr(error)) return queue();
+  return { error };
+}
+async function setStage(j, row, msg, undoRow) {
+  const before = { status: j.status, updated_at: j.updated_at };
+  const r = await jobUpdate(j, row);
+  if (r.error) { toast(friendly(r.error)); return false; }
+  if (r.queued) { route(true); toast(msg + " Saved on this device; it uploads when you're back online.", null, { ok: true }); return true; }
   await reload(); route(true);
-  toast(msg, undoRow ? { label: "Undo", run: async () => { await sb.from("shop_jobs").update(undoRow).eq("id", j.id); await reload(); route(true); } } : null);
+  toast(msg, undoRow ? { label: "Undo", run: async () => {
+    const now = jobById(j.id);
+    if (!now || now.status !== row.status) { toast("That job has changed since, so there's nothing to undo."); return; }
+    const { error } = await sb.from("shop_jobs").update(undoRow).eq("id", j.id);
+    if (error) return toast(friendly(error));
+    await reload(); route(true); toast(`Undone. Back to “${STAGE_LABEL[before.status]}”.`);
+  } } : null, { ok: true });
   return true;
 }
 function stageDone(j) {
-  openModal(`<form id="sdForm" novalidate><div style="display:grid;gap:16px"><h2>Work done?</h2><div class="hint">${esc(jobName(j))}</div>
+  openModal(`<form id="sdForm" novalidate><div style="display:grid;gap:16px"><h2>Is the work done?</h2><div class="hint">${esc(jobName(j))}</div>
     <div class="grid"><div class="field"><label for="sdDate">Finished on</label><input id="sdDate" type="date" max="${todayISO()}" value="${todayISO()}"></div></div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Yes, work is done</button></div></div></form>`);
   $("sdForm").addEventListener("submit", async e => {
     e.preventDefault(); if (!dateRule("sdDate", { required: true })) return;
-    await busy(e.submitter, async () => { if (await setStage(j, { status: "done", completed_on: val("sdDate") }, "Marked done. Next: invoice it.", { status: "in_progress", completed_on: null })) closeModal(true); });
+    await busy(e.submitter, async () => { if (await setStage(j, { status: "done", completed_on: val("sdDate") }, "Work done. Next: give them the bill.", { status: "in_progress", completed_on: null })) closeModal(true); });
   });
 }
 function stageInvoice(j) {
   const needAmt = !(+j.amount > 0);
-  openModal(`<form id="siForm" novalidate><div style="display:grid;gap:16px"><h2>Mark invoiced</h2><div class="hint">${esc(jobName(j))}. Do this once the customer has the bill.</div>
-    <div class="grid"><div class="field"><label class="req" for="siAmt">Total on the bill ($)</label><input id="siAmt" inputmode="decimal" value="${esc(+j.amount ? j.amount : "")}" ${needAmt ? "autofocus" : ""}></div>
-      <div class="field"><label for="siDate">Invoiced on</label><input id="siDate" type="date" max="${todayISO()}" min="${esc(j.completed_on || "")}" value="${todayISO()}"></div></div>
-    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Mark invoiced</button></div></div></form>`);
+  openModal(`<form id="siForm" novalidate><div style="display:grid;gap:16px"><h2>Did they get the bill?</h2><div class="hint">${esc(jobName(j))}. Tap Bill given once they have it (printed, emailed or texted).</div>
+    <div class="grid"><div class="field"><label class="req" for="siAmt">Price on the bill ($)</label><input id="siAmt" inputmode="decimal" value="${esc(+j.amount ? j.amount : "")}" ${needAmt ? "autofocus" : ""}></div>
+      <div class="field"><label for="siDate">Given on</label><input id="siDate" type="date" max="${todayISO()}" min="${esc(j.completed_on || "")}" value="${todayISO()}"></div></div>
+    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Bill given</button></div></div></form>`);
   $("siForm").addEventListener("submit", async e => {
     e.preventDefault();
     const amt = parseMoney(val("siAmt"));
-    if (amt == null || Number.isNaN(amt) || amt <= 0) return fieldErr("siAmt", "Enter the total on the bill.");
+    if (amt == null || Number.isNaN(amt) || amt <= 0) return fieldErr("siAmt", "Type the price on the bill.");
     if (amt < +j.amount_paid) return fieldErr("siAmt", `They've already paid ${money(j.amount_paid)}.`);
     fieldErr("siAmt", "");
     if (!dateRule("siDate", { required: true, min: j.completed_on, minLabel: "the day the work was done" })) return;
     await busy(e.submitter, async () => {
       const row = { status: "invoiced", amount: amt, invoiced_on: val("siDate"), completed_on: j.completed_on || val("siDate") };
-      if (await setStage(j, row, "Invoiced. It's on the Money owed list now.", { status: "done", invoiced_on: null })) closeModal(true);
+      if (await setStage(j, row, "Bill given. It's on Money owed until they pay.", { status: "done", invoiced_on: null, amount: j.amount ?? null })) closeModal(true);
     });
   });
 }
@@ -849,52 +994,63 @@ async function deleteJob(j) {
 
 // ================= PAYMENTS =================
 function payPick() {
-  const list = S.jobs.filter(j => j.status !== "paid" && +j.amount > 0 && balance(j) > 0).sort((a, b) => (ageDays(b) ?? -1) - (ageDays(a) ?? -1));
-  if (!list.length) { toast("Nobody owes anything right now. Enter a total on a job first."); return; }
-  openModal(`<div style="display:grid;gap:16px"><h2>Who paid?</h2><div class="field"><label for="ppSearch">Search</label><input id="ppSearch" autocomplete="off"></div>
-    <div class="pickl" id="ppList">${list.map(j => `<button type="button" data-paypick="${j.id}" data-hay="${esc(jobName(j).toLowerCase() + " " + (cust(j.customer_id)?.phone || ""))}">${esc(jobName(j))} <span>${money(balance(j))} owed</span></button>`).join("")}</div>
-    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button></div></div>`);
-  $("ppSearch").addEventListener("input", () => { const q = val("ppSearch").toLowerCase(); $("ppList").querySelectorAll("button").forEach(b => b.hidden = q && !b.dataset.hay.includes(q)); });
+  const list = S.jobs.filter(j => !j._pending && j.status !== "paid" && +j.amount > 0 && balance(j) > 0)
+    .sort((a, b) => (b.status === "invoiced") - (a.status === "invoiced") || (ageDays(b) ?? -1) - (ageDays(a) ?? -1));
+  if (!list.length) { toast("Nobody owes anything right now. Add a price to a job first."); return; }
+  openModal(`<h2>Who paid?</h2><div class="field"><label for="ppSearch">Search by name, car or phone</label><input id="ppSearch" type="search" autocomplete="off" data-nodirty></div>
+    <div class="pickl" id="ppList">${list.map(j => `<button type="button" data-paypick="${j.id}" data-hay="${esc(jobName(j).toLowerCase() + " " + (cust(j.customer_id)?.phone || "").replace(/\D/g, ""))}">${esc(jobName(j))} <span>${money(balance(j))} ${j.status === "invoiced" ? "owed" : "price"}</span></button>`).join("")}</div>
+    <div class="empty" id="ppNone" hidden>No one matches.</div>`);
+  $("ppSearch").addEventListener("input", () => { const q = val("ppSearch").toLowerCase(); const d = q.replace(/\D/g, ""); let n = 0;
+    $("ppList").querySelectorAll("button").forEach(b => { const show = !q || b.dataset.hay.includes(q) || (d.length >= 3 && b.dataset.hay.includes(d)); b.hidden = !show; n += show; }); $("ppNone").hidden = n > 0; });
 }
 function payModal(j) {
+  const deposit = ["estimate", "in_progress"].includes(j.status);
   if (!(+j.amount > 0)) {
-    openModal(`<form id="pfAmtForm" novalidate><div style="display:grid;gap:16px"><h2>First, what's the total?</h2><div class="hint">${esc(jobName(j))}. Enter the full price of the job so we know what's still owed.</div>
-      <div class="field"><label class="req" for="pfTotal">Job total ($)</label><input id="pfTotal" inputmode="decimal" autofocus></div>
+    openModal(`<form id="pfAmtForm" novalidate><div style="display:grid;gap:18px"><h2>First, what's the price?</h2><div class="hint">${esc(jobName(j))}. Type the full price of the job so we know what's left to pay.</div>
+      <div class="field"><label class="req" for="pfTotal">Price of the job ($)</label><input id="pfTotal" inputmode="decimal" placeholder="0.00"></div>
       <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Next</button></div></div></form>`);
     $("pfAmtForm").addEventListener("submit", async e => {
       e.preventDefault(); const t = parseMoney(val("pfTotal"));
-      if (t == null || Number.isNaN(t) || t <= 0) return fieldErr("pfTotal", "Enter the job total.");
-      await busy(e.submitter, async () => { const { error } = await sb.from("shop_jobs").update({ amount: t }).eq("id", j.id); if (error) return toast(friendly(error)); await reload(); await closeModal(true); payModal(jobById(j.id)); });
+      if (t == null || Number.isNaN(t) || t <= 0) return fieldErr("pfTotal", "Type the price, like 1250 or 1250.50.");
+      await busy(e.submitter, async () => { const r = await jobUpdate(j, { amount: t }); if (r.error) return toast(friendly(r.error)); if (!r.queued) await reload(); await closeModal(true); payModal(jobById(j.id)); });
     });
     return;
   }
-  const bal = balance(j); let method = "cash";
-  openModal(`<form id="pfForm" novalidate><div style="display:grid;gap:16px"><h2>Record a payment</h2>
-    <div class="hint">${esc(jobName(j))} · <b>${money(bal)}</b> owed of ${money(j.amount)}</div>
-    <div class="grid"><div class="field"><label class="req" for="pfAmt">Amount paid ($)</label><input id="pfAmt" inputmode="decimal" value="${bal.toFixed(2)}" autofocus></div>
-      <div class="field"><label for="pfDate">Paid on</label><input id="pfDate" type="date" max="${todayISO()}" value="${todayISO()}"></div></div>
-    <div><div class="hint" style="margin-bottom:6px">How did they pay?</div><div class="chips">${Object.entries(METHODS).map(([k, t]) => `<button type="button" class="chipbtn" data-method="${k}" aria-pressed="${k === method}">${t}</button>`).join("")}</div></div>
-    <div class="field"><label for="pfNote">Note (optional)</label><input id="pfNote" placeholder="Check #, claim #, etc."></div>
-    <div class="notice good" id="pfFull" ${bal > 0 ? "" : "hidden"}>This pays the job off in full.</div>
+  const bal = balance(j); let method = "";
+  openModal(`<form id="pfForm" novalidate><div style="display:grid;gap:18px"><h2>${deposit ? "Take a deposit" : "Got paid"}</h2>
+    <div class="hint">${esc(jobName(j))} · <b>${money(bal)}</b> ${deposit ? "left on the price of" : "owed of"} ${money(j.amount)}</div>
+    <div class="field"><label class="req" for="pfAmt">How much did they pay? ($)</label>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><input id="pfAmt" inputmode="decimal" placeholder="0.00" style="flex:1 1 160px"><button class="btn" type="button" id="pfAll">Paid it all · ${money(bal)}</button></div></div>
+    <div class="field"><span class="req" style="font-size:var(--t-sm);color:var(--stone);font-weight:600" id="pfHowL">How did they pay?</span><div class="chips" role="group" aria-labelledby="pfHowL">${Object.entries(METHODS).map(([k, t]) => `<button type="button" class="chipbtn" data-method="${k}" aria-pressed="false">${t}</button>`).join("")}</div><div class="fmsg" id="pfHowMsg" role="alert"></div></div>
+    <div class="grid"><div class="field"><label for="pfDate">Paid on</label><input id="pfDate" type="date" max="${todayISO()}" value="${todayISO()}"></div>
+      <div class="field"><label for="pfNote">Note (optional)</label><input id="pfNote" placeholder="Check #, claim #, etc."></div></div>
+    <div class="notice good" id="pfFull" hidden>This pays the job off in full.</div>
     <div class="modalfoot"><button class="btn ghost" type="button" data-act="close">Cancel</button><button class="btn primary" type="submit">Save payment</button></div></div></form>`);
   const upd = () => { const a = parseMoney(val("pfAmt")); $("pfFull").hidden = !(a >= bal && a > 0); };
   $("pfAmt").addEventListener("input", upd);
-  $("modal").querySelectorAll("[data-method]").forEach(b => b.addEventListener("click", () => { method = b.dataset.method; $("modal").querySelectorAll("[data-method]").forEach(x => x.setAttribute("aria-pressed", x === b)); }));
+  $("pfAll").addEventListener("click", () => { $("pfAmt").value = bal.toFixed(2); fieldErr("pfAmt", ""); modalDirty = true; upd(); });
+  $("modal").querySelectorAll("[data-method]").forEach(b => b.addEventListener("click", () => { method = b.dataset.method; $("pfHowMsg").textContent = ""; $("modal").querySelectorAll("[data-method]").forEach(x => x.setAttribute("aria-pressed", x === b)); }));
   $("pfForm").addEventListener("submit", async e => {
-    e.preventDefault();
+    e.preventDefault(); let ok = true;
     const a = parseMoney(val("pfAmt"));
-    if (a == null || Number.isNaN(a) || a <= 0) return fieldErr("pfAmt", "Enter how much they paid.");
-    if (a > bal) return fieldErr("pfAmt", `That's more than they owe (${money(bal)}). If the price went up, edit the job total first.`);
-    fieldErr("pfAmt", "");
-    if (!dateRule("pfDate", { required: true })) return;
+    if (a == null || Number.isNaN(a) || a <= 0) { fieldErr("pfAmt", "Type how much they paid, or tap Paid it all."); ok = false; }
+    else if (a > bal) { fieldErr("pfAmt", `That's more than the ${money(bal)} left. If the price went up, edit the job's price first.`); ok = false; }
+    else fieldErr("pfAmt", "");
+    if (!method) { $("pfHowMsg").textContent = "Pick cash, card, check, insurance or other."; ok = false; }
+    if (!dateRule("pfDate", { required: true })) ok = false;
+    if (!ok) return;
     await busy(e.submitter, async () => {
       const wasLien = !!openLien(j.id);
-      const { data, error } = await sb.from("shop_payments").insert({ job_id: j.id, account_id: S.account.id, amount: a, paid_on: val("pfDate"), method, note: val("pfNote") }).select().single();
-      if (error) return toast(friendly(error));
-      await reload(); await closeModal(true); route(true);
+      const row = { id: uuid(), job_id: j.id, account_id: S.account.id, amount: a, paid_on: val("pfDate"), method, note: val("pfNote") };
+      let queued = !navigator.onLine || j._pending;
+      if (!queued) { const { error } = await sb.from("shop_payments").insert(row); if (error && !isNetErr(error)) return toast(friendly(error)); if (error) queued = true; }
+      if (queued) { try { await enqueue({ type: "pay", row }); saveSnapshot(); } catch (ex) { return toast("Couldn't save on this device: " + friendly(ex)); } }
+      else await reload();
+      await closeModal(true); route(true);
       const nj = jobById(j.id);
-      toast(nj?.status === "paid" ? (wasLien ? "Paid in full. The lien case is closed. Send the release from the lien case." : "Paid in full.") : `Payment saved. ${money(balance(nj))} still owed.`,
-        { label: "Undo", run: () => voidPayment(data.id, true) });
+      const left = nj ? balance(nj) : 0;
+      toast((nj?.status === "paid" ? (wasLien && !queued ? "Paid in full. The lien case closed itself. Print the release from the lien case." : "Paid in full. Nice work.") : `Payment saved. ${money(left)} left.`) + (queued ? " It uploads when you're back online." : ""),
+        queued ? null : { label: "Undo", run: () => voidPayment(row.id, true) }, { ok: true });
     });
   });
 }
@@ -922,37 +1078,61 @@ async function emailOrMailto(to, subject, text) {
   return false;
 }
 
-// ---- invoice / estimate ----
+// ---- invoice / estimate / receipt ----
+const docKind = j => j.status === "estimate" ? "Estimate" : j.status === "paid" ? "Receipt" : "Invoice";
 function invoiceText(j) {
   const c = cust(j.customer_id) || {}; const v = j.vehicle || {}; const ins = j.insurance || {}; const a = S.account;
   const isEst = j.status === "estimate"; const pays = jobPays(j).filter(p => !p.voided);
   const L = [];
-  L.push(a.name.toUpperCase(), a.address, a.phone, "", `${isEst ? "ESTIMATE" : "INVOICE"}  ·  ${K.longFmt(K.TODAY)}`, "");
+  L.push(a.name.toUpperCase(), a.address, a.phone, "", `${docKind(j).toUpperCase()}  ·  ${K.longFmt(K.TODAY)}`, "");
   L.push("Customer:  " + (c.name || "—")); if (c.address) L.push("           " + c.address); if (c.phone) L.push("           " + c.phone);
   L.push("", "Vehicle:   " + (vehicleText(j) || "—")); if (v.vin) L.push("VIN:       " + v.vin); if (v.plate) L.push("Plate:     " + v.plate);
   if (ins.insurer || ins.claim) L.push("", "Insurance: " + [ins.insurer, ins.claim && "Claim #" + ins.claim].filter(Boolean).join(" · "));
   L.push("", "Work:      " + (j.title || "—")); if (j.description) L.push(j.description);
   L.push("", "—".repeat(36));
   L.push(`${isEst ? "Estimate total" : "Total"}:  ${+j.amount ? money(j.amount) : "to be determined"}`);
-  if (!isEst && pays.length) { pays.forEach(p => L.push(`Paid ${K.fmt(K.D(p.paid_on))} (${METHODS[p.method]}):  ${money(p.amount)}`)); }
+  if (pays.length) pays.forEach(p => L.push(`Paid ${K.fmt(K.D(p.paid_on))} (${METHODS[p.method]}):  ${money(p.amount)}`));
   if (!isEst && +j.amount) L.push(`BALANCE DUE:  ${money(balance(j))}`);
   L.push("—".repeat(36), "", isEst ? "This estimate is good for 30 days. Hidden damage found during repair may change the price; we'll call you first." : (balance(j) > 0 ? `Please pay at the shop or call ${a.phone}.` : "Paid in full. Thank you!"), "", "Thank you for choosing " + a.name + ".");
   return L.join("\n");
 }
-function printText(title, text) {
+function invoiceHtml(j) {
+  const c = cust(j.customer_id) || {}; const v = j.vehicle || {}; const ins = j.insurance || {}; const a = S.account;
+  const isEst = j.status === "estimate"; const pays = jobPays(j).filter(p => !p.voided);
+  const lines = (...xs) => xs.filter(Boolean).map(esc).join("<br>");
+  return `<div class="inv">
+    <div class="ihead"><div><div class="ibrand">${esc(a.name.toUpperCase())}</div><div>${lines(a.address, a.phone)}</div></div>
+      <div class="imeta"><div class="ikind">${docKind(j).toUpperCase()}</div><div>${esc(K.longFmt(K.TODAY))}</div><div style="color:#6a7380">No. ${esc(String(j.id).slice(0, 8).toUpperCase())}</div></div></div>
+    <div class="icols">
+      <div><div class="ilbl">${isEst ? "Prepared for" : "Bill to"}</div>${lines(c.name || "—", c.address, c.phone, c.email)}</div>
+      <div><div class="ilbl">Vehicle</div>${lines(vehicleText(j), v.vin && "VIN " + v.vin, v.plate && "Plate " + v.plate)}</div>
+      ${ins.insurer || ins.claim ? `<div><div class="ilbl">Insurance</div>${lines(ins.insurer, ins.claim && "Claim #" + ins.claim, ins.adjuster && "Adjuster " + ins.adjuster)}</div>` : ""}
+    </div>
+    <table><thead><tr><th>Work</th><th class="r">Amount</th></tr></thead>
+      <tbody><tr><td><b>${esc(j.title || "Repair")}</b>${j.description ? `<div style="color:#4b5563">${esc(j.description)}</div>` : ""}</td><td class="r">${+j.amount ? money(j.amount) : "TBD"}</td></tr></tbody></table>
+    <div class="itot"><div><span>${isEst ? "Estimate total" : "Total"}</span><span>${+j.amount ? money(j.amount) : "TBD"}</span></div>
+      ${pays.map(p => `<div style="color:#4b5563"><span>Paid ${esc(K.fmt(K.D(p.paid_on)))} · ${esc(METHODS[p.method] || "")}</span><span>−${money(p.amount)}</span></div>`).join("")}
+      ${!isEst && +j.amount ? `<div class="idue"><span>${balance(j) > 0 ? "Balance due" : "Paid in full"}</span><span>${money(balance(j))}</span></div>` : ""}</div>
+    <div class="inote">${esc(isEst ? "This estimate is good for 30 days. Hidden damage found during repair may change the price; we'll call you first." : balance(j) > 0 ? `Please pay at the shop or call ${a.phone}. Thank you for choosing ${a.name}.` : `Paid in full. Thank you for choosing ${a.name}!`)}</div>
+  </div>`;
+}
+const INV_CSS = `body{margin:0;font:14px/1.5 "Work Sans",Arial,sans-serif;color:#1a1f26}.inv{max-width:7.2in;margin:0 auto;padding:.2in 0;border-top:6px solid #F54503}.ihead{display:flex;justify-content:space-between;gap:16px;padding-top:14px}.ibrand{font:700 26px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.08em;color:#0f2740}.imeta{text-align:right}.ikind{font:700 24px/1 "Bebas Neue",Impact,sans-serif;letter-spacing:.06em;color:#C93A00}.icols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:22px 0}.ilbl{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6a7380;margin-bottom:2px}table{width:100%;border-collapse:collapse;margin:6px 0 14px}th{text-align:left;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#6a7380;border-bottom:2px solid #1a1f26;padding:6px 0}td{padding:10px 0;border-bottom:1px solid #e3e6ea;vertical-align:top}.r{text-align:right}.itot{margin-left:auto;width:300px;display:grid;gap:4px}.itot div{display:flex;justify-content:space-between;gap:16px}.idue{border-top:2px solid #1a1f26;padding-top:8px;margin-top:4px;font-size:19px;font-weight:700}.inote{margin-top:22px;color:#4b5563;font-size:12.5px}@page{margin:.6in}`;
+function printHtml(title, body, css) {
   const w = window.open("", "_blank");
   if (!w) { toast("Your browser blocked the print window. Allow pop-ups for daleskc.com."); return; }
-  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><style>body{font:15px/1.6 Georgia,"Times New Roman",serif;color:#111;max-width:7in;margin:0.8in auto;white-space:pre-wrap}@page{margin:0.7in}@media print{body{margin:0}}</style></head><body>${esc(text)}</body></html>`);
-  w.document.close(); w.focus(); setTimeout(() => w.print(), 250);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;700&display=swap" rel="stylesheet"><style>${css}</style></head><body>${body}</body></html>`);
+  w.document.close(); w.focus(); setTimeout(() => w.print(), 500);
 }
+function printText(title, text) { printHtml(title, esc(text), `body{font:15px/1.6 Georgia,"Times New Roman",serif;color:#111;max-width:7in;margin:0.8in auto;white-space:pre-wrap}@page{margin:0.7in}@media print{body{margin:0}}`); }
 function invoiceModal(j) {
-  const c = cust(j.customer_id) || {}; const isEst = j.status === "estimate"; const kind = isEst ? "estimate" : "invoice";
-  openModal(`<div style="display:grid;gap:14px"><h2>${isEst ? "Estimate" : "Invoice"}</h2>
-    <div class="sheet" style="max-height:50vh">${esc(invoiceText(j))}</div>
+  const c = cust(j.customer_id) || {}; const kind = docKind(j);
+  openModal(`<h2>${kind}</h2>
     ${!+j.amount ? `<div class="notice">No price on this job yet. <button class="linkbtn" type="button" data-act="edit-job" data-id="${j.id}">Add the price</button></div>` : ""}
-    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close" style="margin-right:auto">Close</button>
-      ${c.email ? `<button class="btn" type="button" data-act="email-invoice" data-id="${j.id}">Email to ${esc(c.email)}</button>` : `<span class="small">Add the customer's email to send it.</span>`}
-      <button class="btn primary" type="button" data-act="print-invoice" data-id="${j.id}">Print ${kind}</button></div></div>`);
+    <div class="invwrap">${invoiceHtml(j)}</div>
+    ${c.email ? "" : `<div class="hint">To email it, add ${esc(c.name ? c.name.split(" ")[0] + "'s" : "the customer's")} email on their customer page.</div>`}
+    <div class="modalfoot">
+      ${c.email ? `<button class="btn" type="button" data-act="email-invoice" data-id="${j.id}" title="${esc(c.email)}">Email it</button>` : ""}
+      <button class="btn primary" type="button" data-act="print-invoice" data-id="${j.id}">Print ${kind.toLowerCase()}</button></div>`);
 }
 
 // ---- backups ----
@@ -987,14 +1167,15 @@ async function customerLink(j) {
   }
   const c = cust(j.customer_id) || {}; const url = linkUrl(link.token); const isEst = j.status === "estimate";
   const msg = `Hi ${(c.name || "").split(" ")[0] || "there"}, this is ${S.account.name}. Here's ${isEst ? "the estimate" : "your bill"} for your ${vehicleText(j)}: ${url}`;
-  openModal(`<div style="display:grid;gap:14px"><h2>Send to customer</h2>
+  openModal(`<div style="display:grid;gap:14px"><h2>${isEst ? "Text estimate to customer" : "Text bill to customer"}</h2>
     <div class="hint">${isEst ? "They can see the estimate and photos, and tap Approve." : "They can see the work and what they still owe."} Only people with this link can open it.</div>
-    <textarea class="copybox" id="lnkText" aria-label="Message">${esc(msg)}</textarea>
+    <textarea class="copybox" id="lnkText" aria-label="Message to send">${esc(msg)}</textarea>
     ${link.viewed_at ? `<div class="notice good">They opened it on ${esc(K.fmt(new Date(link.viewed_at)))}.</div>` : ""}
-    <div class="modalfoot"><button class="linkbtn danger" type="button" data-act="link-off" data-id="${j.id}" style="margin-right:auto">Turn off this link</button>
-      ${c.email ? `<button class="btn" type="button" data-act="link-send" data-how="email" data-id="${j.id}">Email it</button>` : ""}
-      ${c.phone ? `<button class="btn" type="button" data-act="link-send" data-how="sms" data-id="${j.id}">Text it</button>` : ""}
-      <button class="btn primary" type="button" data-act="link-send" data-how="copy" data-id="${j.id}">Copy</button></div></div>`);
+    <div><button class="linkbtn danger" type="button" data-act="link-off" data-id="${j.id}">Turn off this link</button></div>
+    <div class="modalfoot">
+      <button class="btn ${c.phone || c.email ? "" : "primary"}" type="button" data-act="link-send" data-how="copy" data-id="${j.id}">Copy</button>
+      ${c.email ? `<button class="btn ${c.phone ? "" : "primary"}" type="button" data-act="link-send" data-how="email" data-id="${j.id}">Email it</button>` : ""}
+      ${c.phone ? `<button class="btn primary" type="button" data-act="link-send" data-how="sms" data-id="${j.id}">Text it</button>` : ""}</div></div>`);
 }
 async function linkSend(how, j) {
   const c = cust(j.customer_id) || {}; const text = $("lnkText").value; modalDirty = false;
@@ -1011,20 +1192,23 @@ async function linkOff(j) {
 
 // ---- help ----
 const HELP = [
-  ["A car comes in", "Tap Jobs, then + Add a job. Snap a photo of the estimate, type the customer's name and the car, and tap Save job."],
-  ["You finish the work", "On the Jobs screen, tap ✓ Work is done on that car."],
-  ["You give them the bill", "Tap They have the bill. Type the total if it isn't there yet."],
-  ["They pay", "Tap $ Got paid, type how much, pick cash, card or check, and save. When it's all paid, the job moves to Paid by itself."],
-  ["Send the estimate to a customer", "Open the job and tap Send to customer. Text it, email it, or copy the link. They can tap Approve on their phone."],
-  ["Someone hasn't paid", "The Today screen reminds you. Tap Send reminder. After 30 days you can tap Start lien and the lien helper walks you through each step."],
-  ["You made a mistake", "Most buttons have an Undo. On a job, use Edit to fix names, the car, or the price. Payments can be undone too."],
+  ["A car comes in", "Tap + Add a job. Snap a photo of the estimate, type the customer's name and the car, and tap Save job."],
+  ["You finish the work", "On Jobs, tap Work is done on that car."],
+  ["You give them the bill", "Tap Bill given. Type the price if it isn't there yet."],
+  ["They pay", "Tap Got paid, tap Paid it all (or type part of it), pick cash, card or check, and save. When it's all paid, the job moves to Paid by itself."],
+  ["Send the estimate to a customer", "Open the job and tap Text estimate to customer. They can see it with the photos and tap Approve on their phone."],
+  ["Someone hasn't paid", "The Today screen reminds you. Tap Send reminder. If they still don't pay after 30 days, open the job and tap Start a lien case. It walks you through each step."],
+  ["You made a mistake", "Most buttons have an Undo. On a job, tap Edit to fix the name, the car or the price. Payments can be undone too."],
   ["No internet", "You can still add jobs and photos. A yellow bar says they're saved on this device, and they upload by themselves when the internet is back."],
-  ["Print an invoice", "Open the job and tap Print or email invoice."]
+  ["Find someone fast", "Tap the magnifying glass at the top (or press / on a computer) and type a name, phone number, car or VIN."]
 ];
+const helpWho = () => ({ name: S.account?.help_name || "Dale Jr.", phone: S.account?.help_phone || "" });
 function renderHelp() {
+  const h = helpWho(); const tel = h.phone.replace(/[^\d+]/g, "");
   $("main").innerHTML = `<div class="pagehead"><div><div class="eyebrow">How to use the shop portal</div><h1>Help</h1></div><button class="btn" type="button" data-act="print-help">Print this page</button></div>
-    <div class="todo">${HELP.map(([t, d]) => `<div class="task easy"><div><div class="t">${esc(t)}</div><div class="s" style="font-size:15px;color:var(--stone)">${esc(d)}</div></div></div>`).join("")}</div>
-    <div class="notice">Stuck? Call or text Dale Jr. He set this up.</div>`;
+    <div class="nextcard calm"><div class="eyebrow">Stuck?</div><div class="headline">Call or text ${esc(h.name)}</div>
+      ${tel ? `<div class="row2"><a class="btn primary big" href="tel:${esc(tel)}">${icon("phone")}Call ${esc(h.phone)}</a><a class="btn" href="sms:${esc(tel)}">Send a text</a></div>` : `<div class="hint">${esc(h.name)} set this up and can help with anything. ${S.isOwner ? `Add a phone number for them in <a href="#settings">Settings</a> so there's a call button here.` : ""}</div>`}</div>
+    <section><h2>How do I…</h2><div class="todo">${HELP.map(([t, d], i) => `<div class="task easy"><div><div class="t">${i + 1}. ${esc(t)}</div><div class="s">${esc(d)}</div></div></div>`).join("")}</div></section>`;
 }
 
 // ---- reminders ----
@@ -1032,80 +1216,105 @@ function reminderText(j) {
   const c = cust(j.customer_id) || {}; const a = ageDays(j) ?? 0; const first = (c.name || "").split(" ")[0] || "there";
   const what = vehicleText(j), amt = money(balance(j)), shop = S.account.name, phone = S.account.phone || "the shop";
   if (a <= 30) return `Hi ${first}, this is ${shop}. Just a friendly reminder that ${amt} is still open for your ${what}. You can pay at the shop or call us at ${phone}. Thank you!`;
-  if (a <= 60) return `Hi ${first}, ${shop} here. Your balance of ${amt} for the ${what} is now ${a} days past due. Please call ${phone} this week to pay or set up a plan.`;
-  return `Hi ${first}, this is ${shop}. The ${amt} balance for your ${what} is ${a} days past due. If we can't settle it soon, we'll have to start the Kansas lien process. Please call ${phone} right away so we can work it out.`;
+  if (a <= 60) return `Hi ${first}, ${shop} here. Your balance of ${amt} for the ${what} has been open ${a} days. Please call ${phone} this week to pay or set up a plan.`;
+  return `Hi ${first}, this is ${shop}. The ${amt} balance for your ${what} has been open ${a} days. If we can't settle it soon, we'll have to start the Kansas lien process. Please call ${phone} right away so we can work it out.`;
 }
 function remindModal(j) {
   const c = cust(j.customer_id) || {}; const text = reminderText(j);
-  openModal(`<div style="display:grid;gap:16px"><h2>Payment reminder</h2>
+  openModal(`<h2>Payment reminder</h2>
     <div class="hint">${esc(c.name || "No customer")}${c.phone ? " · " + esc(c.phone) : ""}${c.email ? " · " + esc(c.email) : ""}</div>
-    <textarea class="copybox" id="remText" aria-label="Reminder message">${esc(text)}</textarea>
-    <div class="hint">Change the wording if you like. ${!c.phone && !c.email ? "This customer has no phone or email saved. Add one on their customer page to text or email from here." : "Tap a button to send it, or copy it."}</div>
-    <div class="modalfoot"><button class="btn ghost" type="button" data-act="close" style="margin-right:auto">Close</button>
-      ${c.email ? `<button class="btn" type="button" data-remsend="email" data-id="${j.id}">Email it</button>` : ""}${c.phone ? `<button class="btn" type="button" data-remsend="sms" data-id="${j.id}">Text it</button>` : ""}
-      <button class="btn primary" type="button" data-remsend="copy" data-id="${j.id}">Copy</button></div></div>`);
+    <div class="field"><label for="remText">Message (change it if you like)</label><textarea class="copybox" id="remText">${esc(text)}</textarea></div>
+    ${!c.phone && !c.email ? `<div class="notice">This customer has no phone or email saved. Add one on their customer page to text or email from here, or copy the message.</div>` : ""}
+    <div class="modalfoot">
+      <button class="btn ${c.phone || c.email ? "" : "primary"}" type="button" data-remsend="copy" data-id="${j.id}">Copy</button>
+      ${c.email ? `<button class="btn ${c.phone ? "" : "primary"}" type="button" data-remsend="email" data-id="${j.id}">Email it</button>` : ""}
+      ${c.phone ? `<button class="btn primary" type="button" data-remsend="sms" data-id="${j.id}">Text it</button>` : ""}</div>`);
+}
+async function markReminded(j) {
+  const { error } = await sb.from("shop_jobs").update({ last_reminded_on: todayISO() }).eq("id", j.id);
+  if (!error) j.last_reminded_on = todayISO();
 }
 async function remSend(how, j) {
-  const c = cust(j.customer_id) || {}; const text = $("remText").value;
-  if (how === "copy") { try { await navigator.clipboard.writeText(text); toast("Copied. Paste it into a text or email."); } catch { $("remText").select(); toast("Selected. Press Ctrl+C or ⌘C to copy."); } }
+  const c = cust(j.customer_id) || {}; const text = $("remText").value; modalDirty = false;
+  if (how === "copy") {
+    let copied = true; try { await navigator.clipboard.writeText(text); } catch { copied = false; $("remText").select(); }
+    toast(copied ? "Copied. Paste it into a text or email." : "Selected. Press Ctrl+C or ⌘C to copy it.", { label: "I sent it", run: async () => { await markReminded(j); route(true); toast("Logged as reminded today.", null, { ok: true }); } });
+    return;
+  }
+  const logIt = { label: "I sent it", run: async () => { await markReminded(j); route(true); toast("Logged as reminded today.", null, { ok: true }); } };
+  if (how === "email") { const sent = await emailOrMailto(c.email, "Balance due: " + S.account.name, text); if (sent) { await markReminded(j); await closeModal(true); route(true); return; } }
   if (how === "sms") location.href = `sms:${c.phone.replace(/[^\d+]/g, "")}?&body=${encodeURIComponent(text)}`;
-  if (how === "email") await emailOrMailto(c.email, "Balance due: " + S.account.name, text);
-  await sb.from("shop_jobs").update({ last_reminded_on: todayISO() }).eq("id", j.id);
-  j.last_reminded_on = todayISO(); modalDirty = false;
+  await closeModal(true);
+  setTimeout(() => toast("Did it send? Tap I sent it so we know you reminded them.", logIt), 400);
 }
 
 // ================= MONEY OWED =================
 const BUCKETS = [
-  { key: "b0", label: "0–30 days", test: d => d <= 30, color: "var(--good)" },
-  { key: "b30", label: "31–60 days", test: d => d > 30 && d <= 60, color: "var(--stone)" },
-  { key: "b60", label: "61–90 days", test: d => d > 60 && d <= 90, color: "var(--amber)" },
-  { key: "b90", label: "90+ days", test: d => d > 90, color: "var(--rust)" }];
+  { key: "b0", label: "This month", test: d => d <= 30, color: "var(--good)" },
+  { key: "b30", label: "1–2 months", test: d => d > 30 && d <= 60, color: "var(--stone)" },
+  { key: "b60", label: "2–3 months", test: d => d > 60 && d <= 90, color: "var(--amber)" },
+  { key: "b90", label: "Over 3 months", test: d => d > 90, color: "var(--rust)" }];
 let arBucket = "all";
 function renderMoney() {
   const open = S.jobs.filter(owes).map(j => ({ j, age: ageDays(j) ?? 0, bal: balance(j) })).sort((a, b) => b.age - a.age);
   const total = open.reduce((a, x) => a + x.bal, 0);
   const sums = BUCKETS.map(b => { const xs = open.filter(x => b.test(x.age)); return { ...b, n: xs.length, amt: xs.reduce((a, x) => a + x.bal, 0) }; });
   const shown = arBucket === "all" ? open : open.filter(x => BUCKETS.find(b => b.key === arBucket).test(x.age));
-  const notInvoiced = S.jobs.filter(j => j.status === "done").length;
+  const unb = S.jobs.filter(unbilled); const unbTotal = unb.reduce((a, j) => a + (+j.amount || 0), 0);
   $("main").innerHTML = `
-    <div class="pagehead"><div><div class="eyebrow">Money owed to the shop</div><h1>${money(total)}</h1></div><button class="btn primary" type="button" data-act="pay-pick">Record a payment</button></div>
-    ${notInvoiced ? `<div class="notice">${plural(notInvoiced, "finished job")} ${notInvoiced === 1 ? "hasn't" : "haven't"} been invoiced yet, so ${notInvoiced === 1 ? "it isn't" : "they aren't"} counted below. <a href="#jobs" data-settab="done">See them</a></div>` : ""}
-    <div class="agebar" aria-hidden="true">${total ? sums.map(b => `<span style="width:${(b.amt / total * 100).toFixed(2)}%;background:${b.color}"></span>`).join("") : ""}</div>
-    <div class="aging">${sums.map(b => `<button class="bucket ${b.key}" type="button" data-bucket="${b.key}" aria-pressed="${arBucket === b.key}"><div class="k">${b.label}</div><div class="n">${money(b.amt)}</div><div class="c">${plural(b.n, "job")}</div></button>`).join("")}</div>
-    ${arBucket !== "all" ? `<div><button class="btn sm" type="button" data-bucket="all">Show all ${open.length}</button></div>` : ""}
+    <div class="pagehead"><div><div class="eyebrow">Money owed to the shop</div><h1>${money(total)}</h1><p class="lede">${open.length ? `On ${plural(open.length, "bill")}. Oldest first.` : "Every bill is paid."}</p></div><button class="btn primary" type="button" data-act="pay-pick">${icon("money")}Got paid</button></div>
+    ${total ? `<div class="agebar" role="img" aria-label="Money owed by age">${sums.map(b => b.amt ? `<span style="width:${(b.amt / total * 100).toFixed(2)}%;background:${b.color}"></span>` : "").join("")}</div>` : ""}
+    <div class="aging" role="group" aria-label="Filter by how old the bill is">${sums.map(b => `<button class="bucket ${b.key} ${b.n ? "" : "empty0"}" type="button" data-bucket="${arBucket === b.key ? "all" : b.key}" aria-pressed="${arBucket === b.key}"><div class="k"><span class="sw" style="background:${b.color}"></span>${b.label}</div><div class="n">${money(b.amt)}</div><div class="c">${plural(b.n, "bill")}</div></button>`).join("")}</div>
+    <section aria-labelledby="owedH"><h2 id="owedH">${arBucket === "all" ? "Who owes" : `${esc(BUCKETS.find(b => b.key === arBucket).label)} · ${shown.length}`}${arBucket !== "all" ? ` <button class="linkbtn" type="button" data-bucket="all" style="min-height:0;margin-left:8px;letter-spacing:0;text-transform:none">Show all ${open.length}</button>` : ""}</h2>
     <div class="list">${shown.length ? shown.map(({ j, age, bal }) => { const c = cust(j.customer_id); const lien = openLien(j.id);
-      return `<div class="row" data-href="job/${j.id}" role="link" tabindex="0"><div><div class="t">${esc(c?.name || "No customer")} · ${esc(vehicleText(j))}</div>
-        <div class="s">${money(bal)} owed of ${money(j.amount)} · ${age} days${j.last_reminded_on ? ` · reminded ${esc(K.fmt(K.D(j.last_reminded_on)))}` : ""}${c?.phone ? " · " + esc(c.phone) : ""}</div></div>
+      return `<div class="row mrow" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(c?.name || "No customer")}</a>
+        <div class="s">${esc(vehicleText(j))} · ${plural(age, "day")}${+j.amount_paid ? ` · paid ${money(j.amount_paid)} of ${money(j.amount)}` : ""}${j.last_reminded_on ? ` · reminded ${esc(K.fmt(K.D(j.last_reminded_on)))}` : ""}</div></div>
+        <div class="amt num">${money(bal)}</div>
         <div class="r"><div class="acts">
           <button class="btn sm" type="button" data-act="remind" data-id="${j.id}">Reminder</button>
-          <button class="btn sm" type="button" data-act="pay" data-id="${j.id}">Payment</button>
-          ${lien ? `<a class="btn sm" href="#lien/${lien.id}">Lien case</a>` : age >= 30 ? `<button class="btn sm primary" type="button" data-act="start-lien" data-id="${j.id}">Start lien</button>` : ""}
-        </div></div></div>`; }).join("") : `<div class="empty">${open.length ? "Nothing in this group." : "Nobody owes the shop money. Invoiced jobs with a balance show up here."}</div>`}</div>`;
+          <button class="btn sm" type="button" data-act="pay" data-id="${j.id}">Got paid</button>
+          ${lien ? `<a class="btn sm" href="#lien/${lien.id}">Lien case</a>` : ""}
+        </div></div></div>`; }).join("") : `<div class="empty">${open.length ? "Nothing in this group." : "Nobody owes the shop money. When you tap Bill given on a job, it shows up here until it's paid."}</div>`}</div></section>
+    ${unb.length ? `<section aria-labelledby="unbH"><h2 id="unbH">Not billed yet · ${unb.length}${unbTotal ? ` · ${money(unbTotal)}` : ""}</h2><div class="hint" style="margin:-6px 0 12px">Work is done but they don't have the bill yet, so it isn't counted above.</div>
+      <div class="list">${unb.map(j => `<div class="row" data-href="job/${j.id}"><div><a class="t" href="#job/${j.id}">${esc(cust(j.customer_id)?.name || "No customer")}</a><div class="s">${esc(vehicleText(j))}${+j.amount ? " · " + money(j.amount) : " · no price yet"}${j.completed_on ? " · done " + esc(K.fmt(K.D(j.completed_on))) : ""}</div></div>
+        <div class="r"><div class="acts"><button class="btn sm outline" type="button" data-act="stage-invoice" data-id="${j.id}">Bill given</button></div></div></div>`).join("")}</div></section>` : ""}`;
 }
 
 // ================= CUSTOMERS =================
+let custFind = "";
 function renderCustomers() {
+  const card = c => {
+    const js = S.jobs.filter(j => j.customer_id === c.id); const o = js.filter(owes).reduce((a, j) => a + balance(j), 0);
+    const hay = [c.name, c.email, (c.phone || "").replace(/\D/g, ""), ...js.map(vehicleText)].join(" ").toLowerCase();
+    return `<a class="ccard" href="#customer/${c.id}" data-hay="${esc(hay)}"><div class="t">${esc(c.name)}</div><div class="s">${esc([c.phone, c.email].filter(Boolean).join(" · ") || "No phone or email")}</div>
+      <div class="jmeta"><span>${plural(js.length, "job")}</span>${o ? `<span class="chip soon">${money(o)} owed</span>` : ""}</div></a>`;
+  };
   $("main").innerHTML = `
-    <div class="pagehead"><h1>Customers</h1><button class="btn primary" data-act="new-customer" type="button">+ New customer</button></div>
-    <div class="list">${S.customers.length ? S.customers.map(c => {
-      const js = S.jobs.filter(j => j.customer_id === c.id); const o = js.filter(owes).reduce((a, j) => a + balance(j), 0);
-      return `<a class="row" href="#customer/${c.id}"><div><div class="t">${esc(c.name)}</div><div class="s">${esc([c.phone, c.email].filter(Boolean).join(" · ") || "No phone or email")}</div></div>
-        <div class="r"><span class="small">${plural(js.length, "job")}</span>${o ? `<span class="chip soon">${money(o)} owed</span>` : ""}</div></a>`;
-    }).join("") : `<div class="empty">No customers yet. They're added automatically when you create a job.</div>`}</div>`;
+    <div class="pagehead"><div><h1>Customers</h1><p class="lede">${plural(S.customers.length, "customer")}</p></div><button class="btn primary" data-act="new-customer" type="button">+ Add a customer</button></div>
+    ${S.customers.length ? `<div class="field" style="max-width:520px"><label for="custFind">Find a customer</label><input id="custFind" type="search" placeholder="Name, phone, email or car" autocomplete="off" value="${esc(custFind)}"></div>
+    <div class="cgrid" id="cgrid">${S.customers.map(card).join("")}</div><div class="empty" id="custNone" hidden></div>`
+    : `<div class="allclear">No customers yet. They're added for you when you add a job.</div>`}`;
+  const f = $("custFind"); if (!f) return;
+  const filter = () => { custFind = f.value; const q = f.value.trim().toLowerCase(); const d = q.replace(/\D/g, ""); let n = 0;
+    $("cgrid").querySelectorAll(".ccard").forEach(el => { const show = !q || el.dataset.hay.includes(q) || (d.length >= 3 && el.dataset.hay.includes(d)); el.hidden = !show; n += show; });
+    $("custNone").hidden = n > 0; $("custNone").textContent = `Nobody matches “${f.value}”.`; };
+  f.addEventListener("input", filter); if (custFind) filter();
 }
 function renderCustomer(id) {
   const c = cust(id);
-  if (!c) { $("main").innerHTML = `<div class="empty">That customer isn't here anymore. <a href="#customers">Back to customers</a></div>`; return; }
+  if (!c) { $("main").innerHTML = `${backLink("customers", "All customers")}<div class="empty">That customer isn't here anymore.</div>`; return; }
   const js = S.jobs.filter(j => j.customer_id === c.id); const o = js.filter(owes).reduce((a, j) => a + balance(j), 0);
+  const tel = (c.phone || "").replace(/[^\d+]/g, "");
   $("main").innerHTML = `
-    <div><a href="#customers" class="small">← All customers</a></div>
+    ${backLink("customers", "All customers")}
     <div class="head"><div><div class="eyebrow">Customer</div><h1>${esc(c.name)}</h1></div><div class="amount"><div class="l">Owes</div><div class="n">${money(o)}</div></div></div>
-    <div class="quick"><button class="btn primary" type="button" data-act="new-job-for" data-id="${c.id}">+ New job for ${esc(c.name.split(" ")[0])}</button>
-      ${c.phone ? `<a class="btn" href="tel:${esc(c.phone.replace(/[^\d+]/g, ""))}">Call ${esc(c.phone)}</a>` : ""}</div>
+    <div class="quick"><button class="btn primary" type="button" data-act="new-job-for" data-id="${c.id}">+ Add a job for ${esc(c.name.split(" ")[0])}</button>
+      ${tel ? `<a class="btn" href="tel:${esc(tel)}">${icon("phone")}Call</a><a class="btn" href="sms:${esc(tel)}">Text</a>` : ""}${c.email ? `<a class="btn" href="mailto:${esc(c.email)}">Email</a>` : ""}</div>
     <div class="twocol"><div class="box"><h3>Contact <button class="linkbtn" type="button" data-act="edit-customer" data-id="${c.id}">Edit</button></h3>
-      <dl class="kv"><dt>Phone</dt><dd>${esc(c.phone || "—")}</dd><dt>Email</dt><dd>${esc(c.email || "—")}</dd><dt>Address</dt><dd>${esc(c.address || "—")}${!c.address ? ` <span class="fwarn">Needed for lien letters</span>` : ""}</dd>${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}</dl>
-      <div><button class="linkbtn danger" type="button" data-act="del-customer" data-id="${c.id}">Delete customer</button></div></div>
-      <div class="box"><h3>Jobs (${js.length})</h3>${js.length ? jobRows(js, "") : `<div class="hint">No jobs yet.</div>`}</div></div>`;
+      <dl class="kv"><dt>Phone</dt><dd>${esc(c.phone || "—")}</dd><dt>Email</dt><dd>${esc(c.email || "—")}</dd><dt>Address</dt><dd>${esc(c.address || "—")}${!c.address ? `<div class="fwarn">Needed for lien letters</div>` : ""}</dd>${c.notes ? `<dt>Notes</dt><dd>${esc(c.notes)}</dd>` : ""}</dl></div>
+      <section class="box"><h3>Jobs · ${js.length}</h3>${js.length ? jobRows(js, "", true) : `<div class="hint">No jobs yet.</div>`}</section></div>
+    <details class="dangerzone"><summary>${icon("trash")}Delete this customer</summary><div style="display:grid;gap:10px;padding:4px 0 8px"><div class="hint">${js.length ? `${esc(c.name)} has ${plural(js.length, "job")}. Delete those first, so nothing gets lost.` : "This can't be undone."}</div><div><button class="btn danger" type="button" data-act="del-customer" data-id="${c.id}" ${js.length ? "disabled" : ""}>Delete customer</button></div></div></details>`;
+  fillPhotos($("main"));
 }
 function customerModal(c) {
   const isNew = !c; c = c || {};
@@ -1135,7 +1344,7 @@ function customerModal(c) {
 }
 async function deleteCustomer(c) {
   const n = S.jobs.filter(j => j.customer_id === c.id).length;
-  if (n) { await confirmBox({ title: "Can't delete yet", body: `${esc(c.name)} has ${plural(n, "job")}. Delete or reassign those jobs first, so nothing gets lost.`, ok: "OK", cancel: "Close" }); return; }
+  if (n) { await confirmBox({ title: "Can't delete yet", body: `${esc(c.name)} has ${plural(n, "job")}. Delete or reassign those jobs first, so nothing gets lost.`, ok: "Got it", cancel: "" }); return; }
   if (!(await confirmBox({ title: `Delete ${c.name}?`, body: "This can't be undone.", ok: "Delete", danger: true }))) return;
   const { error } = await sb.from("shop_customers").delete().eq("id", c.id); if (error) return toast(friendly(error));
   await reload(); go("customers"); toast("Customer deleted.");
@@ -1178,7 +1387,7 @@ function missingFor(c) {
 }
 async function startLien(j) {
   if (j.status === "paid" || !(balance(j) > 0)) return toast("This job is paid. There's nothing to collect.");
-  if (!["done", "invoiced"].includes(j.status)) { await confirmBox({ title: "Finish and invoice first", body: "A lien is for work that's done and billed but unpaid. Mark the work done and invoice it first.", ok: "OK", cancel: "Close" }); return; }
+  if (!["done", "invoiced"].includes(j.status)) { await confirmBox({ title: "Give them the bill first", body: "A lien is for work that's done and billed but unpaid. Tap Work is done, then Bill given, first.", ok: "Got it", cancel: "" }); return; }
   if (openLien(j.id)) return go("lien/" + openLien(j.id).id);
   const old = S.liens.find(l => l.job_id === j.id && l.status !== "open");
   if (old && await confirmBox({ title: "Reopen the earlier lien case?", body: "This job already had a lien case. Reopening keeps every step and date you entered.", ok: "Reopen it", cancel: "Start a new one" })) {
@@ -1214,21 +1423,22 @@ function renderLiens() {
     return `<a class="row" href="#lien/${l.id}"><div><div class="t">${esc(lienLabel(l))}</div><div class="s">${esc(K.TRACKS[l.track].label)} · ${money(c.amount)}${n ? " · Next: " + esc(n.title) : ""}</div></div>
       <div class="r">${l.status !== "open" ? `<span class="chip done">Closed</span>` : st ? `<span class="date">${esc(K.fmt(n.date))}</span><span class="chip ${st.cls}">${esc(st.txt)}</span>` : n ? `<span class="chip up">Next step ready</span>` : `<span class="chip done">All steps done</span>`}</div></a>`; };
   $("main").innerHTML = `
-    <div class="pagehead"><div><h1>Lien cases</h1><div class="small">Start one from any job that's 30+ days unpaid.</div></div></div>
+    <div class="pagehead"><div><h1>Liens</h1><p class="lede">Kansas lien paperwork, one step at a time. Start one from any job that's 30+ days unpaid.</p></div></div>
     <section><h2>Open (${open.length})</h2><div class="list">${open.length ? open.map(row).join("") : `<div class="empty">No open lien cases. That's good news.</div>`}</div></section>
-    ${closed.length ? `<section><h2>Closed (${closed.length})</h2><div class="list">${closed.map(row).join("")}</div></section>` : ""}`;
+    ${closed.length ? `<details class="panel"><summary>Closed · ${closed.length}</summary><div class="inner"><div class="list">${closed.map(row).join("")}</div></div></details>` : ""}
+    ${LEGAL}`;
 }
 let currentLien = null, currentDoc = null, saveT = null, saveState = "saved", lastLienStep = "";
 function renderLien(id) {
   const l = S.liens.find(x => x.id === id);
-  if (!l) { $("main").innerHTML = `<div class="empty">That lien case isn't here anymore. <a href="#liens">Back to lien cases</a></div>`; return; }
+  if (!l) { $("main").innerHTML = `${backLink("liens", "Lien cases")}<div class="empty">That lien case isn't here anymore.</div>`; return; }
   currentLien = l; const c = lienData(l); const veh = c.track === "repair" || c.track === "tow";
   const job = l.job_id && jobById(l.job_id); const closed = l.status !== "open";
   const n = guidedNext(c); const miss = missingFor(c); const ui = n ? (STEP_UI[n.key] || { label: "Mark this step done" }) : null;
   const all = guidedSteps(c); const doneCount = all.filter(s => c.done[s.key]).length;
   const st = n && n.date ? K.status(c, n) : null;
   $("main").innerHTML = `
-    <div><a href="#liens" class="small">← Lien cases</a></div>
+    ${backLink("liens", "Lien cases")}
     <div class="head"><div><div class="eyebrow">${esc(K.TRACKS[c.track].label)} lien · ${esc(K.TRACKS[c.track].law)}${closed ? " · CLOSED" : ""}</div><h1>${esc(lienLabel(l))}</h1>
       <div class="small">${job ? `From job: <a href="#job/${job.id}">${esc(job.title || vehicleText(job))}</a>` : "Not linked to a job"}</div></div>
       <div class="amount"><div class="l">Amount owed</div><div class="n">${money(c.amount)}</div></div></div>
@@ -1238,20 +1448,27 @@ function renderLien(id) {
         ${n.date ? `<div><span class="date">Due ${esc(K.fmt(n.date))}</span> <span class="chip ${st.cls}">${esc(st.txt)}</span></div>` : ""}
         ${ui.doc && miss.length ? `<div class="notice bad"><b>Fill these in before sending letters:</b><div class="grid" style="margin-top:10px">${miss.map(m => lfield(c, m.path, m.label)).join("")}</div></div>` : ""}
         <div class="row2">${ui.doc ? `<button class="btn" type="button" data-act="print-doc" data-doc="${ui.doc}">Print the ${esc(K.docsFor(c).find(d => d.key === ui.doc)?.label.toLowerCase() || "letter")}</button>` : ""}
-          <button class="btn primary big" type="button" data-act="step-done" data-step="${n.key}">✓ ${esc(ui.label)}</button>
+          <button class="btn primary big" type="button" data-act="step-done" data-step="${n.key}">${esc(ui.label)}</button>
           ${ui.skip ? `<button class="btn ghost" type="button" data-act="step-skip" data-step="${n.key}">${esc(ui.skip)}</button>` : ""}</div></div>`
     : `<div class="nextcard good"><div class="headline">Every step is done</div><div class="hint">When the money's in, record the payment on the job and this case closes on its own. If you're giving up on it, close it below.</div></div>`}
     <div class="cols">
-      <section><h2>All steps</h2><ul class="steps checkl">${K.steps(c).map(s => { const stt = K.status(c, s); const isNext = n && s.key === n.key; const skipped = s.key === "extension" && c.done.extensionSkip;
-        return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : isNext ? "→" : ""}</span>
-          <div><div class="t">${esc(s.title)}</div><div class="d">${esc(s.detail)}</div>${s.cite ? `<span class="cite">${esc(s.cite)}</span>` : ""}
+      <section>${(() => {
+        const allS = K.steps(c); const isSk = s => s.key === "extension" && c.done.extensionSkip;
+        const done = allS.filter(s => c.done[s.key] || isSk(s)); const up = allS.filter(s => !c.done[s.key] && !isSk(s) && !(n && s.key === n.key));
+        const li = s => { const stt = K.status(c, s); const skipped = isSk(s);
+          return `<li class="step ${c.done[s.key] ? "isdone" : ""}"><span aria-hidden="true">${c.done[s.key] ? "✓" : skipped ? "–" : "○"}</span>
+          <div><div class="t">${esc(s.title)}</div><div class="d">${esc(s.detail)}</div>${s.cite ? `<details class="why"><summary>Why?</summary><span class="cite">${esc(s.cite)}</span></details>` : ""}
           ${(c.done[s.key] || skipped) && !closed ? `<div class="undo"><button class="linkbtn" type="button" data-act="step-undo" data-step="${s.key}">Undo</button></div>` : ""}</div>
-          <div class="when">${s.kind === "info" ? "" : `<span class="date">${s.kind === "after" ? "not before " : ""}${esc(K.fmt(s.date))}</span>`}<span class="chip ${skipped ? "info" : stt.cls}">${esc(skipped ? "Skipped" : stt.txt)}</span></div></li>`; }).join("")}</ul></section>
-      <section><h2>Letters and forms</h2><div class="docs" id="docs"></div><div class="sheet" id="sheet" tabindex="0" aria-label="Document preview"></div>
-        <div class="sheetbar"><button class="btn primary" type="button" data-act="print-doc">Print</button><button class="btn" type="button" data-act="copy-doc">Copy text</button><span class="small" id="missing"></span></div></section>
+          <div class="when">${s.kind === "info" ? "" : `<span class="date">${s.kind === "after" ? "not before " : ""}${esc(K.fmt(s.date))}</span>`}<span class="chip ${skipped ? "info" : stt.cls}">${esc(skipped ? "Skipped" : stt.txt)}</span></div></li>`; };
+        return `<details class="panel" ${closed ? "" : "open"}><summary>Coming up · ${up.length}</summary><div class="inner">${up.length ? `<ul class="steps">${up.map(li).join("")}</ul>` : `<div class="hint">Nothing after this step.</div>`}</div></details>
+          <details class="panel" style="margin-top:12px"><summary>Done · ${done.length}</summary><div class="inner">${done.length ? `<ul class="steps">${done.map(li).join("")}</ul>` : `<div class="hint">No steps done yet.</div>`}</div></details>`; })()}</section>
+      <section class="stick"><h2>Letters and forms</h2><div class="docs" id="docs"></div><div class="sheet" id="sheet" tabindex="0" aria-label="Document preview"></div>
+        <div class="sheetbar"><button class="btn outline" type="button" data-act="print-doc">Print</button><button class="btn" type="button" data-act="copy-doc">Copy text</button><span class="small" id="missing"></span></div></section>
     </div>
-    <details class="panel"><summary>Case details (names, vehicle, dates) <span class="savestate" id="saveState"></span></summary><div class="grid" id="facts">${factsForm(c, veh)}</div></details>
-    <div class="quick">${!closed ? `<button class="btn" type="button" data-act="close-lien">Close this case</button>` : ""}<button class="linkbtn danger" type="button" data-act="del-lien">Delete case</button></div>`;
+    <details class="panel" id="factsPanel"><summary>Case details (names, vehicle, dates) <span class="savestate" id="saveState"></span></summary><div class="grid" id="facts">${factsForm(c, veh)}</div></details>
+    <div class="secondary">${!closed ? `<button class="btn" type="button" data-act="close-lien">Close this case</button>` : ""}</div>
+    <details class="dangerzone"><summary>${icon("trash")}Delete this lien case</summary><div style="display:grid;gap:10px;padding:4px 0 8px"><div class="hint">Its steps and dates are lost for good. The job and payments stay.</div><div><button class="btn danger" type="button" data-act="del-lien">Delete case</button></div></div></details>
+    ${LEGAL}`;
   const stepKey = l.id + (n ? n.key : "");
   if (stepKey !== lastLienStep) { lastLienStep = stepKey; if (ui && ui.doc) currentDoc = ui.doc; else if (closed) currentDoc = "release"; }
   renderDocs(); showSave();
@@ -1268,7 +1485,7 @@ function factsForm(c, veh) {
     <div class="grouplabel">${veh ? "Owner" : "Property owner"}</div>${f("owner.name", "Owner name")}${f("owner.address", "Owner mailing address", { wide: true })}
     ${c.track === "sub" ? f("contractor.name", "General contractor") + f("contractor.address", "Contractor address") : ""}
     <div class="grouplabel">${veh ? "Vehicle" : "Property"} and money</div>`;
-  if (veh) h += f("vehicle.year", "Year") + f("vehicle.make", "Make") + f("vehicle.model", "Model") + f("vehicle.vin", "VIN or serial") + f("vehicle.plate", "Plate");
+  if (veh) h += f("vehicle.year", "Year") + f("vehicle.make", "Make") + f("vehicle.model", "Model") + f("vehicle.vin", "VIN or serial") + f("vehicle.plate", "Plate") + f("lienholders", "Lienholders on the title (names and addresses, or None)", { type: "textarea" });
   else h += f("property.address", "Property address", { wide: true }) + f("property.county", "County") + f("property.legal", "Legal description") + f("residential", "Someone's home (residential)", { type: "check" }) + (c.residential ? f("newResidential", "Brand-new home construction", { type: "check" }) : "");
   h += f("amount", "Amount owed ($)") + f("description", "What the work was", { type: "textarea" }) + `<div class="grouplabel">Dates</div>`;
   if (c.track === "repair") h += f("dates.lastWork", "Work finished", { type: "date" }) + f("dates.released", "Gave the car back (leave blank if you still have it)", { type: "date" }) + f("dates.noticeMailed", "Notice of sale mailed", { type: "date" }) + lfield(c, "dates.saleDate", "Sale date", { type: "text", suffix: "-f" }).replace('type="text"', 'type="date"') + f("saleTime", "Sale time") + f("dates.filed", "Lien filed with register of deeds", { type: "date" });
@@ -1309,16 +1526,21 @@ function earliestSale(c, mailed) {
 function stepDone(key) {
   const l = currentLien; const c = lienData(l); const ui = STEP_UI[key] || {};
   const finish = async (patch, btn) => busy(btn, async () => {
-    if (patch) Object.entries(patch).forEach(([p, v]) => setp(c, p, v));
-    c.done[key] = true; const data = { ...c }; delete data.track;
+    const prev = JSON.parse(JSON.stringify(l.data)); delete prev.track;
+    const data = JSON.parse(JSON.stringify(l.data)); delete data.track; data.done = data.done || {};
+    if (patch) Object.entries(patch).forEach(([p, v]) => setp(data, p, v));
+    data.done[key] = true;
     const { error } = await sb.from("shop_liens").update({ data }).eq("id", l.id);
-    if (error) { c.done[key] = false; return toast(friendly(error)); }
+    if (error) return toast(friendly(error));
     await closeModal(true); await reload(); route(true);
-    toast("Step done. The next one is at the top.", { label: "Undo", run: () => stepUndo(key, true) });
+    toast("Step done. The next one is at the top.", { label: "Undo", run: async () => {
+      const { error: e2 } = await sb.from("shop_liens").update({ data: prev }).eq("id", l.id);
+      if (e2) return toast(friendly(e2)); await reload(); route(true); toast("Step undone.");
+    } }, { ok: true });
   });
   if (ui.doc && missingFor(c).length) { toast("Fill in the missing details first (they're highlighted in red)."); return; }
   if (!ui.ask) {
-    confirmBox({ title: ui.label + "?", body: "Only mark it done once it's really done. You can undo it later.", ok: "Yes, it's done" }).then(ok => ok && finish(null, null));
+    confirmBox({ title: "Mark this step done?", body: `<b>${esc(ui.label)}.</b> Only mark it once it's really done. You can undo it later.`, ok: "Yes, it's done" }).then(ok => ok && finish(null, null));
     return;
   }
   if (ui.ask === "filed") {
@@ -1399,75 +1621,92 @@ function printDoc(key) {
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(label)}</title><style>body{font:15px/1.6 Georgia,"Times New Roman",serif;color:#111;max-width:7in;margin:0.8in auto;white-space:pre-wrap}@page{margin:0.8in}@media print{body{margin:0}}</style></head><body>${esc(text.replace(/⟦(.*?)⟧/g, "________________"))}</body></html>`);
     w.document.close(); w.focus(); setTimeout(() => w.print(), 250);
   };
-  if (blanks) confirmBox({ title: `${plural(blanks, "blank")} still empty`, body: "The printout will have lines to fill in by hand. Better to fill them in under Case details first.", ok: "Print anyway", cancel: "Go fill them in" }).then(ok => { if (ok) go2(); else { const d = document.querySelector("details.panel"); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); } } });
+  if (blanks) confirmBox({ title: `${plural(blanks, "blank")} still empty`, body: "The printout will have lines to fill in by hand. Better to fill them in under Case details first.", ok: "Print anyway", cancel: "Go fill them in" }).then(ok => { if (ok) go2(); else { const d = $("factsPanel"); if (d) { d.open = true; d.scrollIntoView({ behavior: "smooth" }); } } });
   else go2();
 }
 
 // ================= SETTINGS =================
 function renderSettings() {
-  const a = S.account;
+  const a = S.account; const dis = S.isOwner ? "" : "disabled";
+  const big = document.documentElement.classList.contains("big");
   $("main").innerHTML = `
-    <div class="pagehead"><h1>Settings</h1></div>
+    <div class="pagehead"><div><h1>Settings</h1><p class="lede">Signed in as ${esc(S.user.email)}</p></div></div>
     <div class="twocol">
-      <form class="box" id="shopForm" novalidate><h3>Shop info</h3><div class="hint">Printed on every letter and lien form.</div>
-        <div class="field"><label for="stName">Business name</label><input id="stName" value="${esc(a.name)}" ${S.isOwner ? "" : "disabled"}></div>
-        <div class="field"><label for="stAddr">Address</label><input id="stAddr" value="${esc(a.address)}" ${S.isOwner ? "" : "disabled"}></div>
-        <div class="field"><label for="stPhone">Phone</label><input id="stPhone" type="tel" value="${esc(a.phone)}" ${S.isOwner ? "" : "disabled"}></div>
-        ${S.isOwner ? `<div><button class="btn primary" type="submit">Save shop info</button></div>` : `<div class="hint">Only the shop owner can change this.</div>`}</form>
+      <form class="box" id="shopForm" novalidate><h3>Shop info</h3><div class="hint">Printed on every bill, letter and lien form.</div>
+        <div class="field"><label for="stName">Business name</label><input id="stName" value="${esc(a.name)}" ${dis}></div>
+        <div class="field"><label for="stAddr">Address</label><input id="stAddr" value="${esc(a.address)}" ${dis}></div>
+        <div class="field"><label for="stPhone">Phone</label><input id="stPhone" type="tel" value="${esc(a.phone)}" ${dis}></div>
+        ${S.isOwner ? `<div><button class="btn primary" type="submit">Save shop info</button></div>` : `<div class="hint">Only the owner or a co-owner can change this.</div>`}</form>
+      <div class="box"><h3>Easier to read</h3><div class="hint">Make every word and button bigger on this device.</div>
+        <div class="seg" role="group" aria-label="Text size"><button type="button" data-act="text-size" data-id="normal" aria-pressed="${!big}">Normal</button><button type="button" data-act="text-size" data-id="big" aria-pressed="${big}" style="font-size:1.15em">Bigger</button></div></div>
       <div class="box"><h3>Team</h3>
-        <div class="hint">People who can sign in and use the shop portal. Co-owners can also change shop info and the team.</div>
-        <div class="pickl" style="max-height:none"><div class="pay" style="border-top:0;padding:10px 12px"><div><b>Owner</b>${S.isDale ? " · you" : ""}</div></div>
-          ${S.members.filter(m => m.active).map(m => `<div class="pay" style="padding:10px 12px"><div>${esc(m.email || "Team member")}${m.co_owner ? " <span class=\"chip done\">Co-owner</span>" : ""}${m.user_id === S.user.id ? " · you" : ""}</div>${S.isOwner && m.user_id !== S.user.id ? `<div style="display:flex;gap:12px"><button class="linkbtn" type="button" data-act="toggle-coowner" data-id="${m.user_id}">${m.co_owner ? "Remove co-owner" : "Make co-owner"}</button><button class="linkbtn danger" type="button" data-act="rm-member" data-id="${m.user_id}">Remove</button></div>` : ""}</div>`).join("")}
-          ${S.invites.filter(i => i.active).map(i => `<div class="pay" style="padding:10px 12px"><div>${esc(i.email)} <span class="small">· invited, hasn't signed in yet</span></div><button class="linkbtn danger" type="button" data-act="rm-invite" data-id="${esc(i.email)}">Cancel</button></div>`).join("")}</div>
-        ${S.isOwner ? `<form id="invForm" novalidate style="display:grid;gap:8px"><div class="field"><label for="invEmail">Add someone by email</label><input id="invEmail" type="email" placeholder="name@gmail.com"></div><div><button class="btn" type="submit">Add to team</button></div>
-          <div class="hint">Then tell them to go to daleskc.com/portal and tap “Create your login” with that same email.</div></form>` : ""}</div>
-      <div class="box"><h3>Backup</h3><div class="hint">Download everything as spreadsheets to keep a copy. The shop's data is also backed up automatically every day.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="backup" data-id="jobs">Jobs</button><button class="btn" type="button" data-act="backup" data-id="customers">Customers</button><button class="btn" type="button" data-act="backup" data-id="payments">Payments</button></div></div>
-      <div class="box"><h3>Easier to read</h3><div class="hint">Make all the words and buttons bigger on this device.</div>
-        <div><button class="btn" type="button" data-act="big-text">${document.documentElement.classList.contains("big") ? "Normal text" : "Bigger text"}</button></div></div>
+        <div class="hint">People who can sign in and use the portal. Co-owners can also change shop info and the team.</div>
+        <div class="members">
+          <div class="member"><div><b>Shop owner</b>${S.isDale ? " · you" : ""}</div></div>
+          ${S.members.filter(m => m.active).map(m => `<div class="member"><div class="memail">${esc(m.email || "Team member")}${m.user_id === S.user.id ? " · you" : ""} ${m.co_owner ? `<span class="chip done">Co-owner</span>` : ""}</div>
+            ${S.isOwner && m.user_id !== S.user.id ? `<div class="secondary"><button class="linkbtn" type="button" data-act="toggle-coowner" data-id="${m.user_id}">${m.co_owner ? "Remove co-owner" : "Make co-owner"}</button><button class="linkbtn danger" type="button" data-act="rm-member" data-id="${m.user_id}">Remove</button></div>` : ""}</div>`).join("")}
+          ${S.invites.filter(i => i.active).map(i => `<div class="member"><div class="memail">${esc(i.email)}</div><div class="small">Invited. Hasn't signed in yet.</div>${S.isOwner ? `<div class="secondary"><button class="linkbtn danger" type="button" data-act="rm-invite" data-id="${esc(i.email)}">Cancel invite</button></div>` : ""}</div>`).join("")}</div>
+        ${S.isOwner ? `<form id="invForm" novalidate style="display:grid;gap:10px"><div class="field"><label for="invEmail">Add someone by email</label><input id="invEmail" type="email" inputmode="email" placeholder="name@gmail.com"></div><div><button class="btn" type="submit">Add to team</button></div>
+          <div class="hint">Then tell them to open daleskc.com/portal and tap “Create your login” with that same email.</div></form>` : ""}</div>
       <div class="box"><h3>Put it on your phone</h3>
-        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><img src="icons/qr-install.png" alt="QR code to install the app" style="width:132px;height:132px;border-radius:10px;background:#fff;padding:6px">
-          <div class="hint" style="flex:1;min-width:180px">Scan this with any phone's camera to install the app. <a href="qr.html" target="_blank" rel="noopener">Print it as a sign</a> for the counter.</div></div>
-        <div class="hint"><b>iPhone:</b> open daleskc.com/portal in Safari, tap the Share button (square with an arrow), then <b>Add to Home Screen</b>.<br><b>Android:</b> open it in Chrome, tap the ⋮ menu, then <b>Add to Home screen</b> or <b>Install app</b>.</div>
-        <div><button class="btn" type="button" data-act="install" id="installBtn" ${deferredInstall ? "" : "hidden"}>Install the shop app</button></div></div>
-      <form class="box" id="pwForm" novalidate><h3>Your login</h3><div class="hint">Signed in as <b>${esc(S.user.email)}</b></div>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap"><img src="icons/qr-install.png" alt="QR code that installs the app" style="width:132px;height:132px;border-radius:10px;background:#fff;padding:6px">
+          <div class="hint" style="flex:1;min-width:180px">Point any phone's camera at this code to install the app. <a href="qr.html" target="_blank" rel="noopener">Print it as a sign</a> for the counter.</div></div>
+        <div><button class="btn" type="button" data-act="install" id="installBtn" ${deferredInstall ? "" : "hidden"}>Install on this computer</button></div></div>
+      ${S.isOwner ? `<form class="box" id="helpForm" novalidate><h3>Who to call for help</h3><div class="hint">Shows a Call button on the Help page.</div>
+        <div class="grid"><div class="field"><label for="hpName">Name</label><input id="hpName" value="${esc(a.help_name || "Dale Jr.")}"></div>
+          <div class="field"><label for="hpPhone">Phone</label><input id="hpPhone" type="tel" inputmode="tel" value="${esc(a.help_phone || "")}" placeholder="(913) 555-0100"></div></div>
+        <div><button class="btn" type="submit">Save</button></div></form>` : ""}
+      <div class="box"><h3>Backup</h3><div class="hint">Download a copy as spreadsheets. Everything is also backed up automatically every day.</div>
+        <div class="secondary"><button class="btn" type="button" data-act="backup" data-id="jobs">Jobs</button><button class="btn" type="button" data-act="backup" data-id="customers">Customers</button><button class="btn" type="button" data-act="backup" data-id="payments">Payments</button></div></div>
+      <form class="box" id="pwForm" novalidate><h3>Your login</h3>
+        <input type="email" autocomplete="username" value="${esc(S.user.email)}" hidden>
         <div class="field"><label for="pw1">New password</label><input id="pw1" type="password" autocomplete="new-password"></div>
         <div class="field"><label for="pw2">Type it again</label><input id="pw2" type="password" autocomplete="new-password"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="submit">Change password</button><button class="btn ghost" type="button" data-act="sign-out">Sign out</button></div></form>
-    </div>`;
+        <div class="secondary"><button class="btn" type="submit">Change password</button><button class="btn ghost" type="button" data-act="sign-out">${icon("out")}Sign out</button></div></form>
+    </div>
+    ${LEGAL}`;
   $("shopForm").addEventListener("submit", async e => {
-    e.preventDefault(); if (!S.isOwner) return;
-    if (!val("stName")) return fieldErr("stName", "Required."); if (!val("stAddr")) return fieldErr("stAddr", "Required.");
-    if (!phoneOk(val("stPhone"))) return fieldErr("stPhone", "Phone numbers have 10 digits.");
-    await busy(e.submitter, async () => { const { error } = await sb.from("shop_accounts").update({ name: val("stName"), address: val("stAddr"), phone: fmtPhone(val("stPhone")) }).eq("id", S.account.id); if (error) return toast(friendly(error)); await reload(); renderSettings(); toast("Shop info saved. New letters will use it."); });
+    e.preventDefault(); if (!S.isOwner) return; let ok = true;
+    if (!val("stName")) { fieldErr("stName", "Required."); ok = false; } else fieldErr("stName", "");
+    if (!val("stAddr")) { fieldErr("stAddr", "Required."); ok = false; } else fieldErr("stAddr", "");
+    if (!phoneOk(val("stPhone"))) { fieldErr("stPhone", "Phone numbers have 10 digits."); ok = false; } else fieldErr("stPhone", "");
+    if (!ok) return;
+    await busy(e.submitter, async () => { const { error } = await sb.from("shop_accounts").update({ name: val("stName"), address: val("stAddr"), phone: fmtPhone(val("stPhone")) }).eq("id", S.account.id); if (error) return toast(friendly(error)); await reload(); renderSettings(); toast("Shop info saved. New letters will use it.", null, { ok: true }); });
+  });
+  if ($("helpForm")) $("helpForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    if (!phoneOk(val("hpPhone"))) return fieldErr("hpPhone", "Phone numbers have 10 digits."); fieldErr("hpPhone", "");
+    await busy(e.submitter, async () => { const { error } = await sb.from("shop_accounts").update({ help_name: val("hpName") || "Dale Jr.", help_phone: fmtPhone(val("hpPhone")) }).eq("id", S.account.id); if (error) return toast(friendly(error)); await reload(); renderSettings(); toast("Saved. The Help page has a Call button now.", null, { ok: true }); });
   });
   if ($("invForm")) $("invForm").addEventListener("submit", async e => {
     e.preventDefault(); const em = val("invEmail").toLowerCase();
-    if (!em || !emailOk(em)) return fieldErr("invEmail", "Enter their email address.");
+    if (!em || !emailOk(em)) return fieldErr("invEmail", "Type their email address.");
     if (em === (S.user.email || "").toLowerCase()) return fieldErr("invEmail", "That's you.");
     if (S.members.some(m => m.active && m.email === em) || S.invites.some(i => i.active && i.email === em)) return fieldErr("invEmail", "They're already on the team.");
     await busy(e.submitter, async () => {
       const { error } = await sb.from("shop_invites").upsert({ account_id: S.account.id, email: em, active: true });
-      if (error) return toast(friendly(error)); await reload(); renderSettings(); toast(`${em} added. Tell them to create a login at daleskc.com/portal.`);
+      if (error) return toast(friendly(error)); await reload(); renderSettings(); toast(`${em} added. Tell them to create a login at daleskc.com/portal.`, null, { ok: true });
     });
   });
   $("pwForm").addEventListener("submit", async e => {
     e.preventDefault(); const a1 = $("pw1").value, a2 = $("pw2").value;
     if (a1.length < 8) return fieldErr("pw1", "At least 8 characters."); fieldErr("pw1", "");
     if (a1 !== a2) return fieldErr("pw2", "The two passwords don't match."); fieldErr("pw2", "");
-    await busy(e.submitter, async () => { const { error } = await sb.auth.updateUser({ password: a1 }); if (error) return toast(friendly(error)); $("pw1").value = $("pw2").value = ""; toast("Password changed."); });
+    await busy(e.submitter, async () => { const { error } = await sb.auth.updateUser({ password: a1 }); if (error) return toast(friendly(error)); $("pw1").value = $("pw2").value = ""; toast("Password changed.", null, { ok: true }); });
   });
+}
+function setBig(on) {
+  document.documentElement.classList.toggle("big", on);
+  try { localStorage.setItem("dab.big", on ? "1" : ""); } catch (e) { /* private mode */ }
 }
 
 // ================= global click handling =================
 document.addEventListener("click", async e => {
   if ($("appView").hidden) return;
-  const t = e.target.closest("[data-act],[data-tab],[data-bucket],[data-doc],[data-href],[data-ajpick],[data-ajrm],[data-ajchip],[data-ajstart],[data-viewphoto],[data-paypick],[data-remsend],[data-settab]");
+  const t = e.target.closest("[data-act],[data-bucket],[data-doc],[data-href],[data-ajpick],[data-ajrm],[data-ajchip],[data-ajstart],[data-viewphoto],[data-paypick],[data-remsend]");
   if (!t) return;
   const id = t.dataset.id;
-  if (t.dataset.settab) { jobTab = t.dataset.settab; return; }
-  if (t.dataset.href && !e.target.closest("button,a")) { go(t.dataset.href); return; }
-  if (t.dataset.tab) { jobTab = t.dataset.tab; renderJobs(); return; }
+  if (t.dataset.href && !e.target.closest("button,a,label,input")) { go(t.dataset.href); return; }
   if (t.dataset.bucket) { arBucket = t.dataset.bucket; renderMoney(); return; }
   if (t.dataset.doc && !t.dataset.act) { currentDoc = t.dataset.doc; renderDocs(); return; }
   if (t.dataset.paypick) { const j = jobById(t.dataset.paypick); await closeModal(true); if (j) payModal(j); return; }
@@ -1477,40 +1716,44 @@ document.addEventListener("click", async e => {
     if (t.dataset.ajpick) return ajPick(t.dataset.ajpick);
     if (t.dataset.ajrm) { AJ.photos.splice(+t.dataset.ajrm, 1); ajThumbs(); return; }
     if (t.dataset.ajchip) { const el = $("ajWork"); el.value = el.value ? el.value + ", " + t.dataset.ajchip.toLowerCase() : t.dataset.ajchip; modalDirty = true; return; }
-    if (t.dataset.ajstart) { AJ.start = t.dataset.ajstart; $("modal").querySelectorAll("[data-ajstart]").forEach(b => b.setAttribute("aria-pressed", b === t)); return; }
+    if (t.dataset.ajstart) { AJ.start = t.dataset.ajstart; fieldErr("ajHere", ""); $("modal").querySelectorAll("[data-ajstart]").forEach(b => b.setAttribute("aria-pressed", b === t)); return; }
   }
   if (t.dataset.viewphoto) { const p = S.photos.find(x => x.id === t.dataset.viewphoto); if (p) viewPhoto(p); return; }
   const act = t.dataset.act; if (!act) return;
   const j = id ? jobById(id) : null;
-  const OFFLINE_OK = new Set(["close", "new-job", "new-job-for", "find", "aj-unpick", "clear-find", "print-doc", "copy-doc", "retry-queue", "discard-queue", "invoice", "print-invoice", "backup", "install", "print-help", "big-text"]);
-  if (!navigator.onLine && !OFFLINE_OK.has(act)) { toast("You're offline. That needs internet. Adding jobs and photos still works."); return; }
-  if (j && j._pending && !OFFLINE_OK.has(act)) { toast("This job is still uploading. Try again in a minute."); return; }
+  const OFFLINE_OK = new Set(["close", "new-job", "new-job-for", "search", "more-menu", "tip-off", "text-size", "aj-unpick", "print-doc", "copy-doc", "retry-queue", "discard-queue", "invoice", "print-invoice", "backup", "install", "print-help", "big-text"]);
+  const QUEUE_OK = new Set(["stage-start", "stage-done", "stage-invoice", "pay", "pay-pick"]);
+  if (!navigator.onLine && !OFFLINE_OK.has(act) && !QUEUE_OK.has(act)) { toast("You're offline. That one needs internet. Adding jobs, photos, payments and moving jobs along still work."); return; }
+  if (j && j._pending && !OFFLINE_OK.has(act) && !QUEUE_OK.has(act)) { toast("This job is still uploading. Try again in a minute."); return; }
   switch (act) {
-    case "close": e.preventDefault(); if (t.tagName === "A") { await closeModal(true); location.hash = t.getAttribute("href").slice(1); } else closeModal(); return;
+    case "close": e.preventDefault(); if (t.tagName === "A") { await closeModal(true); go(t.getAttribute("href").slice(1)); } else closeModal(); return;
     case "new-job": return newJob();
     case "cust-link": return j && busy(t, () => customerLink(j));
     case "link-send": return j && linkSend(t.dataset.how, j);
     case "link-off": return j && linkOff(j);
     case "print-help": return printText("Shop portal help", "DALE'S AUTO BODY · SHOP PORTAL\nHow to use it\n\n" + HELP.map(([a, b], i) => `${i + 1}. ${a.toUpperCase()}\n   ${b}`).join("\n\n") + "\n\nWebsite: daleskc.com/portal");
-    case "big-text": { const on = !document.documentElement.classList.contains("big"); document.documentElement.classList.toggle("big", on); try { localStorage.setItem("dab.big", on ? "1" : ""); } catch (e2) {} t.textContent = on ? "Normal text" : "Bigger text"; return; }
+    case "big-text": { const on = !document.documentElement.classList.contains("big"); setBig(on); if (!$("overlay").hidden) await closeModal(true); route(true); toast(on ? "Bigger text is on. Change it anytime in Settings." : "Text is back to normal size.", null, { ok: true }); return; }
+    case "text-size": { setBig(id === "big"); route(true); return; }
+    case "tip-off": { tipOff = true; try { localStorage.setItem("dab.tipoff", "1"); } catch (e2) { /* private mode */ } route(true); return; }
+    case "search": return openSearch();
+    case "more-menu": return moreMenu();
     case "invoice": return j && invoiceModal(j);
-    case "print-invoice": return j && printText((j.status === "estimate" ? "Estimate" : "Invoice") + " - " + (cust(j.customer_id)?.name || ""), invoiceText(j));
-    case "email-invoice": { if (!j) return; const c = cust(j.customer_id); if (!c?.email) return; return busy(t, () => emailOrMailto(c.email, `${j.status === "estimate" ? "Estimate" : "Invoice"} from ${S.account.name}: ${vehicleText(j)}`, invoiceText(j))); }
+    case "print-invoice": return j && printHtml(docKind(j) + " - " + (cust(j.customer_id)?.name || ""), invoiceHtml(j), INV_CSS);
+    case "email-invoice": { if (!j) return; const c = cust(j.customer_id); if (!c?.email) return; return busy(t, () => emailOrMailto(c.email, `${docKind(j)} from ${S.account.name}: ${vehicleText(j)}`, invoiceText(j))); }
     case "backup": return backup(id);
     case "install": if (deferredInstall) { deferredInstall.prompt(); deferredInstall = null; t.hidden = true; } return;
     case "aj-unpick": return ajUnpick();
-    case "clear-find": jobFind = ""; return renderJobs();
     case "del-photo": { const p = S.photos.find(x => x.id === id); return p && deletePhoto(p); }
     case "retry-queue": { for (const it of await IDB.all()) if (it.error) { delete it.error; await IDB.put(it); } await mergePending(); route(true); return flushQueue(); }
     case "discard-queue": { const bad = (await IDB.all()).filter(i => i.error); if (!(await confirmBox({ title: `Throw away ${plural(bad.length, "item")}?`, body: "Jobs or photos that couldn't upload will be deleted from this device.", ok: "Throw away", danger: true }))) return; for (const it of bad) await IDB.del(it.qid); await mergePending(); return route(true); }
     case "new-job-for": return newJob(id);
-    case "find": $("search").focus(); return;
+    case "find": return openSearch();
     case "pay-pick": return payPick();
     case "pay": return j && payModal(j);
     case "void-pay": return voidPayment(id);
     case "remind": return j && remindModal(j);
     case "start-lien": return j && startLien(j);
-    case "stage-start": return j && busy(t, () => setStage(j, { status: "in_progress" }, "Work started.", { status: "estimate" }));
+    case "stage-start": return j && busy(t, () => setStage(j, { status: "in_progress" }, "Car is in the shop. Work started.", { status: "estimate" }));
     case "stage-done": return j && stageDone(j);
     case "stage-invoice": return j && stageInvoice(j);
     case "stage-back": return j && stageBack(j);
@@ -1544,6 +1787,14 @@ document.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === 
 document.addEventListener("change", e => {
   const t = e.target; if (!t.dataset || !t.dataset.addphoto || !t.files?.length) return;
   const j = jobById(t.dataset.addphoto); if (j) addPhotoToJob(j, t.files); t.value = "";
+});
+// drag photos onto the drop area (computers)
+["dragenter", "dragover"].forEach(ev => document.addEventListener(ev, e => { const z = e.target.closest?.("[data-drop]"); if (!z) return; e.preventDefault(); z.classList.add("over"); }));
+document.addEventListener("dragleave", e => { const z = e.target.closest?.("[data-drop]"); if (z && !z.contains(e.relatedTarget)) z.classList.remove("over"); });
+document.addEventListener("drop", e => {
+  const z = e.target.closest?.("[data-drop]"); if (!z) return; e.preventDefault(); z.classList.remove("over");
+  const files = [...(e.dataTransfer?.files || [])]; const j = jobById(z.dataset.drop);
+  if (j && files.length) addPhotoToJob(j, files);
 });
 // lien case-detail edits: save as you type, validate dates
 document.addEventListener("input", e => {
