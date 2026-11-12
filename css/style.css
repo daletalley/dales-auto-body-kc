@@ -484,3 +484,32 @@ section { padding: clamp(3rem, 6vw, 4.5rem) 0; }
     .container { width: min(75rem, 100% - 6rem); }
     .brand-name { font-size: 1.9rem; }
 }
+
+/* ---------- every screen size ---------- */
+/* the header only stays pinned on wide screens; on tablets and sideways phones it scrolls away */
+@media (max-width: 1024px), (max-height: 500px) { .top-nav { position: static; } }
+
+/* card grids never leave one card alone on a row */
+.service-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.trust-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1099px) { .service-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 759px) { .trust-grid { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 559px) { .service-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* single-column hero (tablets): the photo doesn't take over the whole screen */
+@media (max-width: 1024px) { .hero-showcase { max-width: 40rem; width: 100%; } }
+
+/* contact links are easy to tap */
+.contact-list a { display: inline-flex; align-items: center; min-height: 44px; }
+.contact-list { gap: 0; }
+.contact-list span { padding: 0.6rem 0 0; }
+
+/* hero stays side-by-side down to small tablets, then stacks */
+@media (max-width: 1024px) and (min-width: 861px) {
+    .hero-grid { grid-template-columns: 1.05fr 0.95fr; gap: 2rem; }
+    .hero-showcase { max-width: none; }
+    .visit-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } }
+/* very small phones: the email address fits on one line */
+@media (max-width: 340px) { .btn.outline { font-size: 0.8rem; padding-left: 0.6rem; padding-right: 0.6rem; } }
