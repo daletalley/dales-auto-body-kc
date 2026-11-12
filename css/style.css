@@ -513,3 +513,17 @@ section { padding: clamp(3rem, 6vw, 4.5rem) 0; }
 @media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } }
 /* very small phones: the email address fits on one line */
 @media (max-width: 340px) { .btn.outline { font-size: 0.8rem; padding-left: 0.6rem; padding-right: 0.6rem; } }
+
+/* ---------- review fixes ---------- */
+/* tall photos show whole on the dark frame instead of a blurry crop */
+.hero-photo { background: #0b1826; }
+.hero-photo img.tall { object-fit: contain; }
+/* nav links land below the pinned header on wide screens */
+@media (min-width: 1025px) and (min-height: 501px) { html { scroll-padding-top: 7rem; } }
+/* tap the address to open directions; it still looks like the heading */
+.visit-card h2 a.addr { display: inline-block; padding: 0.45rem 0; color: inherit; text-decoration: underline; text-decoration-color: rgba(232, 191, 87, 0.6); text-underline-offset: 6px; text-decoration-thickness: 2px; }
+.visit-card h2 a.addr:hover { text-decoration-color: var(--amber); }
+/* easy-to-tap footer login; arrows scale with big screens */
+.footer-login a { display: inline-flex; align-items: center; min-height: 44px; }
+.hero-arrow { width: 2.75rem; height: 2.75rem; }
+.nav-links a { transition: color 0.2s ease, background 0.2s ease; }

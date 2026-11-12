@@ -6,22 +6,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Single source of truth for hero gallery imagery (compressed copies of the original photos)
 const galleryImages = [
-    'shop.webp',
-    'work-00020.webp',
-    'work-00010.webp',
-    'work-00005.webp',
-    'work-00018.webp',
-    'work-00023.webp',
-    'work-00025.webp',
-    'work-00029.webp',
-    'work-00033.webp',
-    'work-00035.webp',
-    'work-00042.webp',
-    'work-00051.webp',
-    'work-00055.webp',
-    'work-00057.webp',
-    'work-00068.webp',
-    'work-00074.webp'
+    { src: 'shop.webp', alt: "Dale's Auto Body shop on State Avenue" },
+    { src: 'work-00020.webp', alt: 'Custom peach paint on a motorcycle fairing and bags' },
+    { src: 'work-00010.webp', alt: 'Copper bagger with gold pinstripes, finished and parked outside the shop' },
+    { src: 'work-00005.webp', alt: 'Gloss black motorcycle bags with a purple and green custom graphic' },
+    { src: 'work-00018.webp', alt: 'Road Glide in custom peach paint with matching fairing and bags' },
+    { src: 'work-00023.webp', alt: 'Copper and gold bagger with stretched bags, side view' },
+    { src: 'work-00025.webp', alt: 'Bagger in candy copper with gold pinstripe flames and a two-tone seat' },
+    { src: 'work-00029.webp', alt: 'Maroon touring motorcycle with a tan seat and chrome trim' },
+    { src: 'work-00033.webp', alt: 'Candy blue rear fender with a built-in red LED light strip' },
+    { src: 'work-00035.webp', alt: 'Pleated black seat upholstery' },
+    { src: 'work-00042.webp', alt: 'Yellow bagger with black pinstripes on the lift in the shop' },
+    { src: 'work-00051.webp', alt: 'Red fender with a Chiefs arrowhead graphic' },
+    { src: 'work-00055.webp', alt: 'Black bagger with long stretched bags' },
+    { src: 'work-00057.webp', alt: 'Black Road Glide with stretched bags and a chrome wheel' },
+    { src: 'work-00068.webp', alt: 'Orange and black flamed Road Glide with a big custom front wheel' },
+    { src: 'work-00074.webp', alt: 'Chrome engine detail on a black touring motorcycle' }
 ];
 
 function initHeroSlider() {
@@ -29,21 +29,39 @@ function initHeroSlider() {
     if (!heroImg || !galleryImages.length) return;
 
     let index = 0;
+    const url = (i) => `images/web/${galleryImages[(i + galleryImages.length) % galleryImages.length].src}`;
+
+    // tall photos are shown whole instead of cropped
+    heroImg.addEventListener('load', () => heroImg.classList.toggle('tall', heroImg.naturalHeight > heroImg.naturalWidth));
 
     const showImage = (i) => {
         const bounded = (i + galleryImages.length) % galleryImages.length;
-        heroImg.src = `images/web/${galleryImages[bounded]}`;
+        heroImg.src = url(bounded);
+        heroImg.alt = galleryImages[bounded].alt;
         index = bounded;
-        new Image().src = `images/web/${galleryImages[(bounded + 1) % galleryImages.length]}`; // have the next one ready
+        new Image().src = url(bounded + 1); // have the neighbours ready
+        new Image().src = url(bounded - 1);
     };
 
     document.querySelector('[data-hero-prev]')?.addEventListener('click', () => showImage(index - 1));
     document.querySelector('[data-hero-next]')?.addEventListener('click', () => showImage(index + 1));
 
-    // swipe on phones
-    let x0 = null;
-    heroImg.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
-    heroImg.addEventListener('touchend', (e) => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) showImage(index + (dx < 0 ? 1 : -1)); x0 = null; });
+    // swipe on phones: only a clearly sideways swipe changes the photo, so scrolling never does
+    let x0 = null, y0 = null;
+    heroImg.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    heroImg.addEventListener('touchcancel', () => { x0 = y0 = null; });
+    heroImg.addEventListener('touchend', (e) => {
+        if (x0 === null) return;
+        const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+        if (Math.abs(dx) > 40 && Math.abs(dx) > 1.5 * Math.abs(dy)) showImage(index + (dx < 0 ? 1 : -1));
+        x0 = y0 = null;
+    });
+
+    // left/right arrow keys when the slider has focus
+    document.querySelector('.hero-slider')?.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') showImage(index - 1);
+        if (e.key === 'ArrowRight') showImage(index + 1);
+    });
 }
 
 // Weekdays 10a–6p Kansas City time; weekends by appointment
