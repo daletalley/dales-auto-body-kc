@@ -37,8 +37,11 @@ function initHeroSlider() {
         const bounded = (i + galleryImages.length) % galleryImages.length;
         index = want = bounded;
         const next = new Image();
-        next.onload = next.onerror = () => {
+        heroImg.closest('.hero-photo')?.setAttribute('aria-busy', 'true');
+        next.onerror = () => { if (want === bounded) heroImg.closest('.hero-photo')?.removeAttribute('aria-busy'); };
+        next.onload = () => {
             if (want !== bounded) return; // a newer tap won
+            heroImg.closest('.hero-photo')?.removeAttribute('aria-busy');
             heroImg.classList.toggle('tall', next.naturalHeight > next.naturalWidth);
             heroImg.src = next.src;
             heroImg.alt = galleryImages[bounded].alt;
@@ -47,6 +50,10 @@ function initHeroSlider() {
         new Image().src = url(bounded + 1); // have the neighbours ready
         new Image().src = url(bounded - 1);
     };
+
+    // have the first photo's neighbours ready before the first tap
+    new Image().src = url(1);
+    new Image().src = url(-1);
 
     document.querySelector('[data-hero-prev]')?.addEventListener('click', () => showImage(index - 1));
     document.querySelector('[data-hero-next]')?.addEventListener('click', () => showImage(index + 1));

@@ -447,7 +447,7 @@ section { padding: 5rem 0; }
 .footer-login a:hover { color: var(--cream); }
 
 /* ---------- refinements: same design, cleaned up ---------- */
-:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; border-radius: 6px; }
+:focus-visible { outline: 3px solid var(--amber); outline-offset: 3px; }
 
 /* tighter spacing so the page doesn't feel empty between sections */
 section { padding: clamp(3rem, 6vw, 4.5rem) 0; }
@@ -543,3 +543,27 @@ section { padding: clamp(3rem, 6vw, 4.5rem) 0; }
     .footer-inner { flex-direction: column; align-items: flex-start; }
     .footer-cta { flex-direction: row; flex-wrap: wrap; }
 }
+
+/* ---------- review round 3 ---------- */
+/* header stays on one row wherever it fits, and on sideways phones */
+@media (min-width: 800px) and (max-width: 1024px) {
+    .nav-inner { flex-direction: row; align-items: center; }
+    .nav-links { width: auto; flex-wrap: nowrap; }
+    .brand-text p { white-space: nowrap; }
+}
+/* sideways phones: tighter spacing so Call is on the first screen, and the photo fits the screen height */
+@media (max-height: 500px) {
+    .nav-inner { padding-block: 0.5rem; gap: 0.25rem; }
+    .brand-name { font-size: 1.5rem; }
+    .hero { padding-top: 0.75rem; }
+    .hero-copy .eyebrow { margin-bottom: 0.35rem; }
+    .hero-copy h1 { font-size: 2rem; }
+    .hero-copy h1 { margin-bottom: 0.4rem; }
+    .hero-copy .lede { margin: 0 0 0.9rem; }
+    .hero-showcase { max-width: min(40rem, calc((100vh - 2rem) * 4 / 3)); margin-inline: auto; }
+}
+/* quick double taps on the arrows never zoom the page */
+.hero-arrow { touch-action: manipulation; }
+.hero-photo[aria-busy="true"] img { opacity: 0.6; transition: opacity 0.2s ease; }
+.hero-photo img { transition: opacity 0.2s ease; }
+@media (max-height: 340px) and (max-width: 640px) { .hero { padding-top: 0.4rem; } .hero-copy h1 { font-size: 1.8rem; margin-bottom: 0.25rem; } .hero-copy .lede { margin-bottom: 0.6rem; } }
