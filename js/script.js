@@ -31,14 +31,19 @@ function initHeroSlider() {
     let index = 0;
     const url = (i) => `images/web/${galleryImages[(i + galleryImages.length) % galleryImages.length].src}`;
 
-    // tall photos are shown whole instead of cropped
-    heroImg.addEventListener('load', () => heroImg.classList.toggle('tall', heroImg.naturalHeight > heroImg.naturalWidth));
-
+    // load the next photo first, then swap photo, fit and description together (tall photos show whole)
+    let want = 0;
     const showImage = (i) => {
         const bounded = (i + galleryImages.length) % galleryImages.length;
-        heroImg.src = url(bounded);
-        heroImg.alt = galleryImages[bounded].alt;
-        index = bounded;
+        index = want = bounded;
+        const next = new Image();
+        next.onload = next.onerror = () => {
+            if (want !== bounded) return; // a newer tap won
+            heroImg.classList.toggle('tall', next.naturalHeight > next.naturalWidth);
+            heroImg.src = next.src;
+            heroImg.alt = galleryImages[bounded].alt;
+        };
+        next.src = url(bounded);
         new Image().src = url(bounded + 1); // have the neighbours ready
         new Image().src = url(bounded - 1);
     };
@@ -48,9 +53,10 @@ function initHeroSlider() {
 
     // swipe on phones: only a clearly sideways swipe changes the photo, so scrolling never does
     let x0 = null, y0 = null;
-    heroImg.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
-    heroImg.addEventListener('touchcancel', () => { x0 = y0 = null; });
-    heroImg.addEventListener('touchend', (e) => {
+    const swipeArea = document.querySelector('.hero-slider') || heroImg;
+    swipeArea.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    swipeArea.addEventListener('touchcancel', () => { x0 = y0 = null; });
+    swipeArea.addEventListener('touchend', (e) => {
         if (x0 === null) return;
         const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
         if (Math.abs(dx) > 40 && Math.abs(dx) > 1.5 * Math.abs(dy)) showImage(index + (dx < 0 ? 1 : -1));
@@ -76,7 +82,7 @@ function updateOpenStatus() {
     const weekend = day === 'Sat' || day === 'Sun';
     const isOpen = !weekend && mins >= 600 && mins < 1080;
 
-    statusEl.textContent = weekend ? 'By appointment today' : isOpen ? 'Open now • until 6p' : mins < 600 ? 'Closed • opens 10a' : day === 'Fri' ? 'Closed • opens Mon 10a' : 'Closed • opens 10a';
+    statusEl.textContent = weekend ? 'By appointment today' : isOpen ? 'Open now • until 6p' : mins < 600 ? 'Closed • opens 10a' : day === 'Fri' ? 'Closed • opens Mon 10a' : 'Closed • opens tomorrow 10a';
     statusEl.classList.toggle('open', isOpen);
     statusEl.classList.toggle('closed', !isOpen);
 }

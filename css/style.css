@@ -527,3 +527,19 @@ section { padding: clamp(3rem, 6vw, 4.5rem) 0; }
 .footer-login a { display: inline-flex; align-items: center; min-height: 44px; }
 .hero-arrow { width: 2.75rem; height: 2.75rem; }
 .nav-links a { transition: color 0.2s ease, background 0.2s ease; }
+
+/* ---------- review round 2 ---------- */
+/* headlines break into even lines instead of leaving a word alone */
+.hero-copy h1, .section-header h2 { text-wrap: balance; }
+/* phones and short screens: less empty space above the headline so Call shows on the first screen */
+@media (max-width: 640px), (max-height: 500px) { .hero { padding-top: 1.25rem; } .hero-grid { padding-block: 0; } }
+/* nav links are a full thumb-size tall */
+.nav-links a { display: inline-flex; align-items: center; min-height: 44px; }
+/* contact links in the Visit card look tappable, like the address */
+.contact-list a { text-decoration: underline; text-decoration-color: rgba(232, 191, 87, 0.6); text-underline-offset: 4px; text-decoration-thickness: 2px; }
+.contact-list a:hover { text-decoration-color: var(--amber); }
+/* tablets and small laptops: footer stacks, buttons sit side by side */
+@media (min-width: 641px) and (max-width: 1079px) {
+    .footer-inner { flex-direction: column; align-items: flex-start; }
+    .footer-cta { flex-direction: row; flex-wrap: wrap; }
+}
