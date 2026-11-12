@@ -39,6 +39,11 @@ function initHeroSlider() {
 
     document.querySelector('[data-hero-prev]')?.addEventListener('click', () => showImage(index - 1));
     document.querySelector('[data-hero-next]')?.addEventListener('click', () => showImage(index + 1));
+
+    // swipe on phones
+    let x0 = null;
+    heroImg.addEventListener('touchstart', (e) => { x0 = e.touches[0].clientX; }, { passive: true });
+    heroImg.addEventListener('touchend', (e) => { if (x0 === null) return; const dx = e.changedTouches[0].clientX - x0; if (Math.abs(dx) > 40) showImage(index + (dx < 0 ? 1 : -1)); x0 = null; });
 }
 
 // Weekdays 10a–6p Kansas City time; weekends by appointment
@@ -53,7 +58,7 @@ function updateOpenStatus() {
     const weekend = day === 'Sat' || day === 'Sun';
     const isOpen = !weekend && mins >= 600 && mins < 1080;
 
-    statusEl.textContent = weekend ? 'Weekends by appointment' : isOpen ? 'Open now • 10a–6p' : 'Closed • Open weekdays 10a–6p';
+    statusEl.textContent = weekend ? 'By appointment today' : isOpen ? 'Open now • until 6p' : mins < 600 ? 'Closed • opens 10a' : day === 'Fri' ? 'Closed • opens Mon 10a' : 'Closed • opens 10a';
     statusEl.classList.toggle('open', isOpen);
     statusEl.classList.toggle('closed', !isOpen);
 }
